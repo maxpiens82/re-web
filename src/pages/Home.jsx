@@ -15,8 +15,11 @@ import {
   Mail,
   Phone,
   CheckCircle2,
+  Check,
   Info,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 // ==========================================
@@ -24,7 +27,31 @@ import {
 // ==========================================
 const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE"; 
 
-export default function Home() {
+// ==========================================
+// GENERATE DATES OUTSIDE COMPONENT
+// ==========================================
+const generateDates = () => {
+  const options = [];
+  const now = new Date();
+  // Expandimos a 90 días para abarcar meses adyacentes
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' }).substring(0, 3).toUpperCase().replace('.', ''); 
+    const dayNumber = d.getDate();
+    const monthNumber = String(d.getMonth() + 1).padStart(2, '0');
+    options.push({
+      id: d.toISOString().split('T')[0], // ID más limpio (YYYY-MM-DD)
+      dateObj: d,
+      dayName,
+      dayNumber,
+      fullFormat: `${dayName} ${dayNumber}/${monthNumber}`
+    });
+  }
+  return options;
+};
+
+export default function App() {
   const [selectedServices, setSelectedServices] = useState([]);
   const [multiplier, setMultiplier] = useState(1.0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,25 +62,42 @@ export default function Home() {
   const [db, setDb] = useState(null);
   const [isLoadingPrices, setIsLoadingPrices] = useState(true);
 
+  // Date & Time Picker State
+  const [dateOptions] = useState(generateDates); // Inicializamos las opciones
+  const [selectedDateObj, setSelectedDateObj] = useState(dateOptions[0]); // Por defecto: HOY
+  const [selectedTime, setSelectedTime] = useState(null);
+  const [duration, setDuration] = useState('1 Hora');
+
+  const dateScrollRef = useRef(null);
   const addressInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
   // Form State
   const [formData, setFormData] = useState({
     address: '',
-    datetime: '',
+    instructions: '',
     name: '',
     company: '',
     email: '',
     phone: ''
   });
 
+  const brandColor = "#EB4511";
+
+  // ==========================================
+  // GENERATE TIMES
+  // ==========================================
+  const timeOptions = useMemo(() => [
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00',
+    '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'
+  ], []);
+
   // ==========================================
   // 1. FETCH PRICES FROM GOOGLE SHEETS
   // ==========================================
   useEffect(() => {
     const fetchPrices = async () => {
-      // The exact URL of your deployed Google Apps Script API + the ?api=prices flag
       const API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=prices";
       
       try {
@@ -61,7 +105,6 @@ export default function Home() {
         const data = await response.json();
         
         if (data.success) {
-          // Re-attach the Lucide icons dynamically to the fetched data
           const iconMap = {
             'FOTO': Camera, 'VIDEO': Video, 'REEL': Clapperboard, 'TH': Mic,
             'PLANO': MapIcon, 'TOUR': Compass, 'DRONE': Plane, 'FPV': Crosshair
@@ -69,7 +112,6 @@ export default function Home() {
 
           const mappedServices = data.services.map(s => ({
             id: s.id,
-            // Reconstruct the labels based on ID
             label: s.id === 'TH' ? 'Talking Head' : 
                    s.id === 'FOTO' ? 'Fotografía' : 
                    s.id === 'VIDEO' ? 'Video Recorrido' : 
@@ -80,17 +122,15 @@ export default function Home() {
                    s.id === 'FPV' ? 'Drone FPV' : s.id,
             price: s.price,
             isFixed: s.isFixed,
-            icon: iconMap[s.id] || Camera // Fallback icon
+            icon: iconMap[s.id] || Camera 
           }));
 
           const mappedMultipliers = data.multipliers.map((m, index) => {
-            // Reconstruct the labels based on the sheet value (e.g. '150' -> '101 a 150m²')
             let label = `Hasta ${m.sheetValue}m²`;
             if (index > 0) {
               const prevValue = data.multipliers[index - 1].sheetValue;
               label = `${parseInt(prevValue) + 1} a ${m.sheetValue}m²`;
             }
-            // Add a special label for the final tier
             if (index === data.multipliers.length - 1) {
               label = `Más de ${data.multipliers[index - 1].sheetValue}m²`;
             }
@@ -103,7 +143,6 @@ export default function Home() {
             };
           });
 
-          // Inject the fetched data into the React state
           setDb({
             services: mappedServices,
             multipliers: mappedMultipliers,
@@ -114,8 +153,7 @@ export default function Home() {
         }
       } catch (error) {
         console.error("Error fetching prices:", error);
-        alert("Ocurrió un error al cargar la lista de precios. Intenta refrescar la página.");
-        setIsLoadingPrices(false); // Prevent infinite loading if API fails
+        setIsLoadingPrices(false); 
       }
     };
 
@@ -126,7 +164,6 @@ export default function Home() {
   // GOOGLE MAPS AUTOCOMPLETE INITIALIZATION
   // ==========================================
   useEffect(() => {
-    // Only initialize Maps if the prices have finished loading (so the DOM exists)
     if (isLoadingPrices) return;
 
     if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
@@ -144,7 +181,7 @@ export default function Home() {
       if (window.google && addressInputRef.current) {
         autocompleteRef.current = new window.google.maps.places.Autocomplete(addressInputRef.current, {
           types: ['address'],
-          componentRestrictions: { country: 'ar' } // Restrict to Argentina
+          componentRestrictions: { country: 'ar' }
         });
 
         autocompleteRef.current.addListener('place_changed', () => {
@@ -158,11 +195,10 @@ export default function Home() {
         });
       }
     }
-  }, [isLoadingPrices]); // Re-run this effect when loading finishes
+  }, [isLoadingPrices]); 
 
   // --- CALCULATION ENGINE ---
   const { total, discountApplied, baseCount } = useMemo(() => {
-    // 🛡️ SHIELD: Protect against calculating before DB loads
     if (!db) return { total: 0, discountApplied: 0, baseCount: 0 };
 
     let baseMult = 0;
@@ -205,27 +241,27 @@ export default function Home() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (name === 'address') {
-      setIsAddressValid(false);
-    }
+    if (name === 'address') setIsAddressValid(false);
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.datetime) {
-      alert("⚠️ Por favor, ingresa tu nombre y fecha preferida para solicitar la reserva.");
+    if (!formData.name || !selectedDateObj || !selectedTime) {
+      alert("⚠️ Por favor, ingresa tu nombre y selecciona una fecha y hora preferida.");
       return;
     }
 
     if (!isAddressValid) {
       alert("📍 Por favor, selecciona una dirección válida de las sugerencias de Google Maps.");
-      addressInputRef.current.focus();
+      if(addressInputRef.current) addressInputRef.current.focus();
       return;
     }
 
     setIsSubmitting(true);
     
     const API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec";
+
+    // Combine date, time and duration into the datetime string expected by backend
+    const formattedDateTime = `${selectedDateObj.fullFormat} a las ${selectedTime} (${duration})`;
 
     const payload = {
       action: 'web_booking_request',
@@ -235,7 +271,8 @@ export default function Home() {
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
-        datetime: formData.datetime,
+        instructions: formData.instructions,
+        datetime: formattedDateTime,
         services: selectedServices,
         multiplierLabel: db.multipliers.find(m => m.value === multiplier)?.sheetValue || '100',
         total: total
@@ -243,7 +280,7 @@ export default function Home() {
     };
 
     try {
-      const response = await fetch(API_URL, {
+      await fetch(API_URL, {
         method: "POST",
         mode: "no-cors", 
         headers: {
@@ -257,7 +294,6 @@ export default function Home() {
 
     } catch (error) {
       console.error("Error connecting to API:", error);
-      alert("Ocurrió un error al enviar la solicitud. Por favor intenta de nuevo.");
       setIsSubmitting(false);
     }
   };
@@ -270,7 +306,18 @@ export default function Home() {
     }).format(amount);
   };
 
-  const brandColor = "#EB4511";
+  // Carousel Helpers
+  const scrollLeft = () => {
+    if (dateScrollRef.current) {
+      dateScrollRef.current.scrollBy({ left: -240, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (dateScrollRef.current) {
+      dateScrollRef.current.scrollBy({ left: 240, behavior: 'smooth' });
+    }
+  };
 
   // 🚀 SHOW LOADING STATE UNTIL DB FETCHES
   if (isLoadingPrices || !db) {
@@ -312,36 +359,27 @@ export default function Home() {
       <main className="max-w-4xl mx-auto px-4 -mt-12 relative z-10 space-y-6">
         
         {/* Step 1: Services */}
-        <section className="bg-white rounded-2xl p-6 md:p-8 shadow-lg border-t-4" style={{ borderColor: brandColor }}>
-          <div className="flex items-baseline gap-2 mb-6">
-            <h2 className="text-xl font-bold uppercase tracking-wide" style={{ color: brandColor }}>
-              Seleccioná los Servicios
+        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
+          <div className="mb-6">
+            <h2 className="text-[17px] font-bold uppercase" style={{ color: brandColor }}>
+              Servicios
             </h2>
-            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">(Paso 1)</span>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="flex flex-wrap gap-3">
             {db.services.map((srv) => {
               const isSelected = selectedServices.includes(srv.id);
-              const Icon = srv.icon;
               return (
                 <button
                   key={srv.id}
                   onClick={() => toggleService(srv.id)}
-                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 ease-in-out select-none
+                  className={`relative px-6 py-2.5 rounded-full font-bold text-xs md:text-sm tracking-wide transition-all duration-200 select-none
                     ${isSelected 
-                      ? 'border-[#EB4511] bg-[#EB4511]/5 text-[#EB4511]' 
-                      : 'border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                      ? 'bg-[#EB4511] text-white shadow-[0_6px_16px_rgba(235,69,17,0.35)] -translate-y-0.5' 
+                      : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'
                     }`}
                 >
-                  <Icon size={28} className={`mb-3 ${isSelected ? 'text-[#EB4511]' : 'text-gray-400'}`} strokeWidth={1.5} />
-                  <span className="font-semibold text-sm text-center leading-tight">{srv.label}</span>
-                  
-                  {isSelected && (
-                    <div className="absolute top-2 right-2 text-[#EB4511]">
-                      <CheckCircle2 size={18} />
-                    </div>
-                  )}
+                  {srv.id}
                 </button>
               );
             })}
@@ -360,21 +398,20 @@ export default function Home() {
           )}
         </section>
 
-        {/* Step 2: Property Details */}
-        <section className="bg-white rounded-2xl p-6 md:p-8 shadow-lg">
-          <div className="flex items-baseline gap-2 mb-6">
-            <h2 className="text-xl font-bold uppercase tracking-wide" style={{ color: brandColor }}>
-              Detalles de la Propiedad
+        {/* Step 2: Locación */}
+        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
+          <div className="mb-6">
+            <h2 className="text-[17px] font-bold uppercase" style={{ color: brandColor }}>
+              Locación
             </h2>
-            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">(Paso 2)</span>
           </div>
           
-          <div className="space-y-5">
+          <div className="space-y-6">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Metros Cuadrados</label>
               <div className="relative">
                 <select 
-                  className="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-800 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 focus:border-[#EB4511] transition-colors cursor-pointer font-medium"
+                  className="w-full appearance-none bg-[#F4F4F5] border-none text-gray-800 py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors cursor-pointer font-medium"
                   value={multiplier}
                   onChange={(e) => setMultiplier(parseFloat(e.target.value))}
                 >
@@ -390,55 +427,169 @@ export default function Home() {
 
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
-                Dirección / Locación {!isAddressValid && formData.address && <span className="text-red-500 ml-2">(Seleccioná de la lista)</span>}
+                Dirección del Servicio {!isAddressValid && formData.address && <span className="text-red-500 ml-2">(Seleccioná de la lista)</span>}
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MapPin size={18} className={isAddressValid ? "text-green-500" : "text-gray-400"} />
-                </div>
                 <input 
                   type="text" 
                   name="address"
                   ref={addressInputRef}
                   value={formData.address}
                   onChange={handleInputChange}
-                  placeholder="Ej: Av. del Libertador 1234, CABA"
-                  className={`w-full bg-gray-50 border py-3 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 transition-colors ${isAddressValid ? 'border-green-300 ring-green-100' : 'border-gray-200 focus:ring-[#EB4511]/20 focus:border-[#EB4511]'}`}
+                  placeholder="Buscar dirección..."
+                  className={`w-full bg-[#F4F4F5] border py-3.5 px-4 rounded-xl focus:outline-none transition-colors font-medium
+                    ${isAddressValid ? 'border-[#4bbf73] ring-1 ring-[#4bbf73]' : 'border-transparent focus:ring-2 focus:ring-[#EB4511]/20'}`}
                   autoComplete="off"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Fecha y Hora Preferida</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+                Indicaciones (Piso, Depto, Torre)
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Calendar size={18} className="text-gray-400" />
-                </div>
                 <input 
-                  type="datetime-local" 
-                  name="datetime"
-                  value={formData.datetime}
+                  type="text" 
+                  name="instructions"
+                  value={formData.instructions}
                   onChange={handleInputChange}
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-800 py-3 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 focus:border-[#EB4511] transition-colors"
+                  placeholder="Ej: 4to B, Tocar timbre recepción..."
+                  className="w-full bg-[#F4F4F5] border border-transparent py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors font-medium"
                 />
               </div>
             </div>
           </div>
         </section>
 
-        {/* Step 3: User Details */}
-        <section className="bg-white rounded-2xl p-6 md:p-8 shadow-lg mb-8">
-           <div className="flex items-baseline gap-2 mb-6">
-            <h2 className="text-xl font-bold uppercase tracking-wide" style={{ color: brandColor }}>
+        {/* Step 3: CUSTOM DATE & TIME PICKER */}
+        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
+          <div className="mb-6">
+            <h2 className="text-[17px] font-bold uppercase" style={{ color: brandColor }}>
+              Fecha y Hora
+            </h2>
+          </div>
+
+          <div className="space-y-8">
+            {/* DATE SELECTOR */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                Seleccionar Fecha
+              </label>
+              <div className="flex items-center gap-2 md:gap-4">
+                <button 
+                  onClick={scrollLeft} 
+                  type="button"
+                  className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#EB4511] hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                  <ChevronLeft size={20} strokeWidth={2.5}/>
+                </button>
+
+                <div 
+                  ref={dateScrollRef}
+                  className="flex flex-1 gap-2 md:gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth py-2 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                >
+                  {dateOptions.map(d => {
+                    const isSelected = selectedDateObj?.id === d.id;
+                    return (
+                      <button 
+                        key={d.id} 
+                        onClick={() => setSelectedDateObj(d)} 
+                        type="button"
+                        className={`flex flex-col items-center justify-center w-[64px] h-[64px] md:w-[72px] md:h-[72px] shrink-0 rounded-2xl border-2 transition-all select-none snap-start
+                          ${isSelected 
+                            ? 'border-[#EB4511] shadow-[0_4px_14px_rgba(235,69,17,0.2)] bg-white -translate-y-0.5' 
+                            : 'border-transparent bg-[#F4F4F5] hover:bg-gray-200'}`}
+                      >
+                        <span className={`text-[10px] md:text-[11px] font-bold tracking-wide uppercase ${isSelected ? 'text-[#EB4511]' : 'text-gray-500'}`}>{d.dayName}</span>
+                        <span className={`text-xl md:text-2xl font-black mt-0.5 ${isSelected ? 'text-[#2d2d2d]' : 'text-gray-500'}`}>{d.dayNumber}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <button 
+                  onClick={scrollRight} 
+                  type="button"
+                  className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#EB4511] hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                  <ChevronRight size={20} strokeWidth={2.5}/>
+                </button>
+              </div>
+
+              {/* Selected Date Subtitle */}
+              <div className="mt-5 text-center min-h-[20px]">
+                {selectedDateObj && (
+                  <span className="text-[13px] font-bold uppercase tracking-wide" style={{ color: brandColor }}>
+                    {selectedDateObj.fullFormat}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* TIME SELECTOR */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                Seleccionar Hora
+              </label>
+              <div className="grid grid-cols-4 md:grid-cols-7 gap-2 md:gap-3">
+                {timeOptions.map(time => {
+                  const isSelected = selectedTime === time;
+                  return (
+                    <button
+                      key={time}
+                      onClick={() => setSelectedTime(time)}
+                      className={`py-2 rounded-full font-bold text-xs md:text-sm transition-all select-none
+                        ${isSelected
+                          ? 'bg-[#EB4511] text-white shadow-[0_4px_14px_rgba(235,69,17,0.35)] -translate-y-0.5'
+                          : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}
+                    >
+                      {time}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* ESTIMATED DURATION */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                Duración Estimada
+              </label>
+              <div className="relative">
+                <select 
+                  className="w-full appearance-none bg-[#F4F4F5] border-none text-gray-800 py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors cursor-pointer font-medium text-sm"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                >
+                  <option value="1 Hora">1 Hora</option>
+                  <option value="1.5 Horas">1.5 Horas</option>
+                  <option value="2 Horas">2 Horas</option>
+                  <option value="3 Horas">3 Horas</option>
+                  <option value="Jornada Completa">Jornada Completa</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* Step 4: User Details */}
+        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-8">
+           <div className="mb-6">
+            <h2 className="text-[17px] font-bold uppercase" style={{ color: brandColor }}>
               Tus Datos
             </h2>
-            <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">(Paso 3)</span>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <User size={18} className="text-gray-400" />
               </div>
               <input 
@@ -447,12 +598,12 @@ export default function Home() {
                 value={formData.name}
                 onChange={handleInputChange}
                 placeholder="Nombre y Apellido"
-                className="w-full bg-gray-50 border border-gray-200 text-gray-800 py-3 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 focus:border-[#EB4511] transition-colors"
+                className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors font-medium"
               />
             </div>
             
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Building size={18} className="text-gray-400" />
               </div>
               <input 
@@ -461,12 +612,12 @@ export default function Home() {
                 value={formData.company}
                 onChange={handleInputChange}
                 placeholder="Empresa o Inmobiliaria"
-                className="w-full bg-gray-50 border border-gray-200 text-gray-800 py-3 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 focus:border-[#EB4511] transition-colors"
+                className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors font-medium"
               />
             </div>
 
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Mail size={18} className="text-gray-400" />
               </div>
               <input 
@@ -475,12 +626,12 @@ export default function Home() {
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder="Correo Electrónico"
-                className="w-full bg-gray-50 border border-gray-200 text-gray-800 py-3 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 focus:border-[#EB4511] transition-colors"
+                className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-all font-medium"
               />
             </div>
 
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <Phone size={18} className="text-gray-400" />
               </div>
               <input 
@@ -489,7 +640,7 @@ export default function Home() {
                 value={formData.phone}
                 onChange={handleInputChange}
                 placeholder="Teléfono (WhatsApp)"
-                className="w-full bg-gray-50 border border-gray-200 text-gray-800 py-3 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 focus:border-[#EB4511] transition-colors"
+                className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-all font-medium"
               />
             </div>
           </div>
@@ -497,19 +648,19 @@ export default function Home() {
       </main>
 
       {/* Sticky Footer */}
-      <footer className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] z-50">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-50">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           
-          <div className="w-full md:w-auto bg-[#F8F9FA] rounded p-3 border-l-4" style={{ borderColor: brandColor }}>
-             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5 block">
-               PRESUPUESTO ESTIMADO
+          <div className="flex flex-col">
+             <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+               Precio Estimado
              </span>
              <div className="flex items-baseline gap-2">
-               <span className="text-2xl font-bold" style={{ color: brandColor }}>
+               <span className="text-2xl md:text-3xl font-extrabold" style={{ color: brandColor }}>
                  {formatCurrency(total)}
                </span>
                {discountApplied > 0 && (
-                 <span className="text-xs font-semibold text-gray-400 line-through">
+                 <span className="text-sm font-semibold text-gray-400 line-through">
                    {formatCurrency(total + discountApplied)}
                  </span>
                )}
@@ -519,10 +670,10 @@ export default function Home() {
           <button 
             onClick={handleSubmit}
             disabled={total === 0 || isSubmitting}
-            className={`w-full md:w-auto px-10 py-4 rounded-full font-bold uppercase tracking-widest transition-all duration-200 flex items-center justify-center gap-2
+            className={`px-8 py-3.5 md:px-10 md:py-4 rounded-full font-bold uppercase tracking-wider text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2
               ${total === 0 
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                : 'text-white hover:opacity-90 hover:shadow-lg hover:-translate-y-0.5'
+                : 'text-white shadow-md hover:opacity-90 hover:shadow-[0_4px_14px_rgba(235,69,17,0.4)] hover:-translate-y-0.5'
               }`}
             style={{ backgroundColor: total === 0 ? undefined : brandColor }}
           >
@@ -532,10 +683,10 @@ export default function Home() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Procesando...
+                Procesando
               </>
             ) : (
-              'Solicitar Reserva'
+              'Confirmar Reserva'
             )}
           </button>
         </div>
@@ -544,35 +695,33 @@ export default function Home() {
       {/* Success Modal */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] shadow-2xl max-w-[400px] w-full px-8 py-10 text-center relative animate-in zoom-in-95 duration-200 border-t-8" style={{ borderColor: brandColor }}>
-            <button 
-              onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors"
-            >
-              <X size={24} />
-            </button>
+          <div className="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] max-w-[340px] w-full px-8 py-10 text-center relative animate-in zoom-in-95 duration-200">
             
-            <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 size={32} strokeWidth={2.5} />
+            <div className="mb-4 mt-2">
+              <Check size={80} className="text-[#4bbf73] mx-auto" strokeWidth={3} />
             </div>
             
-            <h3 className="text-2xl font-extrabold text-gray-900 mb-2 uppercase tracking-wide">¡Solicitud Enviada!</h3>
-            <p className="text-gray-600 mb-6 text-sm">
-              Hemos registrado tu simulación. El presupuesto de <strong style={{ color: brandColor }}>{formatCurrency(total)}</strong> ha sido enviado al equipo.
+            <h3 className="text-[22px] font-extrabold text-[#1a1a1a] mb-4">¡Reserva Confirmada!</h3>
+            <p className="text-[#6b7280] text-[15px] leading-relaxed mb-8 px-2 font-medium">
+              La reserva se ha procesado<br/>correctamente.
             </p>
             
             <button 
               onClick={() => {
                 setShowModal(false);
-                setFormData({ address: '', datetime: '', name: '', company: '', email: '', phone: '' });
+                setFormData({ address: '', instructions: '', name: '', company: '', email: '', phone: '' });
                 setSelectedServices([]);
                 setMultiplier(1.0);
                 setIsAddressValid(false);
+                setSelectedDateObj(dateOptions[0]); // Reset a HOY
+                setSelectedTime(null);
+                setDuration('1 Hora');
+                if(dateScrollRef.current) dateScrollRef.current.scrollTo({ left: 0 });
               }}
-              className="w-full text-white font-bold py-3 px-10 rounded-full transition-transform hover:scale-105 active:scale-95 uppercase text-sm tracking-wide shadow-md"
-              style={{ backgroundColor: brandColor }}
+              className="w-full text-white font-bold py-3.5 px-6 rounded-full transition-transform hover:-translate-y-0.5 active:translate-y-0 uppercase text-sm tracking-wide"
+              style={{ backgroundColor: '#4bbf73' }}
             >
-              Cerrar
+              NUEVA RESERVA
             </button>
           </div>
         </div>
