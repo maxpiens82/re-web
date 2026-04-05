@@ -24,41 +24,16 @@ import {
 // ==========================================
 const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE"; 
 
-
-
-// --- MOCKED DATABASE (Synced with RE! 2026 Spreadsheet) ---
-const db = {
-  services:[
-    { id: 'FOTO', label: 'Fotografía', price: 60000, isFixed: false, icon: Camera },
-    { id: 'VIDEO', label: 'Video Recorrido', price: 30000, isFixed: false, icon: Video },
-    { id: 'REEL', label: 'Reel Vertical', price: 30000, isFixed: false, icon: Clapperboard },
-    { id: 'TH', label: 'Talking Head', price: 50000, isFixed: false, icon: Mic },
-    { id: 'PLANO', label: 'Plano 2D', price: 30000, isFixed: false, icon: MapIcon },
-    { id: 'TOUR', label: 'Video Tour', price: 30000, isFixed: false, icon: Compass },
-    { id: 'DRONE', label: 'Drone Aéreo', price: 180000, isFixed: true, icon: Plane },
-    { id: 'FPV', label: 'Drone FPV', price: 250000, isFixed: true, icon: Crosshair }
-  ],
-  multipliers:[
-    { id: 'm100', label: 'Hasta 100m²', value: 1.0, sheetValue: '100' },
-    { id: 'm150', label: '101 a 150m²', value: 1.15, sheetValue: '150' },
-    { id: 'm200', label: '151 a 200m²', value: 1.3, sheetValue: '200' },
-    { id: 'm250', label: '201 a 250m²', value: 1.45, sheetValue: '250' },
-    { id: 'm300', label: '251 a 300m²', value: 1.6, sheetValue: '300' },
-    { id: 'm350', label: '301 a 350m²', value: 1.75, sheetValue: '350' },
-    { id: 'm400', label: '351 a 400m²', value: 1.9, sheetValue: '400' },
-    { id: 'm450', label: '401 a 450m²', value: 2.05, sheetValue: '450' },
-    { id: 'm500', label: 'Más de 450m²', value: 2.2, sheetValue: '500' }
-  ],
-  discountThreshold: 3,
-  discountAmount: 5000
-};
-
 export default function Home() {
   const [selectedServices, setSelectedServices] = useState([]);
   const [multiplier, setMultiplier] = useState(1.0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [isAddressValid, setIsAddressValid] = useState(false); // Tracks if they picked from dropdown
+  const [isAddressValid, setIsAddressValid] = useState(false);
+
+  // 🚀 THE NEW STATE: Dynamic Pricing Data
+  const [db, setDb] = useState(null);
+  const [isLoadingPrices, setIsLoadingPrices] = useState(true);
 
   const addressInputRef = useRef(null);
   const autocompleteRef = useRef(null);
@@ -74,10 +49,86 @@ export default function Home() {
   });
 
   // ==========================================
+  // 1. FETCH PRICES FROM GOOGLE SHEETS
+  // ==========================================
+  useEffect(() => {
+    const fetchPrices = async () => {
+      // The exact URL of your deployed Google Apps Script API + the ?api=prices flag
+      const API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=prices";
+      
+      try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        
+        if (data.success) {
+          // Re-attach the Lucide icons dynamically to the fetched data
+          const iconMap = {
+            'FOTO': Camera, 'VIDEO': Video, 'REEL': Clapperboard, 'TH': Mic,
+            'PLANO': MapIcon, 'TOUR': Compass, 'DRONE': Plane, 'FPV': Crosshair
+          };
+
+          const mappedServices = data.services.map(s => ({
+            id: s.id,
+            // Reconstruct the labels based on ID
+            label: s.id === 'TH' ? 'Talking Head' : 
+                   s.id === 'FOTO' ? 'Fotografía' : 
+                   s.id === 'VIDEO' ? 'Video Recorrido' : 
+                   s.id === 'REEL' ? 'Reel Vertical' : 
+                   s.id === 'PLANO' ? 'Plano 2D' : 
+                   s.id === 'TOUR' ? 'Video Tour' : 
+                   s.id === 'DRONE' ? 'Drone Aéreo' : 
+                   s.id === 'FPV' ? 'Drone FPV' : s.id,
+            price: s.price,
+            isFixed: s.isFixed,
+            icon: iconMap[s.id] || Camera // Fallback icon
+          }));
+
+          const mappedMultipliers = data.multipliers.map((m, index) => {
+            // Reconstruct the labels based on the sheet value (e.g. '150' -> '101 a 150m²')
+            let label = `Hasta ${m.sheetValue}m²`;
+            if (index > 0) {
+              const prevValue = data.multipliers[index - 1].sheetValue;
+              label = `${parseInt(prevValue) + 1} a ${m.sheetValue}m²`;
+            }
+            // Add a special label for the final tier
+            if (index === data.multipliers.length - 1) {
+              label = `Más de ${data.multipliers[index - 1].sheetValue}m²`;
+            }
+
+            return {
+              id: `m${m.sheetValue}`,
+              label: label,
+              value: m.value,
+              sheetValue: m.sheetValue
+            };
+          });
+
+          // Inject the fetched data into the React state
+          setDb({
+            services: mappedServices,
+            multipliers: mappedMultipliers,
+            discountThreshold: 3, 
+            discountAmount: 5000 
+          });
+          setIsLoadingPrices(false);
+        }
+      } catch (error) {
+        console.error("Error fetching prices:", error);
+        alert("Ocurrió un error al cargar la lista de precios. Intenta refrescar la página.");
+        setIsLoadingPrices(false); // Prevent infinite loading if API fails
+      }
+    };
+
+    fetchPrices();
+  }, []);
+
+  // ==========================================
   // GOOGLE MAPS AUTOCOMPLETE INITIALIZATION
   // ==========================================
   useEffect(() => {
-    // Load script if not present
+    // Only initialize Maps if the prices have finished loading (so the DOM exists)
+    if (isLoadingPrices) return;
+
     if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=es`;
@@ -100,17 +151,20 @@ export default function Home() {
           const place = autocompleteRef.current.getPlace();
           if (place.formatted_address) {
             setFormData(prev => ({ ...prev, address: place.formatted_address }));
-            setIsAddressValid(true); // Lock it in as valid!
+            setIsAddressValid(true); 
           } else {
             setIsAddressValid(false);
           }
         });
       }
     }
-  }, []);
+  }, [isLoadingPrices]); // Re-run this effect when loading finishes
 
   // --- CALCULATION ENGINE ---
   const { total, discountApplied, baseCount } = useMemo(() => {
+    // 🛡️ SHIELD: Protect against calculating before DB loads
+    if (!db) return { total: 0, discountApplied: 0, baseCount: 0 };
+
     let baseMult = 0;
     let baseFixed = 0;
     let serviceCount = 0;
@@ -139,7 +193,7 @@ export default function Home() {
       discountApplied: discount > 0 ? discount * multiplier : 0, 
       baseCount: serviceCount
     };
-  }, [selectedServices, multiplier]);
+  }, [selectedServices, multiplier, db]);
 
   // --- HANDLERS ---
   const toggleService = (id) => {
@@ -152,7 +206,6 @@ export default function Home() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // If they manually type in the address field, invalidate it until they pick from the dropdown again
     if (name === 'address') {
       setIsAddressValid(false);
     }
@@ -219,6 +272,17 @@ export default function Home() {
 
   const brandColor = "#EB4511";
 
+  // 🚀 SHOW LOADING STATE UNTIL DB FETCHES
+  if (isLoadingPrices || !db) {
+    return (
+      <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center">
+         <div className="w-12 h-12 border-4 border-gray-200 border-t-[#EB4511] rounded-full animate-spin mb-4"></div>
+         <p className="text-gray-500 font-bold tracking-widest uppercase text-sm">Sincronizando Precios...</p>
+      </div>
+    );
+  }
+
+  // 🚀 RENDER MAIN UI
   return (
     <div className="min-h-screen bg-[#F0F2F5] text-[#2d2d2d] font-sans pb-32">
       
@@ -480,17 +544,21 @@ export default function Home() {
       {/* Success Modal */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] shadow-2xl max-w-[400px] w-full px-8 py-10 text-center relative animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-[2rem] shadow-2xl max-w-[400px] w-full px-8 py-10 text-center relative animate-in zoom-in-95 duration-200 border-t-8" style={{ borderColor: brandColor }}>
+            <button 
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors"
+            >
+              <X size={24} />
+            </button>
             
-            <div className="flex justify-center mb-6">
-              <svg width="68" height="68" viewBox="0 0 24 24" fill="none" stroke="#4CBA76" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
+            <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 size={32} strokeWidth={2.5} />
             </div>
             
-            <h3 className="text-2xl font-bold text-gray-800 mb-3">¡Solicitud Enviada!</h3>
-            <p className="text-gray-500 mb-8 text-[15px] leading-relaxed">
-              El presupuesto de <strong className="text-gray-700">{formatCurrency(total)}</strong> se ha registrado correctamente.
+            <h3 className="text-2xl font-extrabold text-gray-900 mb-2 uppercase tracking-wide">¡Solicitud Enviada!</h3>
+            <p className="text-gray-600 mb-6 text-sm">
+              Hemos registrado tu simulación. El presupuesto de <strong style={{ color: brandColor }}>{formatCurrency(total)}</strong> ha sido enviado al equipo.
             </p>
             
             <button 
@@ -501,14 +569,14 @@ export default function Home() {
                 setMultiplier(1.0);
                 setIsAddressValid(false);
               }}
-              className="w-full bg-[#4CBA76] text-white font-bold py-3.5 px-6 rounded-full transition-transform hover:scale-[1.02] active:scale-[0.98] uppercase text-sm tracking-wide shadow-sm hover:shadow-md"
+              className="w-full text-white font-bold py-3 px-10 rounded-full transition-transform hover:scale-105 active:scale-95 uppercase text-sm tracking-wide shadow-md"
+              style={{ backgroundColor: brandColor }}
             >
-              Finalizar
+              Cerrar
             </button>
           </div>
         </div>
       )}
-
     </div>
   );
 }
