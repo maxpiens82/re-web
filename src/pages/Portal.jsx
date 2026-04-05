@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus } from 'lucide-react';
+import UnifiedForm from '../components/UnifiedForm';
 
 // Make sure this is your actual GAS URL!
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec";
@@ -121,9 +122,9 @@ export default function Portal() {
         </div>
       </div>
 
-      {/* MAIN AREA: Unified Form Placeholder */}
+      {/* MAIN AREA: Unified Form */}
       <div className="flex-1 bg-[#F0F2F5] relative overflow-y-auto">
-        <div className="p-8 h-full flex items-center justify-center">
+        <div className="p-6 h-full flex items-center justify-center">
            {!selectedJobId ? (
              <div className="text-center text-gray-400">
                <div className="bg-gray-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -137,11 +138,10 @@ export default function Portal() {
                </button>
              </div>
            ) : (
-             <div className="text-center text-gray-400">
-               <Loader2 className="animate-spin mx-auto mb-4 text-[#EB4511]" size={32} />
-               <p className="font-medium text-gray-600">Cargando detalles de la reserva...</p>
-               <p className="text-xs text-gray-400 mt-1">ID: {selectedJobId}</p>
-             </div>
+             <UnifiedForm 
+               jobId={selectedJobId} 
+               onCancel={() => setSelectedJobId(null)} 
+             />
            )}
         </div>
       </div>

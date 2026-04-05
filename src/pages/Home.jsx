@@ -342,7 +342,7 @@ export default function App() {
           <img 
             src="https://lh3.googleusercontent.com/d/1oHw3lpx4-EAI59BDMccfjPl_I529xqWU" 
             alt="RE! Contenido Audiovisual" 
-            className="w-full max-w-[320px] h-auto object-contain mb-8"
+            className="w-full max-w-[480px] h-auto object-contain mb-8"
             onError={(e) => {
               e.target.onerror = null; 
               e.target.src = "https://placehold.co/600x200/EB4511/FFFFFF/png?text=RE!+Contenido+Audiovisual";
@@ -361,7 +361,7 @@ export default function App() {
         {/* Step 1: Services */}
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-6">
-            <h2 className="text-[17px] font-bold uppercase" style={{ color: brandColor }}>
+            <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
               Servicios
             </h2>
           </div>
@@ -373,7 +373,7 @@ export default function App() {
                 <button
                   key={srv.id}
                   onClick={() => toggleService(srv.id)}
-                  className={`relative px-6 py-2.5 rounded-full font-bold text-xs md:text-sm tracking-wide transition-all duration-200 select-none
+                  className={`relative w-[85px] md:w-[100px] h-[40px] rounded-full font-bold text-[11px] md:text-sm tracking-wide transition-all duration-200 select-none flex items-center justify-center shrink-0
                     ${isSelected 
                       ? 'bg-[#EB4511] text-white shadow-[0_6px_16px_rgba(235,69,17,0.35)] -translate-y-0.5' 
                       : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'
@@ -390,7 +390,7 @@ export default function App() {
             <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 transition-colors ${baseCount >= 4 ? 'bg-green-50 text-green-800' : 'bg-gray-50 text-gray-500'}`}>
               <Info size={20} className={`mt-0.5 flex-shrink-0 ${baseCount >= 4 ? 'text-green-600' : 'text-gray-400'}`} />
               <div className="text-sm font-medium">
-                <span className="block mb-1">* Descuento automático por volumen:</span>
+                <span className="block mb-1 font-bold">* Descuento automático por volumen:</span>
                 Llevando 4 o más servicios base, se aplica una bonificación. 
                 {baseCount >= 4 && <span className="block mt-1 text-green-700 font-bold">¡Descuento activado!</span>}
               </div>
@@ -401,14 +401,14 @@ export default function App() {
         {/* Step 2: Locación */}
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-6">
-            <h2 className="text-[17px] font-bold uppercase" style={{ color: brandColor }}>
+            <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
               Locación
             </h2>
           </div>
           
           <div className="space-y-6">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Metros Cuadrados</label>
+              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">Metros Cuadrados</label>
               <div className="relative">
                 <select 
                   className="w-full appearance-none bg-[#F4F4F5] border-none text-gray-800 py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors cursor-pointer font-medium"
@@ -426,8 +426,8 @@ export default function App() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
-                Dirección del Servicio {!isAddressValid && formData.address && <span className="text-red-500 ml-2">(Seleccioná de la lista)</span>}
+              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">
+                Dirección del Servicio {!isAddressValid && formData.address && <span className="text-red-500 ml-2 normal-case">(Seleccioná de la lista)</span>}
               </label>
               <div className="relative">
                 <input 
@@ -445,7 +445,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">
                 Indicaciones (Piso, Depto, Torre)
               </label>
               <div className="relative">
@@ -465,7 +465,7 @@ export default function App() {
         {/* Step 3: CUSTOM DATE & TIME PICKER */}
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-6">
-            <h2 className="text-[17px] font-bold uppercase" style={{ color: brandColor }}>
+            <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
               Fecha y Hora
             </h2>
           </div>
@@ -473,7 +473,7 @@ export default function App() {
           <div className="space-y-8">
             {/* DATE SELECTOR */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
                 Seleccionar Fecha
               </label>
               <div className="flex items-center gap-2 md:gap-4">
@@ -529,7 +529,7 @@ export default function App() {
 
             {/* TIME SELECTOR */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
                 Seleccionar Hora
               </label>
               <div className="grid grid-cols-4 md:grid-cols-7 gap-2 md:gap-3">
@@ -555,7 +555,7 @@ export default function App() {
 
             {/* ESTIMATED DURATION */}
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
                 Duración Estimada
               </label>
               <div className="relative">
@@ -582,7 +582,7 @@ export default function App() {
         {/* Step 4: User Details */}
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-8">
            <div className="mb-6">
-            <h2 className="text-[17px] font-bold uppercase" style={{ color: brandColor }}>
+            <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
               Tus Datos
             </h2>
           </div>
@@ -652,7 +652,7 @@ export default function App() {
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           
           <div className="flex flex-col">
-             <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
                Precio Estimado
              </span>
              <div className="flex items-baseline gap-2">
