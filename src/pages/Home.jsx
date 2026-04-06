@@ -1,39 +1,21 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
-  Camera, 
-  Video, 
-  Clapperboard, 
-  Mic, 
-  Map as MapIcon, 
-  Compass,
-  Plane, 
-  Crosshair,
-  MapPin,
-  Calendar,
-  User,
-  Building,
-  Mail,
-  Phone,
-  CheckCircle2,
-  Check,
-  Info,
-  X,
-  ChevronLeft,
-  ChevronRight
+  Camera, Video, Clapperboard, Mic, Map as MapIcon, Compass,
+  Plane, Crosshair, MapPin, Calendar, User, Building, Mail,
+  Phone, CheckCircle2, Check, Info, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
-// ==========================================
-// 1. ADD YOUR GOOGLE MAPS API KEY HERE
-// ==========================================
 const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE"; 
 
-// ==========================================
-// GENERATE DATES OUTSIDE COMPONENT
-// ==========================================
+// 1. EXTRACT ICONS OUTSIDE SO MEMORY CAN USE THEM INSTANTLY
+const ICON_MAP = {
+  'FOTO': Camera, 'VIDEO': Video, 'REEL': Clapperboard, 'TH': Mic,
+  'PLANO': MapIcon, 'TOUR': Compass, 'DRONE': Plane, 'FPV': Crosshair
+};
+
 const generateDates = () => {
   const options = [];
   const now = new Date();
-  // Expandimos a 90 días para abarcar meses adyacentes
   for (let i = 0; i < 90; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
@@ -41,30 +23,45 @@ const generateDates = () => {
     const dayNumber = d.getDate();
     const monthNumber = String(d.getMonth() + 1).padStart(2, '0');
     options.push({
-      id: d.toISOString().split('T')[0], // ID más limpio (YYYY-MM-DD)
-      dateObj: d,
-      dayName,
-      dayNumber,
+      id: d.toISOString().split('T')[0],
+      dateObj: d, dayName, dayNumber,
       fullFormat: `${dayName} ${dayNumber}/${monthNumber}`
     });
   }
   return options;
 };
 
-export default function App() {
+export default function Home() {
   const [selectedServices, setSelectedServices] = useState([]);
   const [multiplier, setMultiplier] = useState(1.0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isAddressValid, setIsAddressValid] = useState(false);
 
-  // 🚀 THE NEW STATE: Dynamic Pricing Data
-  const [db, setDb] = useState(null);
-  const [isLoadingPrices, setIsLoadingPrices] = useState(true);
+  // ==========================================
+  // 2. SYNCHRONOUS MEMORY LOAD (ZERO FLICKER)
+  // ==========================================
+  const [db, setDb] = useState(() => {
+    try {
+      const cached = localStorage.getItem('re_prices_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Reattach icons instantly before the screen even draws
+        parsed.services = parsed.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
+        return parsed;
+      }
+    } catch (e) { console.error(e); }
+    return null;
+  });
+
+  // If db loaded successfully from memory, loading is FALSE instantly. No spinner.
+  const [isLoadingPrices, setIsLoadingPrices] = useState(() => {
+    return localStorage.getItem('re_prices_cache') ? false : true;
+  });
 
   // Date & Time Picker State
-  const [dateOptions] = useState(generateDates); // Inicializamos las opciones
-  const [selectedDateObj, setSelectedDateObj] = useState(dateOptions[0]); // Por defecto: HOY
+  const [dateOptions] = useState(generateDates);
+  const [selectedDateObj, setSelectedDateObj] = useState(dateOptions[0]);
   const [selectedTime, setSelectedTime] = useState(null);
   const [duration, setDuration] = useState('1 Hora');
 
@@ -72,21 +69,12 @@ export default function App() {
   const addressInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
-  // Form State
   const [formData, setFormData] = useState({
-    address: '',
-    instructions: '',
-    name: '',
-    company: '',
-    email: '',
-    phone: ''
+    address: '', instructions: '', name: '', company: '', email: '', phone: ''
   });
 
   const brandColor = "#EB4511";
 
-  // ==========================================
-  // GENERATE TIMES
-  // ==========================================
   const timeOptions = useMemo(() => [
     '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00',
     '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
@@ -94,25 +82,14 @@ export default function App() {
   ], []);
 
   // ==========================================
-  // 1. FETCH PRICES FROM GOOGLE SHEETS
-  // ==========================================
-  // ==========================================
-  // 1. FAST FETCH PRICES (VERCEL EDGE CACHE)
+  // 3. SILENT BACKGROUND SYNC
   // ==========================================
   useEffect(() => {
     const fetchPrices = async () => {
-      const iconMap = {
-        'FOTO': Camera, 'VIDEO': Video, 'REEL': Clapperboard, 'TH': Mic,
-        'PLANO': MapIcon, 'TOUR': Compass, 'DRONE': Plane, 'FPV': Crosshair
-      };
-
+      const GOOGLE_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=prices";
+      
       try {
-        // If testing locally, go to Google. If live in production, use the Vercel Edge Cache!
-        const ENDPOINT = import.meta.env.DEV 
-          ? "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=prices"
-          : "/api/prices";
-          
-        const response = await fetch(ENDPOINT);
+        const response = await fetch(GOOGLE_URL);
         const data = await response.json();
         
         if (data.success) {
@@ -127,32 +104,28 @@ export default function App() {
                    s.id === 'DRONE' ? 'Drone Aéreo' : 
                    s.id === 'FPV' ? 'Drone FPV' : s.id,
             price: s.price,
-            isFixed: s.isFixed,
-            icon: iconMap[s.id] || Camera 
+            isFixed: s.isFixed
           }));
 
           const mappedMultipliers = data.multipliers.map((m, index) => {
             let label = `Hasta ${m.sheetValue}m²`;
-            if (index > 0) {
-              const prevValue = data.multipliers[index - 1].sheetValue;
-              label = `${parseInt(prevValue) + 1} a ${m.sheetValue}m²`;
-            }
-            if (index === data.multipliers.length - 1) {
-              label = `Más de ${data.multipliers[index - 1].sheetValue}m²`;
-            }
+            if (index > 0) label = `${parseInt(data.multipliers[index - 1].sheetValue) + 1} a ${m.sheetValue}m²`;
+            if (index === data.multipliers.length - 1) label = `Más de ${data.multipliers[index - 1].sheetValue}m²`;
             return { id: `m${m.sheetValue}`, label, value: m.value, sheetValue: m.sheetValue };
           });
 
-          setDb({
-            services: mappedServices,
-            multipliers: mappedMultipliers,
-            discountThreshold: 3, 
-            discountAmount: 5000 
-          });
-          setIsLoadingPrices(false);
+          const freshDb = { services: mappedServices, multipliers: mappedMultipliers, discountThreshold: 3, discountAmount: 5000 };
+
+          // Save pure JSON to memory for their next visit
+          localStorage.setItem('re_prices_cache', JSON.stringify(freshDb));
+
+          // Attach icons and update state silently
+          freshDb.services = freshDb.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
+          setDb(freshDb);
         }
       } catch (error) {
-        console.error("Error fetching cached prices:", error);
+        console.error("Background sync failed:", error);
+      } finally {
         setIsLoadingPrices(false); 
       }
     };
@@ -260,7 +233,6 @@ export default function App() {
     
     const API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec";
 
-    // Combine date, time and duration into the datetime string expected by backend
     const formattedDateTime = `${selectedDateObj.fullFormat} a las ${selectedTime} (${duration})`;
 
     const payload = {
@@ -306,7 +278,6 @@ export default function App() {
     }).format(amount);
   };
 
-  // Carousel Helpers
   const scrollLeft = () => {
     if (dateScrollRef.current) {
       dateScrollRef.current.scrollBy({ left: -240, behavior: 'smooth' });
@@ -319,7 +290,7 @@ export default function App() {
     }
   };
 
-  // 🚀 SHOW LOADING STATE UNTIL DB FETCHES
+  // 🚀 SHOW LOADING STATE ONLY IF CACHE IS EMPTY
   if (isLoadingPrices || !db) {
     return (
       <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center">
@@ -333,7 +304,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F0F2F5] text-[#2d2d2d] font-sans pb-32">
       
-      {/* Hero / Header */}
       <header 
         className="text-white pt-12 pb-24 px-6 text-center relative"
         style={{ backgroundColor: brandColor }}
@@ -355,10 +325,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 -mt-12 relative z-10 space-y-6">
         
-        {/* Step 1: Services */}
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-6">
             <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
@@ -366,10 +334,10 @@ export default function App() {
             </h2>
           </div>
           
-          {/* UPDATED: Added responsive grid for mobile alignment */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-3">
             {db.services.map((srv) => {
               const isSelected = selectedServices.includes(srv.id);
+              const Icon = srv.icon || Camera;
               return (
                 <button
                   key={srv.id}
@@ -386,7 +354,6 @@ export default function App() {
             })}
           </div>
 
-          {/* Discount Indicator */}
           {baseCount > 0 && (
             <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 transition-colors ${baseCount >= 4 ? 'bg-green-50 text-green-800' : 'bg-gray-50 text-gray-500'}`}>
               <Info size={20} className={`mt-0.5 flex-shrink-0 ${baseCount >= 4 ? 'text-green-600' : 'text-gray-400'}`} />
@@ -399,7 +366,6 @@ export default function App() {
           )}
         </section>
 
-        {/* Step 2: Locación */}
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-6">
             <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
@@ -463,7 +429,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Step 3: CUSTOM DATE & TIME PICKER */}
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-6">
             <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
@@ -472,7 +437,6 @@ export default function App() {
           </div>
 
           <div className="space-y-8">
-            {/* DATE SELECTOR */}
             <div>
               <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
                 Seleccionar Fecha
@@ -518,7 +482,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Selected Date Subtitle */}
               <div className="mt-5 text-center min-h-[20px]">
                 {selectedDateObj && (
                   <span className="text-[13px] font-bold uppercase tracking-wide" style={{ color: brandColor }}>
@@ -528,7 +491,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* TIME SELECTOR */}
             <div>
               <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
                 Seleccionar Hora
@@ -554,7 +516,6 @@ export default function App() {
 
             <hr className="border-gray-100" />
 
-            {/* ESTIMATED DURATION */}
             <div>
               <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
                 Duración Estimada
@@ -580,7 +541,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Step 4: User Details */}
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-8">
            <div className="mb-6">
             <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
@@ -648,7 +608,6 @@ export default function App() {
         </section>
       </main>
 
-      {/* Sticky Footer */}
       <footer className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           
@@ -687,13 +646,12 @@ export default function App() {
                 Enviando
               </>
             ) : (
-              'Solicitar Presupuesto' // OR 'Solicitar Reserva'
+              'Solicitar Reserva'
             )}
           </button>
         </div>
       </footer>
 
-      {/* Success Modal */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] max-w-[340px] w-full px-8 py-10 text-center relative animate-in zoom-in-95 duration-200">
@@ -714,7 +672,7 @@ export default function App() {
                 setSelectedServices([]);
                 setMultiplier(1.0);
                 setIsAddressValid(false);
-                setSelectedDateObj(dateOptions[0]); // Reset a HOY
+                setSelectedDateObj(dateOptions[0]); 
                 setSelectedTime(null);
                 setDuration('1 Hora');
                 if(dateScrollRef.current) dateScrollRef.current.scrollTo({ left: 0 });
