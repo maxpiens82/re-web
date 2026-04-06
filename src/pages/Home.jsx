@@ -366,14 +366,15 @@ export default function App() {
             </h2>
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          {/* UPDATED: Added responsive grid for mobile alignment */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-3">
             {db.services.map((srv) => {
               const isSelected = selectedServices.includes(srv.id);
               return (
                 <button
                   key={srv.id}
                   onClick={() => toggleService(srv.id)}
-                  className={`relative w-[85px] md:w-[100px] h-[40px] rounded-full font-bold text-[11px] md:text-sm tracking-wide transition-all duration-200 select-none flex items-center justify-center shrink-0
+                  className={`relative w-full md:w-[100px] h-[40px] rounded-full font-bold text-[11px] md:text-sm tracking-wide transition-all duration-200 select-none flex items-center justify-center shrink-0
                     ${isSelected 
                       ? 'bg-[#EB4511] text-white shadow-[0_6px_16px_rgba(235,69,17,0.35)] -translate-y-0.5' 
                       : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'
