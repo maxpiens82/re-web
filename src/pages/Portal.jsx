@@ -133,9 +133,12 @@ export default function Portal() {
                <h3 className="text-lg font-bold text-gray-600 mb-1">Selecciona una reserva</h3>
                <p className="text-sm">O presiona el botón para crear una nueva.</p>
                
-               <button className="mt-6 bg-[#EB4511] text-white px-6 py-3 rounded-full font-bold uppercase tracking-wider text-sm hover:bg-[#c42e0d] transition-colors shadow-lg inline-flex items-center gap-2">
-                 <Plus size={18} /> Nueva Reserva
-               </button>
+               <button 
+  onClick={() => setSelectedJobId('NEW')} 
+  className="mt-6 bg-[#EB4511] text-white px-6 py-3 rounded-full font-bold uppercase tracking-wider text-sm hover:bg-[#c42e0d] transition-colors shadow-lg inline-flex items-center gap-2"
+>
+  <Plus size={18} /> Nueva Reserva
+</button>
              </div>
            ) : (
              <UnifiedForm 

@@ -96,20 +96,26 @@ export default function App() {
   // ==========================================
   // 1. FETCH PRICES FROM GOOGLE SHEETS
   // ==========================================
+  // ==========================================
+  // 1. FAST FETCH PRICES (VERCEL EDGE CACHE)
+  // ==========================================
   useEffect(() => {
     const fetchPrices = async () => {
-      const API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=prices";
-      
+      const iconMap = {
+        'FOTO': Camera, 'VIDEO': Video, 'REEL': Clapperboard, 'TH': Mic,
+        'PLANO': MapIcon, 'TOUR': Compass, 'DRONE': Plane, 'FPV': Crosshair
+      };
+
       try {
-        const response = await fetch(API_URL);
+        // If testing locally, go to Google. If live in production, use the Vercel Edge Cache!
+        const ENDPOINT = import.meta.env.DEV 
+          ? "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=prices"
+          : "/api/prices";
+          
+        const response = await fetch(ENDPOINT);
         const data = await response.json();
         
         if (data.success) {
-          const iconMap = {
-            'FOTO': Camera, 'VIDEO': Video, 'REEL': Clapperboard, 'TH': Mic,
-            'PLANO': MapIcon, 'TOUR': Compass, 'DRONE': Plane, 'FPV': Crosshair
-          };
-
           const mappedServices = data.services.map(s => ({
             id: s.id,
             label: s.id === 'TH' ? 'Talking Head' : 
@@ -134,13 +140,7 @@ export default function App() {
             if (index === data.multipliers.length - 1) {
               label = `Más de ${data.multipliers[index - 1].sheetValue}m²`;
             }
-
-            return {
-              id: `m${m.sheetValue}`,
-              label: label,
-              value: m.value,
-              sheetValue: m.sheetValue
-            };
+            return { id: `m${m.sheetValue}`, label, value: m.value, sheetValue: m.sheetValue };
           });
 
           setDb({
@@ -152,7 +152,7 @@ export default function App() {
           setIsLoadingPrices(false);
         }
       } catch (error) {
-        console.error("Error fetching prices:", error);
+        console.error("Error fetching cached prices:", error);
         setIsLoadingPrices(false); 
       }
     };
@@ -684,10 +684,10 @@ export default function App() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Procesando
+                Enviando
               </>
             ) : (
-              'Confirmar Reserva'
+              'Solicitar Presupuesto' // OR 'Solicitar Reserva'
             )}
           </button>
         </div>
@@ -702,9 +702,9 @@ export default function App() {
               <Check size={80} className="text-[#4bbf73] mx-auto" strokeWidth={3} />
             </div>
             
-            <h3 className="text-[22px] font-extrabold text-[#1a1a1a] mb-4">¡Reserva Confirmada!</h3>
+            <h3 className="text-[22px] font-extrabold text-[#1a1a1a] mb-4">¡Solicitud Enviada!</h3>
             <p className="text-[#6b7280] text-[15px] leading-relaxed mb-8 px-2 font-medium">
-              La reserva se ha procesado<br/>correctamente.
+              Hemos recibido tu solicitud de reserva.<br/>Nuestro equipo te contactará pronto para confirmar.
             </p>
             
             <button 
