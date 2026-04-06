@@ -233,7 +233,8 @@ export default function Home() {
     
     const API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec";
 
-    const formattedDateTime = `${selectedDateObj.fullFormat} a las ${selectedTime} (${duration})`;
+    // Reconstruct the strict ISO format that Google Apps Script requires: "YYYY-MM-DDTHH:mm"
+    const validIsoDateTime = `${selectedDateObj.id}T${selectedTime}`;
 
     const payload = {
       action: 'web_booking_request',
@@ -243,8 +244,8 @@ export default function Home() {
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
-        instructions: formData.instructions,
-        datetime: formattedDateTime,
+        instructions: formData.instructions + (duration ? ` (Duración estimada: ${duration})` : ''),
+        datetime: validIsoDateTime, // <--- THE BUG FIX
         services: selectedServices,
         multiplierLabel: db.multipliers.find(m => m.value === multiplier)?.sheetValue || '100',
         total: total
