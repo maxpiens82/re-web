@@ -318,18 +318,47 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     if (name === 'address') setIsAddressValid(false);
   };
 
+  // ==========================================
+  // PRICING MATH ENGINE
+  // ==========================================
   const { total, discountApplied, baseCount } = useMemo(() => {
     if (!db) return { total: 0, discountApplied: 0, baseCount: 0 };
-    let baseMult = 0; let baseFixed = 0; let serviceCount = 0;
+    
+    let baseMult = 0; 
+    let baseFixed = 0; 
+    let serviceCount = 0;
+    
     selectedServices.forEach(id => {
       const srv = db.services.find(s => s.id === id);
-      if (srv) { if (srv.isFixed) baseFixed += srv.price; else { baseMult += srv.price; serviceCount++; } }
+      if (srv) { 
+        if (srv.isFixed) {
+          baseFixed += srv.price; 
+        } else { 
+          baseMult += srv.price; 
+          serviceCount++; 
+        } 
+      }
     });
+    
     let discount = serviceCount > db.discountThreshold ? (serviceCount - db.discountThreshold) * db.discountAmount : 0;
-    return { total: ((baseMult - discount) * multiplier) + baseFixed + (Number(formData.costoExtras) || 0), discountApplied: discount * multiplier, baseCount: serviceCount };
+    
+    // Only add Costo Extras if the EXTRAS service is actively selected
+    const activeExtrasCost = selectedServices.includes('EXTRAS') ? (Number(formData.costoExtras) || 0) : 0;
+
+    return { 
+      total: ((baseMult - discount) * multiplier) + baseFixed + activeExtrasCost, 
+      discountApplied: discount * multiplier, 
+      baseCount: serviceCount 
+    };
   }, [selectedServices, multiplier, db, formData.costoExtras]);
 
-  const toggleService = (id) => setSelectedServices(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+  const toggleService = (id) => {
+    setSelectedServices(prev => {
+      const newServices = prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id];
+      console.log("Servicios Seleccionados:", newServices); // <--- DEBUGGER
+      return newServices;
+    });
+  };
   const formatCurrency = (amount) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
   const scrollLeft = () => dateScrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
   const scrollRight = () => dateScrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
@@ -472,16 +501,6 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
               <input type="text" name="observaciones" value={formData.observaciones} onChange={handleInputChange} placeholder="Notas para el equipo..." className="w-full bg-[#F4F4F5] border-none text-gray-800 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl focus:ring-2 focus:ring-indigo-500/20 font-medium outline-none text-sm" />
             </div>
           </div>
-
-          {selectedServices.includes('EXTRAS') && (
-            <div className="mt-4 md:mt-5 p-3 md:p-4 bg-indigo-50/50 rounded-xl md:rounded-2xl border border-indigo-100">
-              <label className="block text-[10px] md:text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2 md:mb-3">Detalle de Extras</label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                <input type="text" name="extrasDesc" value={formData.extrasDesc} onChange={handleInputChange} placeholder="Descripción..." className="w-full bg-white border border-indigo-100 py-2.5 px-3 md:py-3 px-4 rounded-lg md:rounded-xl font-medium outline-none md:col-span-2 text-sm" />
-                <input type="number" name="costoExtras" value={formData.costoExtras} onChange={handleInputChange} placeholder="$ Cobro Cliente" className="w-full bg-white border border-indigo-100 py-2.5 px-3 md:py-3 px-4 rounded-lg md:rounded-xl font-medium outline-none text-sm" />
-              </div>
-            </div>
-          )}
         </section>
 
         {/* 1. CLIENTE & CRM */}
@@ -575,12 +594,14 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
         {/* 3. SERVICIOS */}
         <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-4 md:mb-6"><h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>Servicios Contratados</h2></div>
-          <div className="flex flex-wrap gap-2 md:gap-3">
+          <div className="flex flex-wrap gap-2 md:gap-3 mb-4 md:mb-6">
             {db.services.map((srv) => {
               const isSelected = selectedServices.includes(srv.id);
               return (
                 <button
-                  key={srv.id} onClick={() => toggleService(srv.id)}
+                  key={srv.id}
+                  type="button"
+                  onClick={() => toggleService(srv.id)}
                   className={`w-[70px] h-[36px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none
                     ${isSelected ? `text-white shadow-[0_4px_14px_rgba(235,69,17,0.35)] -translate-y-0.5` : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}
                   style={isSelected ? { backgroundColor: brandColor } : {}}
@@ -589,7 +610,42 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
                 </button>
               );
             })}
+
+            {/* 🚀 THE STAFF-ONLY EXTRAS BUTTON */}
+            <button
+              type="button"
+              onClick={() => toggleService('EXTRAS')}
+              className={`w-[70px] h-[36px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none
+                ${selectedServices.includes('EXTRAS') ? `text-white shadow-[0_4px_14px_rgba(235,69,17,0.35)] -translate-y-0.5` : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}
+              style={selectedServices.includes('EXTRAS') ? { backgroundColor: brandColor } : {}}
+            >
+              EXTRAS
+            </button>
           </div>
+
+          {/* 🚀 THE EXTRAS ACCORDION PANEL */}
+          {selectedServices.includes('EXTRAS') && (
+            <div className="p-3 md:p-5 bg-orange-50/50 rounded-xl md:rounded-2xl border border-orange-100 animate-in slide-in-from-top-2 fade-in duration-200">
+              <label className="block text-[10px] md:text-xs font-bold text-orange-500 uppercase tracking-widest mb-3">Detalle de Extras</label>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+                
+                <div className="md:col-span-2">
+                  <input type="text" name="extrasDesc" value={formData.extrasDesc} onChange={handleInputChange} placeholder="Descripción de los extras..." className="w-full bg-white border border-orange-100 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none text-sm transition-all focus:ring-2 focus:ring-[#EB4511]/20" />
+                </div>
+                
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                  <input type="number" name="costoExtras" value={formData.costoExtras} onChange={handleInputChange} placeholder="Cobro Cliente" className="w-full bg-white border border-orange-100 py-2.5 pl-8 pr-3 md:py-3.5 md:pl-8 md:pr-4 rounded-lg md:rounded-xl font-medium outline-none text-sm transition-all focus:ring-2 focus:ring-[#EB4511]/20" />
+                </div>
+                
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#2B6CB0] font-bold">$</span>
+                  <input type="number" name="pagoEditor" value={formData.pagoEditor} onChange={handleInputChange} placeholder="Pago Editor" className="w-full bg-white border border-orange-100 py-2.5 pl-8 pr-3 md:py-3.5 md:pl-8 md:pr-4 rounded-lg md:rounded-xl font-medium outline-none text-sm transition-all focus:ring-2 focus:ring-[#2B6CB0]/20" />
+                </div>
+
+              </div>
+            </div>
+          )}
         </section>
 
         {/* 4. FECHA Y HORA */}
