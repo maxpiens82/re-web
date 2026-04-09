@@ -131,7 +131,20 @@ export default function Portal() {
             </>
           )}
         </div>
+
+        {/* 🚀 THE MOBILE "NUEVA RESERVA" STICKY BUTTON */}
+        <div className="p-4 bg-white border-t border-gray-100 shrink-0 md:hidden pb-safe">
+          <button 
+            onClick={() => handleJobClick('NEW')} 
+            className="w-full bg-[#EB4511] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-sm hover:bg-[#c42e0d] transition-colors shadow-lg flex items-center justify-center gap-2"
+          >
+            <Plus size={18} /> Nueva Reserva
+          </button>
+        </div>
+
       </div>
+
+      {/* MAIN AREA: Unified Form */}
 
       {/* MAIN AREA: Unified Form */}
       <div className={`flex-1 bg-[#F0F2F5] relative overflow-y-auto w-full
