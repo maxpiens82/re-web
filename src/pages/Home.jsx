@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Camera, Video, Clapperboard, Mic, Map as MapIcon, Compass,
   Plane, Crosshair, MapPin, Calendar, User, Building, Mail,
@@ -37,6 +38,14 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isAddressValid, setIsAddressValid] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+
+  // Track scroll position for the Parallax Header
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // ==========================================
   // 2. SYNCHRONOUS MEMORY LOAD (ZERO FLICKER)
@@ -301,32 +310,59 @@ export default function Home() {
     );
   }
 
+  // Check the Vite Environment Variable
+  const isPortalEnabled = import.meta.env.VITE_ENABLE_PORTAL === 'true';
+
   // 🚀 RENDER MAIN UI
   return (
-    <div className="min-h-screen bg-[#F0F2F5] text-[#2d2d2d] font-sans pb-32">
+    <div className="min-h-screen text-[#2d2d2d] font-sans pb-32 bg-[#F0F2F5]">
       
+      {/* 🚀 THE FIXED "ROOF" (NAV BAR) */}
+      {isPortalEnabled && (
+        <div className="fixed top-0 left-0 w-full z-50 bg-[#1a1a1a] text-white px-6 py-3 flex justify-between items-center text-sm font-bold tracking-wide shadow-lg">
+          <div className="flex items-center gap-6">
+            <span className="text-[#EB4511] font-extrabold text-lg tracking-widest">RE!</span>
+            <Link to="/staging" className="hover:text-[#EB4511] transition-colors">AI Stager</Link>
+          </div>
+          <Link to="/portal" className="bg-[#EB4511] text-white px-4 py-1.5 rounded-full hover:bg-[#c42e0d] transition-colors shadow-md">
+            Staff Portal
+          </Link>
+        </div>
+      )}
+
+      {/* 🚀 THE FIXED "WALL" (ORANGE BACKGROUND) */}
       <header 
-        className="text-white pt-12 pb-24 px-6 text-center relative"
-        style={{ backgroundColor: brandColor }}
+        className="fixed top-0 left-0 w-full text-white pt-24 pb-32 px-6 text-center overflow-hidden z-0"
+        style={{ backgroundColor: brandColor, height: '60vh' }}
       >
-        <div className="max-w-4xl mx-auto flex flex-col items-center">
+        <div 
+          className="max-w-4xl mx-auto flex flex-col items-center will-change-transform"
+          style={{ 
+            transform: `scale(${Math.max(0.7, 1 - scrollY / 400)})`,
+            opacity: Math.max(0, 1 - scrollY / 250),
+            transformOrigin: 'center center'
+          }}
+        >
           <img 
             src="https://lh3.googleusercontent.com/d/1oHw3lpx4-EAI59BDMccfjPl_I529xqWU" 
             alt="RE! Contenido Audiovisual" 
-            className="w-full max-w-[480px] h-auto object-contain mb-8"
+            className="w-full max-w-[480px] h-auto object-contain mb-4"
             onError={(e) => {
               e.target.onerror = null; 
               e.target.src = "https://placehold.co/600x200/EB4511/FFFFFF/png?text=RE!+Contenido+Audiovisual";
             }}
           />
-          
           <h1 className="text-xl md:text-2xl font-semibold tracking-wide opacity-90 uppercase">
             Simulador de Presupuestos
           </h1>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 -mt-12 relative z-10 space-y-6">
+      {/* 🚀 THE SLIDING CARDS */}
+      <main 
+        className="relative z-10 max-w-4xl mx-auto px-4 space-y-6"
+        style={{ marginTop: '45vh' }}
+      >
         
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-6">
@@ -609,83 +645,83 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-50">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          
-          <div className="flex flex-col">
-             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
-               Precio Estimado
-             </span>
-             <div className="flex items-baseline gap-2">
-               <span className="text-2xl md:text-3xl font-extrabold" style={{ color: brandColor }}>
-                 {formatCurrency(total)}
+        <footer className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-50">
+          <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+            
+            <div className="flex flex-col">
+               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+                 Precio Estimado
                </span>
-               {discountApplied > 0 && (
-                 <span className="text-sm font-semibold text-gray-400 line-through">
-                   {formatCurrency(total + discountApplied)}
+               <div className="flex items-baseline gap-2">
+                 <span className="text-2xl md:text-3xl font-extrabold" style={{ color: brandColor }}>
+                   {formatCurrency(total)}
                  </span>
-               )}
-             </div>
-          </div>
-
-          <button 
-            onClick={handleSubmit}
-            disabled={total === 0 || isSubmitting}
-            className={`px-8 py-3.5 md:px-10 md:py-4 rounded-full font-bold uppercase tracking-wider text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2
-              ${total === 0 
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                : 'text-white shadow-md hover:opacity-90 hover:shadow-[0_4px_14px_rgba(235,69,17,0.4)] hover:-translate-y-0.5'
-              }`}
-            style={{ backgroundColor: total === 0 ? undefined : brandColor }}
-          >
-            {isSubmitting ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Enviando
-              </>
-            ) : (
-              'Solicitar Reserva'
-            )}
-          </button>
-        </div>
-      </footer>
-
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] max-w-[340px] w-full px-8 py-10 text-center relative animate-in zoom-in-95 duration-200">
-            
-            <div className="mb-4 mt-2">
-              <Check size={80} className="text-[#4bbf73] mx-auto" strokeWidth={3} />
+                 {discountApplied > 0 && (
+                   <span className="text-sm font-semibold text-gray-400 line-through">
+                     {formatCurrency(total + discountApplied)}
+                   </span>
+                 )}
+               </div>
             </div>
-            
-            <h3 className="text-[22px] font-extrabold text-[#1a1a1a] mb-4">¡Solicitud Enviada!</h3>
-            <p className="text-[#6b7280] text-[15px] leading-relaxed mb-8 px-2 font-medium">
-              Hemos recibido tu solicitud de reserva.<br/>Nuestro equipo te contactará pronto para confirmar.
-            </p>
-            
+
             <button 
-              onClick={() => {
-                setShowModal(false);
-                setFormData({ address: '', instructions: '', name: '', company: '', email: '', phone: '' });
-                setSelectedServices([]);
-                setMultiplier(1.0);
-                setIsAddressValid(false);
-                setSelectedDateObj(dateOptions[0]); 
-                setSelectedTime(null);
-                setDuration('1 Hora');
-                if(dateScrollRef.current) dateScrollRef.current.scrollTo({ left: 0 });
-              }}
-              className="w-full text-white font-bold py-3.5 px-6 rounded-full transition-transform hover:-translate-y-0.5 active:translate-y-0 uppercase text-sm tracking-wide"
-              style={{ backgroundColor: '#4bbf73' }}
+              onClick={handleSubmit}
+              disabled={total === 0 || isSubmitting}
+              className={`px-8 py-3.5 md:px-10 md:py-4 rounded-full font-bold uppercase tracking-wider text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2
+                ${total === 0 
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                  : 'text-white shadow-md hover:opacity-90 hover:shadow-[0_4px_14px_rgba(235,69,17,0.4)] hover:-translate-y-0.5'
+                }`}
+              style={{ backgroundColor: total === 0 ? undefined : brandColor }}
             >
-              NUEVA RESERVA
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Enviando
+                </>
+              ) : (
+                'Solicitar Reserva'
+              )}
             </button>
           </div>
-        </div>
-      )}
+        </footer>
+
+        {showModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] max-w-[340px] w-full px-8 py-10 text-center relative animate-in zoom-in-95 duration-200">
+              
+              <div className="mb-4 mt-2">
+                <Check size={80} className="text-[#4bbf73] mx-auto" strokeWidth={3} />
+              </div>
+              
+              <h3 className="text-[22px] font-extrabold text-[#1a1a1a] mb-4">¡Solicitud Enviada!</h3>
+              <p className="text-[#6b7280] text-[15px] leading-relaxed mb-8 px-2 font-medium">
+                Hemos recibido tu solicitud de reserva.<br/>Nuestro equipo te contactará pronto para confirmar.
+              </p>
+              
+              <button 
+                onClick={() => {
+                  setShowModal(false);
+                  setFormData({ address: '', instructions: '', name: '', company: '', email: '', phone: '' });
+                  setSelectedServices([]);
+                  setMultiplier(1.0);
+                  setIsAddressValid(false);
+                  setSelectedDateObj(dateOptions[0]); 
+                  setSelectedTime(null);
+                  setDuration('1 Hora');
+                  if(dateScrollRef.current) dateScrollRef.current.scrollTo({ left: 0 });
+                }}
+                className="w-full text-white font-bold py-3.5 px-6 rounded-full transition-transform hover:-translate-y-0.5 active:translate-y-0 uppercase text-sm tracking-wide"
+                style={{ backgroundColor: '#4bbf73' }}
+              >
+                NUEVA RESERVA
+              </button>
+            </div>
+          </div>
+        )}
     </div>
   );
 }

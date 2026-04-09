@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, Sparkles, Image as ImageIcon, ArrowRight, CheckCircle2, Download, Trash2 } from 'lucide-react';
+import { UploadCloud, Sparkles, Image as ImageIcon, ArrowRight, CheckCircle2, Download, Trash2, X } from 'lucide-react';
 
 export default function Stager() {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -7,6 +7,7 @@ export default function Stager() {
   const [selectedStyle, setSelectedStyle] = useState('minimalist');
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImage, setResultImage] = useState(null);
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
   
   const fileInputRef = useRef(null);
 
@@ -61,6 +62,25 @@ export default function Stager() {
             Subí la foto de un ambiente vacío, elegí un estilo, y nuestra IA lo amoblará con fotorrealismo en segundos.
           </p>
         </header>
+
+        {/* 🚀 THE DISCLAIMER BANNER */}
+        {showDisclaimer && (
+          <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl mb-8 flex items-start gap-3 shadow-sm relative pr-12 animate-in slide-in-from-top-4 fade-in duration-300">
+            <Sparkles className="text-amber-500 mt-0.5 flex-shrink-0" size={20} />
+            <div>
+              <h3 className="text-amber-800 font-bold text-sm uppercase tracking-wide mb-1">Aviso Importante</h3>
+              <p className="text-amber-700 text-sm leading-relaxed">
+                Esta es una herramienta conceptual impulsada por Inteligencia Artificial (Beta). Los amoblamientos y proporciones generadas son representaciones artísticas destinadas a visualizar el potencial del espacio, y pueden no reflejar medidas arquitectónicas exactas ni garantizar la disponibilidad física de los muebles mostrados.
+              </p>
+            </div>
+            <button 
+              onClick={() => setShowDisclaimer(false)} 
+              className="absolute top-4 right-4 text-amber-500 hover:text-amber-700 transition-colors p-1"
+            >
+              <X size={18} strokeWidth={2.5} />
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           

@@ -36,9 +36,10 @@ const timeOptions = [
 
 const normalizeText = (text) => text ? text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, "") : "";
 
-export default function UnifiedForm({ jobId, onCancel }) {
+export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Data State
   const [db, setDb] = useState(null);
@@ -60,8 +61,9 @@ export default function UnifiedForm({ jobId, onCancel }) {
   });
 
   // Validation State
-  const [clientState, setClientState] = useState('new'); 
-  const [companyState, setCompanyState] = useState('new'); 
+  const [fieldStates, setFieldStates] = useState({
+    name: 'new', lastName: 'new', company: 'new', email: 'new', phone: 'new'
+  });
   const [isAddressValid, setIsAddressValid] = useState(true);
   
   // Autocomplete UI State
@@ -130,8 +132,6 @@ export default function UnifiedForm({ jobId, onCancel }) {
             const today = new Date();
             const todayId = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
             setSelectedDateObj(dateOptions.find(d => d.id === todayId) || dateOptions[15]);
-            setClientState('new');
-            setCompanyState('new');
           } else {
             hydrateForm(detailData.data, mappedMultipliers, clients, uniqueComps);
           }
@@ -170,23 +170,69 @@ export default function UnifiedForm({ jobId, onCancel }) {
       extrasDesc: data.extrasDescripcion || '', costoExtras: data.costoExtras || '', pagoEditor: data.pagoEditorExtras || ''
     });
 
-    const existsInDb = clients.some(c => (c.email && c.email === data.email) || (c.nombre === data.nombre && c.apellido === data.apellido));
-    setClientState(existsInDb ? 'existing' : 'new');
-    
-    const safeCompany = (data.empresa || '').toLowerCase().trim();
-    if (safeCompany && uniqueComps.map(c=>c.toLowerCase()).includes(safeCompany)) setCompanyState('existing');
-    else setCompanyState('new');
-  };
+    }; // End of hydrateForm
 
   // ==========================================
-  // 2. AUTO-SCROLL TO SELECTED DATE
+  // SMART PHONE-CENTRIC CRM EVALUATOR
+  // ==========================================
+  useEffect(() => {
+    if (clientDb.length === 0) return;
+
+    const cleanPhone = formData.phone ? String(formData.phone).replace(/\D/g, '') : '';
+    
+    // CASE 1: No phone or too short -> Everything is Red
+    if (cleanPhone.length < 5) {
+      setFieldStates({ name: 'new', lastName: 'new', company: 'new', email: 'new', phone: 'new' });
+      return;
+    }
+
+    const dbMatch = clientDb.find(c => {
+      const dbPhone = c.telefono ? String(c.telefono).replace(/\D/g, '') : '';
+      return dbPhone === cleanPhone;
+    });
+
+    // CASE 2: Phone not in Database -> Everything is Red
+    if (!dbMatch) {
+      setFieldStates({ name: 'new', lastName: 'new', company: 'new', email: 'new', phone: 'new' });
+      return;
+    }
+
+    // CASE 3: Phone matches! Evaluate the rest of the fields
+    const newStates = { phone: 'existing', name: 'new', lastName: 'new', company: 'new', email: 'new' };
+    
+    const checkMatch = (currentVal, dbVal) => {
+      const safeCurrent = String(currentVal || '').trim().toLowerCase();
+      const safeDb = String(dbVal || '').trim().toLowerCase();
+      if (safeCurrent === '') return 'new';
+      if (safeCurrent === safeDb) return 'existing';
+      return 'modified';
+    };
+
+    newStates.name = checkMatch(formData.name, dbMatch.nombre);
+    newStates.lastName = checkMatch(formData.lastName, dbMatch.apellido);
+    newStates.company = checkMatch(formData.company, dbMatch.empresa);
+    newStates.email = checkMatch(formData.email, dbMatch.email);
+
+    setFieldStates(newStates);
+  }, [formData.phone, formData.name, formData.lastName, formData.company, formData.email, clientDb]);
+
+  // ==========================================
+  // 2. AUTO-SCROLL TO SELECTED DATE (SILENT HORIZONTAL ONLY)
   // ==========================================
   useEffect(() => {
     if (!loading && selectedDateObj && dateScrollRef.current) {
       setTimeout(() => {
-        const selectedEl = dateScrollRef.current.querySelector(`[data-date="${selectedDateObj.id}"]`);
+        const container = dateScrollRef.current;
+        const selectedEl = container.querySelector(`[data-date="${selectedDateObj.id}"]`);
+        
         if (selectedEl) {
-          selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          // Calculate exactly where the selected date is horizontally
+          const containerCenter = container.offsetWidth / 2;
+          const itemCenter = selectedEl.offsetLeft + (selectedEl.offsetWidth / 2);
+          const scrollPosition = itemCenter - containerCenter;
+
+          // Scroll ONLY the inner container horizontally, never touching the main page scroll
+          container.scrollTo({ left: scrollPosition, behavior: 'smooth' });
         }
       }, 100);
     }
@@ -255,8 +301,6 @@ export default function UnifiedForm({ jobId, onCancel }) {
 
   const selectClient = (c) => {
     setFormData(prev => ({ ...prev, name: c.nombre, lastName: c.apellido, company: c.empresa, email: c.email, phone: c.telefono }));
-    setClientState('existing');
-    setCompanyState('existing');
     setClientSearchQuery('');
     setClientSuggestions([]);
   };
@@ -264,9 +308,6 @@ export default function UnifiedForm({ jobId, onCancel }) {
   const handleCompanySearch = (query) => {
     setFormData(prev => ({ ...prev, company: query }));
     const val = query.toLowerCase().trim();
-    if (val === '' || !uniqueCompanies.map(c=>c.toLowerCase()).includes(val)) setCompanyState('new');
-    else setCompanyState('existing');
-
     if (val.length < 1) { setCompanySuggestions(uniqueCompanies.slice(0, 10)); return; }
     setCompanySuggestions(uniqueCompanies.filter(c => c.toLowerCase().includes(val)).slice(0, 10));
   };
@@ -274,12 +315,6 @@ export default function UnifiedForm({ jobId, onCancel }) {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (['name', 'lastName', 'email', 'phone'].includes(name)) {
-      if (clientState === 'existing') setClientState('modified');
-      else if (clientState !== 'modified') setClientState('new');
-    }
-    
     if (name === 'address') setIsAddressValid(false);
   };
 
@@ -299,13 +334,88 @@ export default function UnifiedForm({ jobId, onCancel }) {
   const scrollLeft = () => dateScrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
   const scrollRight = () => dateScrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
 
-  // EXACT LEGACY CSS STYLES FOR VALIDATION INPUTS (Bulletproof Hex Colors)
-  const styleNew = { backgroundColor: '#FFF5F5', border: '1px solid #FED7D7', color: '#7F1D1D' };
-  const styleExisting = { backgroundColor: '#F0FFF4', border: '1px solid #C6F6D5', color: '#14532D' };
-  const styleModified = { backgroundColor: '#FFFFF0', border: '1px solid #FEFCBF', color: '#744210' };
+  // ==========================================
+  // 6. MASTER SUBMISSION ENGINE
+  // ==========================================
+  const handleFormSubmit = async (actionType) => {
+    setIsSubmitting(true);
+    
+    // Construct the payload mapping React State exactly to the Legacy GAS format
+    const payload = {
+      eventId: jobId,
+      nombre: formData.name,
+      apellido: formData.lastName,
+      empresa: formData.company,
+      email: formData.email,
+      telefono: formData.phone,
+      locacion: formData.address,
+      indicaciones: formData.instructions,
+      realizacion: formData.realizador,
+      observaciones: formData.observaciones,
+      fecha: selectedDateObj ? selectedDateObj.id : '',
+      hora: selectedTime || '',
+      duracion: duration,
+      metrosCuadrados: db.multipliers.find(m => m.value === multiplier)?.sheetValue || '100',
+      selectedServices: selectedServices,
+      extrasDescripcion: formData.extrasDesc,
+      costoExtras: formData.costoExtras,
+      pagoEditorExtras: formData.pagoEditor,
+      skipValidation: true, // We bypass address strict validation for internal staff
+      
+      // Specifically for Direct Jobs (Only used if actionType === 'create_direct_job')
+      descripcionServicio: selectedServices.join(', '),
+      precioCliente: total
+    };
 
-  const getClientStyle = () => clientState === 'new' ? styleNew : clientState === 'existing' ? styleExisting : styleModified;
-  const getCompanyStyle = () => companyState === 'new' ? styleNew : companyState === 'existing' ? styleExisting : styleModified;
+    // 🛡️ SHIELD: Bulletproof Duration Parser
+    // Ensures GAS always receives an integer representing minutes, regardless of UI string mutations.
+    if (actionType === 'create_booking' || actionType === 'update_booking') {
+      const safeDuration = String(duration).toLowerCase();
+      let durationMinutes = 60; // Default to 1 hour
+      
+      if (safeDuration.includes('1.5') || safeDuration.includes('90')) durationMinutes = 90;
+      else if (safeDuration.includes('2') || safeDuration.includes('120')) durationMinutes = 120;
+      else if (safeDuration.includes('2.5') || safeDuration.includes('150')) durationMinutes = 150;
+      else if (safeDuration.includes('3') || safeDuration.includes('180')) durationMinutes = 180;
+      else if (safeDuration.includes('4') || safeDuration.includes('240')) durationMinutes = 240;
+      else if (safeDuration.includes('5') || safeDuration.includes('300')) durationMinutes = 300;
+      else if (safeDuration.includes('jornada') || safeDuration.includes('completa') || safeDuration.includes('480')) durationMinutes = 480;
+      
+      payload.duracion = durationMinutes;
+    }
+
+    try {
+      const response = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: actionType, payload })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        // Success! Tell the Portal to close the form AND refresh the lists!
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          onCancel(); 
+        }
+      } else {
+        alert("Error del servidor: " + data.error);
+      }
+    } catch (err) {
+      alert("Fallo de red al enviar los datos.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // EXACT LEGACY CSS STYLES FOR VALIDATION INPUTS (Bulletproof Hex Colors)
+  const getFieldStyle = (fieldName) => {
+    const state = fieldStates[fieldName];
+    if (state === 'existing') return { backgroundColor: '#F0FFF4', border: '1px solid #C6F6D5', color: '#14532D' };
+    if (state === 'modified') return { backgroundColor: '#FFFFF0', border: '1px solid #FEFCBF', color: '#744210' };
+    return { backgroundColor: '#FFF5F5', border: '1px solid #FED7D7', color: '#7F1D1D' };
+  };
 
   if (loading || !db) return (
     <div className="flex flex-col items-center justify-center h-full w-full bg-white rounded-3xl shadow-xl">
@@ -413,28 +523,28 @@ export default function UnifiedForm({ jobId, onCancel }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Nombre</label>
-              <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getClientStyle()} />
+              <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('name')} />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Apellido</label>
-              <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getClientStyle()} />
+              <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('lastName')} />
             </div>
             
             {/* EMPRESA WITH EMBEDDED AUTOCOMPLETE */}
             <div className="relative" ref={companyWrapperRef}>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Empresa</label>
-              <input type="text" name="company" value={formData.company} onChange={(e) => { handleInputChange(e); handleCompanySearch(e.target.value); }} onFocus={() => handleCompanySearch(formData.company)} placeholder="Seleccionar o escribir..." className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getCompanyStyle()} autoComplete="off" />
+              <input type="text" name="company" value={formData.company} onChange={(e) => { handleInputChange(e); handleCompanySearch(e.target.value); }} onFocus={() => handleCompanySearch(formData.company)} placeholder="Seleccionar o escribir..." className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('company')} autoComplete="off" />
               {companySuggestions.length > 0 && (
                 <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-40 max-h-48 overflow-y-auto">
                   {companySuggestions.map((c, i) => (
-                    <div key={i} onClick={() => { setFormData(prev => ({...prev, company: c})); setCompanySuggestions([]); setCompanyState('existing'); }} className="p-3 hover:bg-gray-50 cursor-pointer font-medium text-sm border-b border-gray-50">{c}</div>
+                    <div key={i} onClick={() => { setFormData(prev => ({...prev, company: c})); setCompanySuggestions([]); }} className="p-3 hover:bg-gray-50 cursor-pointer font-medium text-sm border-b border-gray-50">{c}</div>
                   ))}
                 </div>
               )}
             </div>
             
-            <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Teléfono</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getClientStyle()} /></div>
-            <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Email</label><input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getClientStyle()} /></div>
+            <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Teléfono</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('phone')} /></div>
+            <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Email</label><input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('email')} /></div>
           </div>
         </section>
 
@@ -544,16 +654,45 @@ export default function UnifiedForm({ jobId, onCancel }) {
         
         <div className="flex flex-col sm:flex-row gap-3">
           {isNewBooking ? (
-            <button className="px-8 py-3.5 text-white font-bold rounded-full text-sm uppercase tracking-wide shadow-md transition-all hover:-translate-y-0.5" style={{ backgroundColor: brandColor }}>Cargar Nueva Reserva</button>
+            <button 
+              onClick={() => handleFormSubmit('create_booking')}
+              disabled={isSubmitting}
+              className="px-8 py-3.5 text-white font-bold rounded-full text-sm uppercase tracking-wide shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50" 
+              style={{ backgroundColor: brandColor }}
+            >
+              {isSubmitting ? 'Procesando...' : 'Cargar Nueva Reserva'}
+            </button>
           ) : isWebRequest ? (
             <>
+              {/* REJECT LOGIC COMING SOON */}
               <button className="px-8 py-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-full text-sm uppercase tracking-wide transition-colors">Rechazar</button>
-              <button className="px-8 py-3.5 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-full text-sm uppercase tracking-wide shadow-md transition-all">Aprobar y Agendar</button>
+              
+              <button 
+                onClick={() => handleFormSubmit('update_booking')}
+                disabled={isSubmitting}
+                className="px-8 py-3.5 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-full text-sm uppercase tracking-wide shadow-md transition-all disabled:opacity-50"
+              >
+                {isSubmitting ? 'Procesando...' : 'Aprobar y Agendar'}
+              </button>
             </>
           ) : (
             <>
-              <button className="px-8 py-3.5 bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 font-bold rounded-full text-sm uppercase tracking-wide transition-colors">Checkout (Finalizar)</button>
-              <button className="px-8 py-3.5 text-white font-bold rounded-full text-sm uppercase tracking-wide shadow-md transition-all hover:-translate-y-0.5" style={{ backgroundColor: brandColor }}>Actualizar</button>
+              <button 
+                onClick={() => handleFormSubmit('checkout_booking')}
+                disabled={isSubmitting}
+                className="px-8 py-3.5 bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 font-bold rounded-full text-sm uppercase tracking-wide transition-colors disabled:opacity-50"
+              >
+                {isSubmitting ? 'Procesando...' : 'Checkout (Finalizar)'}
+              </button>
+              
+              <button 
+                onClick={() => handleFormSubmit('update_booking')}
+                disabled={isSubmitting}
+                className="px-8 py-3.5 text-white font-bold rounded-full text-sm uppercase tracking-wide shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50" 
+                style={{ backgroundColor: brandColor }}
+              >
+                {isSubmitting ? 'Procesando...' : 'Actualizar'}
+              </button>
             </>
           )}
         </div>

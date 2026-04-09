@@ -14,32 +14,40 @@ export default function Portal() {
   const [confirmedJobs, setConfirmedJobs] = useState([]);
   const[selectedJobId, setSelectedJobId] = useState(null);
 
-  // Fetch the initial Master Lists
-  useEffect(() => {
-    const fetchPortalData = async () => {
-      try {
-        const response = await fetch(GAS_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'get_portal_data' })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-          setPendingJobs(data.pending || []);
-          setConfirmedJobs(data.confirmed ||[]);
-        } else {
-          alert("Error cargando datos: " + data.error);
-        }
-      } catch (error) {
-        console.error("Error fetching portal data:", error);
-      } finally {
-        setLoading(false);
+  // Extract fetch logic so we can call it on demand
+  const fetchPortalData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'get_portal_data' })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setPendingJobs(data.pending || []);
+        setConfirmedJobs(data.confirmed || []);
+      } else {
+        alert("Error cargando datos: " + data.error);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching portal data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Fetch the initial Master Lists on mount
+  useEffect(() => {
     fetchPortalData();
-  },[]);
+  }, []);
+
+  // NEW: Closes the form AND refreshes the sidebar
+  const handleSuccess = () => {
+    setSelectedJobId(null);
+    fetchPortalData();
+  };
 
   const handleJobClick = (eventId) => {
     setSelectedJobId(eventId);
@@ -144,6 +152,7 @@ export default function Portal() {
              <UnifiedForm 
                jobId={selectedJobId} 
                onCancel={() => setSelectedJobId(null)} 
+               onSuccess={handleSuccess}
              />
            )}
         </div>
