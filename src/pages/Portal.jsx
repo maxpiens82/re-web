@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus } from 'lucide-react';
+import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User } from 'lucide-react';
 import UnifiedForm from '../components/UnifiedForm';
 
 // Make sure this is your actual GAS URL!
@@ -58,26 +58,29 @@ export default function Portal() {
   const JobCard = ({ job, isPending }) => (
     <div 
       onClick={() => handleJobClick(job.eventId)}
-      className={`p-4 rounded-xl cursor-pointer transition-all border-l-4 shadow-sm hover:shadow-md
-        ${selectedJobId === job.eventId ? 'bg-white border-[#EB4511] ring-1 ring-[#EB4511]/20' : 'bg-gray-50 border-transparent hover:bg-white'}
+      className={`p-3 rounded-lg cursor-pointer transition-all border-l-[3px] shadow-sm hover:shadow-md mb-2
+        ${selectedJobId === job.eventId ? 'bg-white border-[#EB4511] ring-1 ring-[#EB4511]/20' : 'bg-white border-transparent hover:bg-gray-50'}
         ${isPending ? 'border-l-yellow-400' : 'border-l-green-500'}
       `}
     >
-      <h4 className="font-bold text-gray-800 text-sm mb-1 truncate">{job.address}</h4>
-      <div className="flex flex-col gap-1 text-xs text-gray-500">
-        <span className="flex items-center gap-1"><Clock size={12} /> {job.date} - {job.time}</span>
-        <span className="flex items-center gap-1 truncate"><MapPin size={12} /> {job.client} ({job.company})</span>
+      <h4 className="font-bold text-gray-800 text-[13px] leading-tight mb-1 truncate">{job.address}</h4>
+      <div className="flex items-center justify-between text-[11px] text-gray-500">
+        <span className="flex items-center gap-1 truncate max-w-[60%]"><User size={10} className="shrink-0"/> {job.client}</span>
+        <span className="flex items-center gap-1 shrink-0"><Clock size={10} /> {job.date}</span>
       </div>
     </div>
   );
 
   return (
-    <div className="flex h-screen bg-[#F0F2F5] overflow-hidden font-sans">
+    <div className="flex h-[100dvh] bg-[#F0F2F5] overflow-hidden font-sans">
       
       {/* SIDEBAR: Master List */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col shadow-xl z-10">
+      <div className={`bg-white border-r border-gray-200 flex-col shadow-xl z-20 transition-all duration-300
+        w-full md:w-80 flex-shrink-0
+        ${selectedJobId ? 'hidden md:flex' : 'flex'}
+      `}>
         {/* Header */}
-        <div className="p-5 bg-[#EB4511] text-white flex justify-between items-center">
+        <div className="p-4 md:p-5 bg-[#EB4511] text-white flex justify-between items-center shrink-0">
           <div>
             <h1 className="text-xl font-extrabold tracking-widest">RE!</h1>
             <p className="text-xs font-medium opacity-80 uppercase tracking-wider">{userRole} PORTAL</p>
@@ -88,7 +91,7 @@ export default function Portal() {
         </div>
 
         {/* Lists */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 space-y-5 bg-gray-50/50">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <Loader2 className="animate-spin mb-2" size={24} />
@@ -98,14 +101,14 @@ export default function Portal() {
             <>
               {/* Web Requests */}
               <div>
-                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5 px-1">
                   <Inbox size={14} className="text-yellow-500"/> Solicitudes Web
-                  <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-[10px] ml-auto">{pendingJobs.length}</span>
+                  <span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full text-[9px] ml-auto">{pendingJobs.length}</span>
                 </h2>
                 {pendingJobs.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic mb-4">No hay solicitudes pendientes.</p>
+                  <p className="text-xs text-gray-400 italic mb-4 px-1">No hay solicitudes pendientes.</p>
                 ) : (
-                  <div className="space-y-3 mb-6">
+                  <div className="mb-5">
                     {pendingJobs.map(job => <JobCard key={job.eventId} job={job} isPending={true} />)}
                   </div>
                 )}
@@ -113,14 +116,14 @@ export default function Portal() {
 
               {/* Confirmed Bookings */}
               <div>
-                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5 px-1">
                   <CalendarDays size={14} className="text-green-500"/> Reservas
-                  <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] ml-auto">{confirmedJobs.length}</span>
+                  <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full text-[9px] ml-auto">{confirmedJobs.length}</span>
                 </h2>
                 {confirmedJobs.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic">No hay reservas confirmadas.</p>
+                  <p className="text-xs text-gray-400 italic px-1">No hay reservas confirmadas.</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div>
                     {confirmedJobs.map(job => <JobCard key={job.eventId} job={job} isPending={false} />)}
                   </div>
                 )}
@@ -131,10 +134,12 @@ export default function Portal() {
       </div>
 
       {/* MAIN AREA: Unified Form */}
-      <div className="flex-1 bg-[#F0F2F5] relative overflow-y-auto">
-        <div className="p-6 h-full flex items-center justify-center">
+      <div className={`flex-1 bg-[#F0F2F5] relative overflow-y-auto w-full
+        ${!selectedJobId ? 'hidden md:block' : 'block'}
+      `}>
+        <div className="p-0 md:p-6 h-full flex items-center justify-center">
            {!selectedJobId ? (
-             <div className="text-center text-gray-400">
+             <div className="text-center text-gray-400 hidden md:block">
                <div className="bg-gray-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                  <CalendarDays size={32} className="text-gray-400" />
                </div>

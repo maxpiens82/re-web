@@ -433,85 +433,85 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   );
 
   return (
-    <div className="bg-[#F0F2F5] w-full max-w-4xl mx-auto rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh]">
+    <div className="bg-[#F0F2F5] w-full max-w-4xl mx-auto rounded-none md:rounded-3xl shadow-none md:shadow-2xl overflow-hidden flex flex-col h-full md:h-[90vh]">
       
       {/* HEADER */}
-      <div className="px-8 py-5 border-b border-gray-200 flex justify-between items-center bg-white z-10 shrink-0">
-        <div>
-          <h2 className="text-xl font-extrabold uppercase tracking-wide" style={{ color: brandColor }}>
+      <div className="px-4 py-3 md:px-8 md:py-5 border-b border-gray-200 flex justify-between items-center bg-white z-10 shrink-0">
+        <div className="truncate pr-4 flex-1">
+          <h2 className="text-base md:text-xl font-extrabold uppercase tracking-wide truncate" style={{ color: brandColor }}>
             {modeTitle}
           </h2>
-          {!isNewBooking && <p className="text-xs text-gray-400 mt-1 font-bold tracking-wider">ID: {jobId}</p>}
+          {!isNewBooking && <p className="hidden md:block text-xs text-gray-400 mt-1 font-bold tracking-wider truncate">ID: {jobId}</p>}
         </div>
-        <button onClick={onCancel} className="text-gray-500 hover:bg-gray-100 font-bold px-4 py-2 rounded-xl border border-gray-200 transition-colors">
+        <button onClick={onCancel} className="text-gray-500 hover:bg-gray-100 font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl border border-gray-200 transition-colors text-xs md:text-sm shrink-0 shadow-sm">
           ✕ Cerrar
         </button>
       </div>
 
       {/* SCROLLABLE BODY */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 md:p-8 space-y-4 md:space-y-6">
         
         {/* STAFF PANEL */}
-        <section className="bg-white rounded-3xl p-6 shadow-sm border-2 border-indigo-100 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500"></div>
-          <div className="mb-5 flex items-center gap-2">
-            <Briefcase size={20} className="text-indigo-600" />
-            <h2 className="text-lg font-bold uppercase text-indigo-800">Panel Interno (Staff)</h2>
+        <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-sm border-2 border-indigo-100 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1.5 md:w-2 h-full bg-indigo-500"></div>
+          <div className="mb-3 md:mb-5 flex items-center gap-2">
+            <Briefcase size={16} className="text-indigo-600 md:w-5 md:h-5" />
+            <h2 className="text-sm md:text-lg font-bold uppercase text-indigo-800">Panel Interno (Staff)</h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Productor Asignado</label>
-              <select name="realizador" value={formData.realizador} onChange={handleInputChange} className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500/20 font-medium outline-none">
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Productor Asignado</label>
+              <select name="realizador" value={formData.realizador} onChange={handleInputChange} className="w-full bg-[#F4F4F5] border-none text-gray-800 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl focus:ring-2 focus:ring-indigo-500/20 font-medium outline-none text-sm">
                 <option value="">Seleccionar Productor...</option>
                 {config?.realizadoresList?.map(r => <option key={r.name} value={r.name}>{r.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Observaciones Internas</label>
-              <input type="text" name="observaciones" value={formData.observaciones} onChange={handleInputChange} placeholder="Notas para el equipo..." className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 px-4 rounded-xl focus:ring-2 focus:ring-indigo-500/20 font-medium outline-none" />
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Observaciones Internas</label>
+              <input type="text" name="observaciones" value={formData.observaciones} onChange={handleInputChange} placeholder="Notas para el equipo..." className="w-full bg-[#F4F4F5] border-none text-gray-800 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl focus:ring-2 focus:ring-indigo-500/20 font-medium outline-none text-sm" />
             </div>
           </div>
 
           {selectedServices.includes('EXTRAS') && (
-            <div className="mt-5 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-              <label className="block text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3">Detalle de Extras</label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <input type="text" name="extrasDesc" value={formData.extrasDesc} onChange={handleInputChange} placeholder="Descripción..." className="w-full bg-white border border-indigo-100 py-3 px-4 rounded-xl font-medium outline-none md:col-span-2" />
-                <input type="number" name="costoExtras" value={formData.costoExtras} onChange={handleInputChange} placeholder="$ Cobro Cliente" className="w-full bg-white border border-indigo-100 py-3 px-4 rounded-xl font-medium outline-none" />
+            <div className="mt-4 md:mt-5 p-3 md:p-4 bg-indigo-50/50 rounded-xl md:rounded-2xl border border-indigo-100">
+              <label className="block text-[10px] md:text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2 md:mb-3">Detalle de Extras</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                <input type="text" name="extrasDesc" value={formData.extrasDesc} onChange={handleInputChange} placeholder="Descripción..." className="w-full bg-white border border-indigo-100 py-2.5 px-3 md:py-3 px-4 rounded-lg md:rounded-xl font-medium outline-none md:col-span-2 text-sm" />
+                <input type="number" name="costoExtras" value={formData.costoExtras} onChange={handleInputChange} placeholder="$ Cobro Cliente" className="w-full bg-white border border-indigo-100 py-2.5 px-3 md:py-3 px-4 rounded-lg md:rounded-xl font-medium outline-none text-sm" />
               </div>
             </div>
           )}
         </section>
 
-        {/* 1. CLIENTE & CRM (EXACT LEGACY REPLICA WITH SEPARATE SEARCH) */}
-        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-6 flex justify-between items-center">
-            <h2 className="text-lg font-bold uppercase" style={{ color: brandColor }}>Cliente & Contacto</h2>
-            <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-3 py-1 rounded-md transition-colors" onClick={() => setClientState('existing')}>💾 Forzar Guardado</button>
+        {/* 1. CLIENTE & CRM */}
+        <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100">
+          <div className="mb-4 md:mb-6 flex justify-between items-center">
+            <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>Cliente & Contacto</h2>
+            <button className="text-[10px] md:text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 md:px-3 md:py-1 rounded-md transition-colors" onClick={() => setFieldStates({ name: 'existing', lastName: 'existing', company: 'existing', email: 'existing', phone: 'existing' })}>💾 Forzar Guardado</button>
           </div>
 
           {/* DEDICATED SEARCH BAR */}
-          <div className="mb-6 relative" ref={clientWrapperRef}>
-            <label className="block text-xs font-bold text-[#2B6CB0] uppercase tracking-widest mb-2 flex items-center gap-1">
-              <Search size={14} /> Buscar Cliente Existente
+          <div className="mb-4 md:mb-6 relative" ref={clientWrapperRef}>
+            <label className="block text-[10px] md:text-xs font-bold text-[#2B6CB0] uppercase tracking-widest mb-1.5 md:mb-2 flex items-center gap-1">
+              <Search size={12} className="md:w-3.5 md:h-3.5" /> Buscar Cliente Existente
             </label>
             <input 
               type="text" 
               value={clientSearchQuery}
               onChange={(e) => handleClientSearch(e.target.value)}
               onFocus={() => handleClientSearch(clientSearchQuery)}
-              placeholder="Escribir nombre, empresa, email o teléfono..." 
-              className="w-full bg-white border border-gray-200 py-3.5 px-4 rounded-xl font-medium outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-all shadow-sm"
+              placeholder="Nombre, empresa, email o tel..." 
+              className="w-full bg-white border border-gray-200 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-all shadow-sm text-sm"
               autoComplete="off"
             />
             {clientSuggestions.length > 0 && (
-              <div className="absolute top-full mt-2 left-0 right-0 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
+              <div className="absolute top-full mt-1 md:mt-2 left-0 right-0 bg-white border border-gray-100 rounded-lg md:rounded-xl shadow-xl z-50 overflow-hidden max-h-48 md:max-h-60 overflow-y-auto">
                 {clientSuggestions.map((c, i) => (
-                  <div key={i} onClick={() => selectClient(c)} className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors">
-                    <div className="font-bold text-gray-800">{c.nombre} {c.apellido}</div>
-                    <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                       <Building size={12}/> {c.empresa || 'Particular'} <span className="text-gray-300">|</span> <Phone size={12}/> {c.telefono || 'Sin teléfono'}
+                  <div key={i} onClick={() => selectClient(c)} className="p-2.5 md:p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors">
+                    <div className="font-bold text-gray-800 text-sm">{c.nombre} {c.apellido}</div>
+                    <div className="text-[10px] md:text-xs text-gray-500 mt-0.5 md:mt-1 flex items-center gap-1.5">
+                       <Building size={10}/> <span className="truncate max-w-[100px]">{c.empresa || 'Particular'}</span> <span className="text-gray-300">|</span> <Phone size={10}/> <span className="truncate">{c.telefono || 'Sin teléfono'}</span>
                     </div>
                   </div>
                 ))}
@@ -520,68 +520,68 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
           </div>
 
           {/* RED/YELLOW/GREEN INPUTS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-5">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Nombre</label>
-              <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('name')} />
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Nombre</label>
+              <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('name')} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Apellido</label>
-              <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('lastName')} />
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Apellido</label>
+              <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('lastName')} />
             </div>
             
             {/* EMPRESA WITH EMBEDDED AUTOCOMPLETE */}
             <div className="relative" ref={companyWrapperRef}>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Empresa</label>
-              <input type="text" name="company" value={formData.company} onChange={(e) => { handleInputChange(e); handleCompanySearch(e.target.value); }} onFocus={() => handleCompanySearch(formData.company)} placeholder="Seleccionar o escribir..." className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('company')} autoComplete="off" />
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Empresa</label>
+              <input type="text" name="company" value={formData.company} onChange={(e) => { handleInputChange(e); handleCompanySearch(e.target.value); }} onFocus={() => handleCompanySearch(formData.company)} placeholder="Escribir..." className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('company')} autoComplete="off" />
               {companySuggestions.length > 0 && (
-                <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-40 max-h-48 overflow-y-auto">
+                <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg md:rounded-xl shadow-lg z-40 max-h-40 overflow-y-auto">
                   {companySuggestions.map((c, i) => (
-                    <div key={i} onClick={() => { setFormData(prev => ({...prev, company: c})); setCompanySuggestions([]); }} className="p-3 hover:bg-gray-50 cursor-pointer font-medium text-sm border-b border-gray-50">{c}</div>
+                    <div key={i} onClick={() => { setFormData(prev => ({...prev, company: c})); setCompanySuggestions([]); }} className="p-2.5 md:p-3 hover:bg-gray-50 cursor-pointer font-medium text-xs md:text-sm border-b border-gray-50">{c}</div>
                   ))}
                 </div>
               )}
             </div>
             
-            <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Teléfono</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('phone')} /></div>
-            <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Email</label><input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-3.5 px-4 rounded-xl font-medium outline-none transition-all" style={getFieldStyle('email')} /></div>
+            <div><label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Teléfono</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('phone')} /></div>
+            <div className="sm:col-span-2"><label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Email</label><input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('email')} /></div>
           </div>
         </section>
 
         {/* 2. LOCACIÓN */}
-        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-6"><h2 className="text-lg font-bold uppercase" style={{ color: brandColor }}>Locación</h2></div>
-          <div className="space-y-6">
+        <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100">
+          <div className="mb-4 md:mb-6"><h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>Locación</h2></div>
+          <div className="space-y-4 md:space-y-6">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Metros Cuadrados</label>
-              <select value={multiplier} onChange={(e) => setMultiplier(parseFloat(e.target.value))} className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 px-4 rounded-xl outline-none font-medium">
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Metros Cuadrados</label>
+              <select value={multiplier} onChange={(e) => setMultiplier(parseFloat(e.target.value))} className="w-full bg-[#F4F4F5] border-none text-gray-800 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl outline-none font-medium text-sm">
                 {db.multipliers.map(m => <option key={m.id} value={m.value}>{m.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Dirección del Servicio {!isAddressValid && formData.address && <span className="text-red-500 normal-case ml-2">(Sugerencia de Maps no seleccionada)</span>}</label>
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Dirección {!isAddressValid && formData.address && <span className="text-red-500 normal-case ml-1">(Revisar Maps)</span>}</label>
               <div className="relative">
-                <MapPin size={18} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${isAddressValid ? 'text-green-500' : 'text-gray-400'}`} />
-                <input type="text" ref={addressInputRef} name="address" value={formData.address} onChange={handleInputChange} className={`w-full bg-[#F4F4F5] py-3.5 pl-11 pr-4 rounded-xl font-medium outline-none transition-all ${isAddressValid ? 'ring-1 ring-[#4bbf73]' : ''}`} />
+                <MapPin size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 md:w-[18px] md:h-[18px] md:left-3.5 ${isAddressValid ? 'text-green-500' : 'text-gray-400'}`} />
+                <input type="text" ref={addressInputRef} name="address" value={formData.address} onChange={handleInputChange} className={`w-full bg-[#F4F4F5] py-2.5 pl-8 pr-3 md:py-3.5 md:pl-11 md:pr-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm ${isAddressValid ? 'ring-1 ring-[#4bbf73]' : ''}`} />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Indicaciones (Piso, Depto)</label>
-              <input type="text" name="instructions" value={formData.instructions} onChange={handleInputChange} className="w-full bg-[#F4F4F5] border-none py-3.5 px-4 rounded-xl outline-none font-medium" />
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Indicaciones (Piso, Depto)</label>
+              <input type="text" name="instructions" value={formData.instructions} onChange={handleInputChange} className="w-full bg-[#F4F4F5] border-none py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl outline-none font-medium text-sm" />
             </div>
           </div>
         </section>
 
         {/* 3. SERVICIOS */}
-        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-6"><h2 className="text-lg font-bold uppercase" style={{ color: brandColor }}>Servicios Contratados</h2></div>
-          <div className="flex flex-wrap gap-3">
+        <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100">
+          <div className="mb-4 md:mb-6"><h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>Servicios Contratados</h2></div>
+          <div className="flex flex-wrap gap-2 md:gap-3">
             {db.services.map((srv) => {
               const isSelected = selectedServices.includes(srv.id);
               return (
                 <button
                   key={srv.id} onClick={() => toggleService(srv.id)}
-                  className={`w-[85px] md:w-[100px] h-[40px] rounded-full font-bold text-[11px] md:text-sm tracking-wide transition-all select-none
+                  className={`w-[70px] h-[36px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none
                     ${isSelected ? `text-white shadow-[0_4px_14px_rgba(235,69,17,0.35)] -translate-y-0.5` : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}
                   style={isSelected ? { backgroundColor: brandColor } : {}}
                 >
@@ -593,47 +593,47 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
         </section>
 
         {/* 4. FECHA Y HORA */}
-        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-6"><h2 className="text-lg font-bold uppercase" style={{ color: brandColor }}>Fecha y Hora</h2></div>
-          <div className="space-y-8">
+        <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100">
+          <div className="mb-4 md:mb-6"><h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>Fecha y Hora</h2></div>
+          <div className="space-y-6 md:space-y-8">
             <div>
-              <div className="flex items-center gap-2 md:gap-4">
-                <button onClick={scrollLeft} className="w-10 h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"><ChevronLeft size={20}/></button>
-                <div ref={dateScrollRef} className="flex flex-1 gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth py-2 px-1 [&::-webkit-scrollbar]:hidden">
+              <div className="flex items-center gap-1 md:gap-4">
+                <button onClick={scrollLeft} className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"><ChevronLeft size={16}/></button>
+                <div ref={dateScrollRef} className="flex flex-1 gap-2 md:gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth py-2 px-1 [&::-webkit-scrollbar]:hidden">
                   {dateOptions.map(d => {
                     const isSelected = selectedDateObj?.id === d.id;
                     return (
-                      <button data-date={d.id} key={d.id} onClick={() => setSelectedDateObj(d)} className={`flex flex-col items-center justify-center w-[72px] h-[72px] shrink-0 rounded-2xl border-2 transition-all select-none snap-start ${isSelected ? `shadow-md bg-white -translate-y-0.5` : 'border-transparent bg-[#F4F4F5]'}`} style={isSelected ? { borderColor: brandColor } : {}}>
-                        <span className={`text-[11px] font-bold uppercase ${isSelected ? '' : 'text-gray-500'}`} style={isSelected ? { color: brandColor } : {}}>{d.dayName}</span>
-                        <span className={`text-2xl font-black mt-0.5 ${isSelected ? 'text-[#2d2d2d]' : 'text-gray-500'}`}>{d.dayNumber}</span>
+                      <button data-date={d.id} key={d.id} onClick={() => setSelectedDateObj(d)} className={`flex flex-col items-center justify-center w-[56px] h-[56px] md:w-[72px] md:h-[72px] shrink-0 rounded-xl md:rounded-2xl border-2 transition-all select-none snap-start ${isSelected ? `shadow-md bg-white -translate-y-0.5` : 'border-transparent bg-[#F4F4F5]'}`} style={isSelected ? { borderColor: brandColor } : {}}>
+                        <span className={`text-[9px] md:text-[11px] font-bold uppercase ${isSelected ? '' : 'text-gray-500'}`} style={isSelected ? { color: brandColor } : {}}>{d.dayName}</span>
+                        <span className={`text-xl md:text-2xl font-black mt-0 md:mt-0.5 ${isSelected ? 'text-[#2d2d2d]' : 'text-gray-500'}`}>{d.dayNumber}</span>
                       </button>
                     )
                   })}
                 </div>
-                <button onClick={scrollRight} className="w-10 h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"><ChevronRight size={20}/></button>
+                <button onClick={scrollRight} className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"><ChevronRight size={16}/></button>
               </div>
               
-              <div className="mt-5 text-center min-h-[20px]">
+              <div className="mt-3 md:mt-5 text-center min-h-[20px]">
                 {selectedDateObj && (
-                  <span className="text-[13px] font-bold uppercase tracking-wide" style={{ color: brandColor }}>
+                  <span className="text-[11px] md:text-[13px] font-bold uppercase tracking-wide" style={{ color: brandColor }}>
                     {selectedDateObj.fullFormat}
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-4 md:grid-cols-7 gap-2 md:gap-3">
+            <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5 md:gap-3">
               {timeOptions.map(time => {
                 const isSelected = selectedTime === time;
                 return (
-                  <button key={time} onClick={() => setSelectedTime(time)} className={`py-2 rounded-full font-bold text-sm transition-all select-none ${isSelected ? `text-white shadow-md` : 'bg-[#F4F4F5] text-gray-600'}`} style={isSelected ? { backgroundColor: brandColor } : {}}>{time}</button>
+                  <button key={time} onClick={() => setSelectedTime(time)} className={`py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-all select-none ${isSelected ? `text-white shadow-md` : 'bg-[#F4F4F5] text-gray-600'}`} style={isSelected ? { backgroundColor: brandColor } : {}}>{time}</button>
                 )
               })}
             </div>
             
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Duración Estimada</label>
-              <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full bg-[#F4F4F5] border-none py-3.5 px-4 rounded-xl font-medium outline-none">
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-3">Duración Estimada</label>
+              <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full bg-[#F4F4F5] border-none py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none text-sm">
                 <option value="1 Hora">1 Hora</option>
                 <option value="1.5 Horas">1.5 Horas</option>
                 <option value="2 Horas">2 Horas</option>
@@ -646,33 +646,34 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       </div>
 
       {/* FOOTER */}
-      <div className="px-8 py-5 bg-white border-t border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0">
-        <div className="flex flex-col mb-4 md:mb-0">
-           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Total Estimado</span>
-           <div className="text-2xl font-extrabold" style={{ color: brandColor }}>{formatCurrency(total)}</div>
+      <div className="p-4 md:px-8 md:py-5 bg-white border-t border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0 gap-3 md:gap-0" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+        
+        {/* PRICE SECTION (Left on Desktop, Top Row on Mobile) */}
+        <div className="flex flex-row md:flex-col justify-between items-center md:items-start w-full md:w-auto shrink-0">
+           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Estimado</span>
+           <div className="text-xl md:text-2xl font-extrabold leading-none" style={{ color: brandColor }}>{formatCurrency(total)}</div>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* BUTTONS SECTION (Right on Desktop, Bottom Row on Mobile) */}
+        <div className="flex flex-row gap-2 w-full md:w-auto justify-end">
           {isNewBooking ? (
             <button 
               onClick={() => handleFormSubmit('create_booking')}
               disabled={isSubmitting}
-              className="px-8 py-3.5 text-white font-bold rounded-full text-sm uppercase tracking-wide shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50" 
+              className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm transition-all disabled:opacity-50 text-center" 
               style={{ backgroundColor: brandColor }}
             >
-              {isSubmitting ? 'Procesando...' : 'Cargar Nueva Reserva'}
+              {isSubmitting ? '...' : 'Cargar Reserva'}
             </button>
           ) : isWebRequest ? (
             <>
-              {/* REJECT LOGIC COMING SOON */}
-              <button className="px-8 py-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-full text-sm uppercase tracking-wide transition-colors">Rechazar</button>
-              
+              <button className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide transition-colors text-center">Rechazar</button>
               <button 
                 onClick={() => handleFormSubmit('update_booking')}
                 disabled={isSubmitting}
-                className="px-8 py-3.5 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-full text-sm uppercase tracking-wide shadow-md transition-all disabled:opacity-50"
+                className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-yellow-500 text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm transition-all disabled:opacity-50 text-center"
               >
-                {isSubmitting ? 'Procesando...' : 'Aprobar y Agendar'}
+                {isSubmitting ? '...' : 'Aprobar'}
               </button>
             </>
           ) : (
@@ -680,22 +681,23 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
               <button 
                 onClick={() => handleFormSubmit('checkout_booking')}
                 disabled={isSubmitting}
-                className="px-8 py-3.5 bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 font-bold rounded-full text-sm uppercase tracking-wide transition-colors disabled:opacity-50"
+                className="flex-1 md:flex-none px-2 py-3 md:px-8 md:py-3.5 bg-white border-2 border-green-500 text-green-600 font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide transition-colors disabled:opacity-50 whitespace-nowrap text-center"
               >
-                {isSubmitting ? 'Procesando...' : 'Checkout (Finalizar)'}
+                {isSubmitting ? '...' : 'Checkout'}
               </button>
               
               <button 
                 onClick={() => handleFormSubmit('update_booking')}
                 disabled={isSubmitting}
-                className="px-8 py-3.5 text-white font-bold rounded-full text-sm uppercase tracking-wide shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50" 
+                className="flex-1 md:flex-none px-2 py-3 md:px-8 md:py-3.5 text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm transition-all disabled:opacity-50 text-center" 
                 style={{ backgroundColor: brandColor }}
               >
-                {isSubmitting ? 'Procesando...' : 'Actualizar'}
+                {isSubmitting ? '...' : 'Actualizar'}
               </button>
             </>
           )}
         </div>
+
       </div>
     </div>
   );

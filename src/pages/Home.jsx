@@ -332,7 +332,7 @@ export default function Home() {
 
       {/* 🚀 THE FIXED "WALL" (ORANGE BACKGROUND) */}
       <header 
-        className="fixed top-0 left-0 w-full text-white pt-24 pb-32 px-6 text-center overflow-hidden z-0"
+        className="fixed top-0 left-0 w-full text-white pt-6 pb-32 px-6 text-center overflow-hidden z-0"
         style={{ backgroundColor: brandColor, height: '60vh' }}
       >
         <div 
@@ -346,7 +346,7 @@ export default function Home() {
           <img 
             src="https://lh3.googleusercontent.com/d/1oHw3lpx4-EAI59BDMccfjPl_I529xqWU" 
             alt="RE! Contenido Audiovisual" 
-            className="w-full max-w-[480px] h-auto object-contain mb-4"
+            className="w-full max-w-[480px] h-auto object-contain mb-1"
             onError={(e) => {
               e.target.onerror = null; 
               e.target.src = "https://placehold.co/600x200/EB4511/FFFFFF/png?text=RE!+Contenido+Audiovisual";
