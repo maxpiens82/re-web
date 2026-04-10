@@ -60,10 +60,12 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     realizador: '', observaciones: '', extrasDesc: '', costoExtras: '', pagoEditor: ''
   });
 
-  // Validation State
+  // Validation State & CRM Memory Engine
   const [fieldStates, setFieldStates] = useState({
     name: 'new', lastName: 'new', company: 'new', email: 'new', phone: 'new'
   });
+  const [matchedClient, setMatchedClient] = useState(null);
+  const [altValues, setAltValues] = useState({});
   const [isAddressValid, setIsAddressValid] = useState(true);
   
   // Autocomplete UI State
@@ -169,8 +171,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       realizador: data.realizacion || '', observaciones: data.observaciones || '',
       extrasDesc: data.extrasDescripcion || '', costoExtras: data.costoExtras || '', pagoEditor: data.pagoEditorExtras || ''
     });
-
-    }; // End of hydrateForm
+  };
 
   // ==========================================
   // SMART PHONE-CENTRIC CRM EVALUATOR
@@ -180,9 +181,9 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
 
     const cleanPhone = formData.phone ? String(formData.phone).replace(/\D/g, '') : '';
     
-    // CASE 1: No phone or too short -> Everything is Red
     if (cleanPhone.length < 5) {
       setFieldStates({ name: 'new', lastName: 'new', company: 'new', email: 'new', phone: 'new' });
+      setMatchedClient(null);
       return;
     }
 
@@ -191,13 +192,14 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       return dbPhone === cleanPhone;
     });
 
-    // CASE 2: Phone not in Database -> Everything is Red
     if (!dbMatch) {
       setFieldStates({ name: 'new', lastName: 'new', company: 'new', email: 'new', phone: 'new' });
+      setMatchedClient(null);
       return;
     }
 
-    // CASE 3: Phone matches! Evaluate the rest of the fields
+    setMatchedClient(dbMatch);
+
     const newStates = { phone: 'existing', name: 'new', lastName: 'new', company: 'new', email: 'new' };
     
     const checkMatch = (currentVal, dbVal) => {
@@ -217,6 +219,53 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   }, [formData.phone, formData.name, formData.lastName, formData.company, formData.email, clientDb]);
 
   // ==========================================
+  // THE SWAP ENGINE
+  // ==========================================
+  const handleSwap = (field, dbKey) => {
+    if (!matchedClient) return;
+    const currentFormVal = formData[field];
+    const dbVal = matchedClient[dbKey] || '';
+    const altVal = altValues[field];
+
+    if (String(currentFormVal).trim().toLowerCase() === String(dbVal).trim().toLowerCase() && altVal !== undefined) {
+      setFormData(prev => ({ ...prev, [field]: altVal }));
+      setAltValues(prev => ({ ...prev, [field]: currentFormVal }));
+    } else {
+      setAltValues(prev => ({ ...prev, [field]: currentFormVal }));
+      setFormData(prev => ({ ...prev, [field]: dbVal }));
+    }
+  };
+
+  const renderSwapButton = (field, dbKey) => {
+    if (!matchedClient) return null;
+    const state = fieldStates[field];
+    let swapText = '';
+
+    if (state === 'modified') {
+      swapText = matchedClient[dbKey] || 'Vacío';
+    } else if (state === 'existing' && altValues[field] !== undefined) {
+      const cleanAlt = String(altValues[field]).trim().toLowerCase();
+      const cleanDb = String(matchedClient[dbKey]).trim().toLowerCase();
+      if (cleanAlt !== cleanDb && cleanAlt !== '') {
+        swapText = altValues[field];
+      }
+    }
+
+    if (!swapText) return null;
+
+    return (
+      <button
+        type="button"
+        onClick={() => handleSwap(field, dbKey)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 max-w-[45%] truncate text-[10px] md:text-[11px] font-bold px-2.5 py-1.5 rounded-md bg-[#E2E8F0] hover:bg-[#CBD5E0] text-[#2D3748] cursor-pointer transition-colors shadow-sm border border-gray-300"
+        title={`Cambiar por: ${swapText}`}
+      >
+        {swapText} ⇄
+      </button>
+    );
+  };
+
+  // ==========================================
   // 2. AUTO-SCROLL TO SELECTED DATE (SILENT HORIZONTAL ONLY)
   // ==========================================
   useEffect(() => {
@@ -226,12 +275,9 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
         const selectedEl = container.querySelector(`[data-date="${selectedDateObj.id}"]`);
         
         if (selectedEl) {
-          // Calculate exactly where the selected date is horizontally
           const containerCenter = container.offsetWidth / 2;
           const itemCenter = selectedEl.offsetLeft + (selectedEl.offsetWidth / 2);
           const scrollPosition = itemCenter - containerCenter;
-
-          // Scroll ONLY the inner container horizontally, never touching the main page scroll
           container.scrollTo({ left: scrollPosition, behavior: 'smooth' });
         }
       }, 100);
@@ -318,47 +364,18 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     if (name === 'address') setIsAddressValid(false);
   };
 
-  // ==========================================
-  // PRICING MATH ENGINE
-  // ==========================================
   const { total, discountApplied, baseCount } = useMemo(() => {
     if (!db) return { total: 0, discountApplied: 0, baseCount: 0 };
-    
-    let baseMult = 0; 
-    let baseFixed = 0; 
-    let serviceCount = 0;
-    
+    let baseMult = 0; let baseFixed = 0; let serviceCount = 0;
     selectedServices.forEach(id => {
       const srv = db.services.find(s => s.id === id);
-      if (srv) { 
-        if (srv.isFixed) {
-          baseFixed += srv.price; 
-        } else { 
-          baseMult += srv.price; 
-          serviceCount++; 
-        } 
-      }
+      if (srv) { if (srv.isFixed) baseFixed += srv.price; else { baseMult += srv.price; serviceCount++; } }
     });
-    
     let discount = serviceCount > db.discountThreshold ? (serviceCount - db.discountThreshold) * db.discountAmount : 0;
-    
-    // Only add Costo Extras if the EXTRAS service is actively selected
-    const activeExtrasCost = selectedServices.includes('EXTRAS') ? (Number(formData.costoExtras) || 0) : 0;
-
-    return { 
-      total: ((baseMult - discount) * multiplier) + baseFixed + activeExtrasCost, 
-      discountApplied: discount * multiplier, 
-      baseCount: serviceCount 
-    };
+    return { total: ((baseMult - discount) * multiplier) + baseFixed + (Number(formData.costoExtras) || 0), discountApplied: discount * multiplier, baseCount: serviceCount };
   }, [selectedServices, multiplier, db, formData.costoExtras]);
 
-  const toggleService = (id) => {
-    setSelectedServices(prev => {
-      const newServices = prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id];
-      console.log("Servicios Seleccionados:", newServices); // <--- DEBUGGER
-      return newServices;
-    });
-  };
+  const toggleService = (id) => setSelectedServices(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
   const formatCurrency = (amount) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
   const scrollLeft = () => dateScrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
   const scrollRight = () => dateScrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
@@ -368,6 +385,12 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   // ==========================================
   const handleFormSubmit = async (actionType) => {
     setIsSubmitting(true);
+
+    // Intercept and clean the "SOLICITUD WEB" status text
+    let finalObservaciones = formData.observaciones;
+    if (actionType === 'update_booking' && String(finalObservaciones).includes('SOLICITUD WEB - Pendiente')) {
+      finalObservaciones = finalObservaciones.replace('SOLICITUD WEB - Pendiente', 'SOLICITUD WEB - Aprobada');
+    }
     
     // Construct the payload mapping React State exactly to the Legacy GAS format
     const payload = {
@@ -378,9 +401,9 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       email: formData.email,
       telefono: formData.phone,
       locacion: formData.address,
-      indicaciones: formData.instructions,
+      indicaciones: formData.instructions, // <--- CLEAN FIX: Just the raw string
       realizacion: formData.realizador,
-      observaciones: formData.observaciones,
+      observaciones: finalObservaciones,
       fecha: selectedDateObj ? selectedDateObj.id : '',
       hora: selectedTime || '',
       duracion: duration,
@@ -389,18 +412,15 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       extrasDescripcion: formData.extrasDesc,
       costoExtras: formData.costoExtras,
       pagoEditorExtras: formData.pagoEditor,
-      skipValidation: true, // We bypass address strict validation for internal staff
+      skipValidation: true,
       
-      // Specifically for Direct Jobs (Only used if actionType === 'create_direct_job')
       descripcionServicio: selectedServices.join(', '),
       precioCliente: total
     };
 
-    // 🛡️ SHIELD: Bulletproof Duration Parser
-    // Ensures GAS always receives an integer representing minutes, regardless of UI string mutations.
     if (actionType === 'create_booking' || actionType === 'update_booking') {
       const safeDuration = String(duration).toLowerCase();
-      let durationMinutes = 60; // Default to 1 hour
+      let durationMinutes = 60; 
       
       if (safeDuration.includes('1.5') || safeDuration.includes('90')) durationMinutes = 90;
       else if (safeDuration.includes('2') || safeDuration.includes('120')) durationMinutes = 120;
@@ -422,12 +442,8 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       const data = await response.json();
       
       if (data.success) {
-        // Success! Tell the Portal to close the form AND refresh the lists!
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          onCancel(); 
-        }
+        if (onSuccess) onSuccess();
+        else onCancel(); 
       } else {
         alert("Error del servidor: " + data.error);
       }
@@ -438,7 +454,6 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     }
   };
 
-  // EXACT LEGACY CSS STYLES FOR VALIDATION INPUTS (Bulletproof Hex Colors)
   const getFieldStyle = (fieldName) => {
     const state = fieldStates[fieldName];
     if (state === 'existing') return { backgroundColor: '#F0FFF4', border: '1px solid #C6F6D5', color: '#14532D' };
@@ -542,17 +557,26 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-5">
             <div>
               <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Nombre</label>
-              <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('name')} />
+              <div className="relative">
+                <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm pr-24 md:pr-28" style={getFieldStyle('name')} />
+                {renderSwapButton('name', 'nombre')}
+              </div>
             </div>
             <div>
               <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Apellido</label>
-              <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('lastName')} />
+              <div className="relative">
+                <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm pr-24 md:pr-28" style={getFieldStyle('lastName')} />
+                {renderSwapButton('lastName', 'apellido')}
+              </div>
             </div>
             
             {/* EMPRESA WITH EMBEDDED AUTOCOMPLETE */}
             <div className="relative" ref={companyWrapperRef}>
               <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Empresa</label>
-              <input type="text" name="company" value={formData.company} onChange={(e) => { handleInputChange(e); handleCompanySearch(e.target.value); }} onFocus={() => handleCompanySearch(formData.company)} placeholder="Escribir..." className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('company')} autoComplete="off" />
+              <div className="relative">
+                <input type="text" name="company" value={formData.company} onChange={(e) => { handleInputChange(e); handleCompanySearch(e.target.value); }} onFocus={() => handleCompanySearch(formData.company)} placeholder="Escribir..." className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm pr-24 md:pr-28" style={getFieldStyle('company')} autoComplete="off" />
+                {renderSwapButton('company', 'empresa')}
+              </div>
               {companySuggestions.length > 0 && (
                 <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg md:rounded-xl shadow-lg z-40 max-h-40 overflow-y-auto">
                   {companySuggestions.map((c, i) => (
@@ -562,8 +586,17 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
               )}
             </div>
             
-            <div><label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Teléfono</label><input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('phone')} /></div>
-            <div className="sm:col-span-2"><label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Email</label><input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('email')} /></div>
+            <div>
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Teléfono</label>
+              <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm" style={getFieldStyle('phone')} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Email</label>
+              <div className="relative">
+                <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm pr-24 md:pr-28" style={getFieldStyle('email')} />
+                {renderSwapButton('email', 'email')}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -594,15 +627,15 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
         {/* 3. SERVICIOS */}
         <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-4 md:mb-6"><h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>Servicios Contratados</h2></div>
-          <div className="flex flex-wrap gap-2 md:gap-3 mb-4 md:mb-6">
+          
+          {/* Changed flex to a 3-column Grid on mobile, reverts to flex row on desktop */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:flex md:flex-wrap gap-2 md:gap-3">
             {db.services.map((srv) => {
               const isSelected = selectedServices.includes(srv.id);
               return (
                 <button
-                  key={srv.id}
-                  type="button"
-                  onClick={() => toggleService(srv.id)}
-                  className={`w-[70px] h-[36px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none
+                  key={srv.id} onClick={() => toggleService(srv.id)}
+                  className={`w-full h-[36px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none
                     ${isSelected ? `text-white shadow-[0_4px_14px_rgba(235,69,17,0.35)] -translate-y-0.5` : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}
                   style={isSelected ? { backgroundColor: brandColor } : {}}
                 >
@@ -610,39 +643,46 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
                 </button>
               );
             })}
-
-            {/* 🚀 THE STAFF-ONLY EXTRAS BUTTON */}
-            <button
-              type="button"
-              onClick={() => toggleService('EXTRAS')}
-              className={`w-[70px] h-[36px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none
-                ${selectedServices.includes('EXTRAS') ? `text-white shadow-[0_4px_14px_rgba(235,69,17,0.35)] -translate-y-0.5` : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}
-              style={selectedServices.includes('EXTRAS') ? { backgroundColor: brandColor } : {}}
-            >
-              EXTRAS
-            </button>
+            
+            {/* MANUALLY APPEND EXTRAS IF NOT IN DB */}
+            {!db.services.find(s => s.id === 'EXTRAS') && (
+              <button
+                type="button"
+                onClick={() => toggleService('EXTRAS')}
+                className={`w-full h-[36px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none
+                  ${selectedServices.includes('EXTRAS') ? `text-white shadow-[0_4px_14px_rgba(235,69,17,0.35)] -translate-y-0.5` : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}
+                style={selectedServices.includes('EXTRAS') ? { backgroundColor: brandColor } : {}}
+              >
+                EXTRAS
+              </button>
+            )}
           </div>
 
-          {/* 🚀 THE EXTRAS ACCORDION PANEL */}
+          {/* 🚀 THE EXTRAS DETAILS REVEAL (MOVED TO BELONG WITH SERVICES) */}
           {selectedServices.includes('EXTRAS') && (
-            <div className="p-3 md:p-5 bg-orange-50/50 rounded-xl md:rounded-2xl border border-orange-100 animate-in slide-in-from-top-2 fade-in duration-200">
-              <label className="block text-[10px] md:text-xs font-bold text-orange-500 uppercase tracking-widest mb-3">Detalle de Extras</label>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
-                
-                <div className="md:col-span-2">
-                  <input type="text" name="extrasDesc" value={formData.extrasDesc} onChange={handleInputChange} placeholder="Descripción de los extras..." className="w-full bg-white border border-orange-100 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none text-sm transition-all focus:ring-2 focus:ring-[#EB4511]/20" />
+            <div className="mt-4 md:mt-6 p-4 md:p-5 bg-orange-50/50 rounded-xl md:rounded-2xl border border-orange-100 animate-in slide-in-from-top-2 fade-in duration-200">
+              <label className="block text-[10px] md:text-xs font-bold text-orange-600 uppercase tracking-widest mb-3">Detalle de Extras</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div>
+                  <label className="block text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Descripción</label>
+                  <input type="text" name="extrasDesc" value={formData.extrasDesc} onChange={handleInputChange} placeholder="Ej: Edición urgente, fotos 360..." className="w-full bg-white border border-orange-100 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none text-sm" />
                 </div>
-                
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
-                  <input type="number" name="costoExtras" value={formData.costoExtras} onChange={handleInputChange} placeholder="Cobro Cliente" className="w-full bg-white border border-orange-100 py-2.5 pl-8 pr-3 md:py-3.5 md:pl-8 md:pr-4 rounded-lg md:rounded-xl font-medium outline-none text-sm transition-all focus:ring-2 focus:ring-[#EB4511]/20" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Cobro Cliente</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-500 font-bold">$</span>
+                      <input type="number" name="costoExtras" value={formData.costoExtras} onChange={handleInputChange} placeholder="0" className="w-full bg-white border border-orange-100 py-2.5 pl-7 pr-3 md:py-3.5 md:pl-8 md:pr-4 rounded-lg md:rounded-xl font-bold outline-none text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] md:text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-1.5">Pago Editor</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 font-bold">$</span>
+                      <input type="number" name="pagoEditor" value={formData.pagoEditor} onChange={handleInputChange} placeholder="0" className="w-full bg-white border border-indigo-100 py-2.5 pl-7 pr-3 md:py-3.5 md:pl-8 md:pr-4 rounded-lg md:rounded-xl font-bold outline-none text-sm" />
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#2B6CB0] font-bold">$</span>
-                  <input type="number" name="pagoEditor" value={formData.pagoEditor} onChange={handleInputChange} placeholder="Pago Editor" className="w-full bg-white border border-orange-100 py-2.5 pl-8 pr-3 md:py-3.5 md:pl-8 md:pr-4 rounded-lg md:rounded-xl font-medium outline-none text-sm transition-all focus:ring-2 focus:ring-[#2B6CB0]/20" />
-                </div>
-
               </div>
             </div>
           )}
@@ -704,13 +744,13 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       {/* FOOTER */}
       <div className="p-4 md:px-8 md:py-5 bg-white border-t border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0 gap-3 md:gap-0" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
         
-        {/* PRICE SECTION (Left on Desktop, Top Row on Mobile) */}
+        {/* PRICE SECTION */}
         <div className="flex flex-row md:flex-col justify-between items-center md:items-start w-full md:w-auto shrink-0">
            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Estimado</span>
            <div className="text-xl md:text-2xl font-extrabold leading-none" style={{ color: brandColor }}>{formatCurrency(total)}</div>
         </div>
         
-        {/* BUTTONS SECTION (Right on Desktop, Bottom Row on Mobile) */}
+        {/* BUTTONS SECTION */}
         <div className="flex flex-row gap-2 w-full md:w-auto justify-end">
           {isNewBooking ? (
             <button 
