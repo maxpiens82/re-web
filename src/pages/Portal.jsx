@@ -21,7 +21,7 @@ export default function Portal() {
       const response = await fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'get_portal_data' })
+        body: JSON.stringify({ action: 'get_portal_data_v2' }) // 🚀 NOW USING V2 (Blazing Fast)
       });
       
       const data = await response.json();
