@@ -60,7 +60,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ currentUser, userRole, loginWithGoogle, logout, loading }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
