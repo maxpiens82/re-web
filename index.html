@@ -28,7 +28,18 @@
     
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- 🚀 APP SHELL: Paints instantly in 0ms while React downloads in the background -->
+      <style>
+        body { margin: 0; background-color: #F0F2F5; }
+        .app-shell { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
+        .app-shell-logo { font-size: 48px; font-weight: 900; color: #EB4511; letter-spacing: 2px; animation: pulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .5; transform: scale(0.95); } }
+      </style>
+      <div class="app-shell">
+        <div class="app-shell-logo">RE!</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
