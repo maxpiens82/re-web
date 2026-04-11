@@ -48,10 +48,18 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   const [uniqueCompanies, setUniqueCompanies] = useState([]);
   
   // Form State
-const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState([]);
   const [postProdServices, setPostProdServices] = useState([]); // 🚀 NEW: Self-Editing Memory
   const [multiplier, setMultiplier] = useState(1.0);
   const [dateOptions] = useState(generateDates);
+  const [selectedDateObj, setSelectedDateObj] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(null);
+  const [duration, setDuration] = useState('1 Hora');
+  
+  const [formData, setFormData] = useState({
+    name: '', lastName: '', company: '', email: '', phone: '', address: '', instructions: '',
+    realizador: '', observaciones: '', extrasDesc: '', costoExtras: '', pagoEditor: ''
+  });
 
   // 🚀 NEW: Auto-cleanup self-editing if the parent service is deselected
   useEffect(() => {
@@ -61,14 +69,6 @@ const [selectedServices, setSelectedServices] = useState([]);
   const togglePostProd = (id) => {
     setPostProdServices(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
   };
-  const [selectedDateObj, setSelectedDateObj] = useState(null);
-  const [selectedTime, setSelectedTime] = useState(null);
-  const [duration, setDuration] = useState('1 Hora');
-  
-  const [formData, setFormData] = useState({
-    name: '', lastName: '', company: '', email: '', phone: '', address: '', instructions: '',
-    realizador: '', observaciones: '', extrasDesc: '', costoExtras: '', pagoEditor: ''
-  });
 
   // Validation State & CRM Memory Engine
   const [fieldStates, setFieldStates] = useState({
@@ -629,7 +629,7 @@ const [selectedServices, setSelectedServices] = useState([]);
               </div>
             </div>
             <div>
-              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Indicaciones (Piso, Depto)</label>
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Indicaciones (Piso, Depto, Torre)</label>
               <input type="text" name="instructions" value={formData.instructions} onChange={handleInputChange} className="w-full bg-[#F4F4F5] border-none py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl outline-none font-medium text-sm" />
             </div>
           </div>
@@ -699,7 +699,7 @@ const [selectedServices, setSelectedServices] = useState([]);
             </div>
           )}
 
-          {/* 🚀 THE EXTRAS DETAILS REVEAL (MOVED TO BELONG WITH SERVICES) */}
+          {/* 🚀 THE EXTRAS DETAILS REVEAL */}
           {selectedServices.includes('EXTRAS') && (
             <div className="mt-4 md:mt-6 p-4 md:p-5 bg-orange-50/50 rounded-xl md:rounded-2xl border border-orange-100 animate-in slide-in-from-top-2 fade-in duration-200">
               <label className="block text-[10px] md:text-xs font-bold text-orange-600 uppercase tracking-widest mb-3">Detalle de Extras</label>

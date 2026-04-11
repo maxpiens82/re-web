@@ -14,6 +14,28 @@ const ICON_MAP = {
   'PLANO': MapIcon, 'TOUR': Compass, 'DRONE': Plane, 'FPV': Crosshair
 };
 
+// 🚀 THE FALLBACK DB: Guarantees instant 0-second load and prevents white screens
+const FALLBACK_DB = {
+  services: [
+    { id: 'FOTO', label: 'Fotografía', price: 40000, isFixed: false, icon: ICON_MAP['FOTO'] },
+    { id: 'VIDEO', label: 'Video Recorrido', price: 45000, isFixed: false, icon: ICON_MAP['VIDEO'] },
+    { id: 'REEL', label: 'Reel Vertical', price: 40000, isFixed: false, icon: ICON_MAP['REEL'] },
+    { id: 'TH', label: 'Talking Head', price: 15000, isFixed: false, icon: ICON_MAP['TH'] },
+    { id: 'PLANO', label: 'Plano 2D', price: 15000, isFixed: false, icon: ICON_MAP['PLANO'] },
+    { id: 'TOUR', label: 'Video Tour', price: 25000, isFixed: false, icon: ICON_MAP['TOUR'] },
+    { id: 'DRONE', label: 'Drone Aéreo', price: 45000, isFixed: true, icon: ICON_MAP['DRONE'] },
+    { id: 'FPV', label: 'Drone FPV', price: 65000, isFixed: true, icon: ICON_MAP['FPV'] }
+  ],
+  multipliers: [
+    { id: 'm100', label: 'Hasta 100m²', value: 1, sheetValue: 100 },
+    { id: 'm200', label: '101 a 200m²', value: 1.25, sheetValue: 200 },
+    { id: 'm300', label: '201 a 300m²', value: 1.5, sheetValue: 300 },
+    { id: 'm400', label: 'Más de 300m²', value: 2, sheetValue: 400 }
+  ],
+  discountThreshold: 3,
+  discountAmount: 5000
+};
+
 const generateDates = () => {
   const options = [];
   const now = new Date();
@@ -48,7 +70,7 @@ export default function Home() {
   }, []);
 
   // ==========================================
-  // 2. SYNCHRONOUS MEMORY LOAD (ZERO FLICKER & NO WHITE SCREENS)
+  // 2. SYNCHRONOUS MEMORY LOAD (ZERO FLICKER)
   // ==========================================
   const [db, setDb] = useState(() => {
     try {
@@ -59,7 +81,7 @@ export default function Home() {
         return parsed;
       }
     } catch (e) { console.error("Cache error, falling back.", e); }
-    return FALLBACK_DB; // 🚀 NEVER RETURNS NULL AGAIN. ZERO WHITE SCREENS.
+    return FALLBACK_DB; // 🚀 NEVER RETURNS NULL. ZERO WHITE SCREENS.
   });
 
   const [isLoadingPrices, setIsLoadingPrices] = useState(false); // 🚀 ALWAYS FALSE. WE ALWAYS HAVE DATA.
@@ -80,28 +102,6 @@ export default function Home() {
 
   const brandColor = "#EB4511";
 
-  // 🚀 THE FALLBACK DB: Guarantees instant 0-second load and prevents white screens
-const FALLBACK_DB = {
-  services: [
-    { id: 'FOTO', label: 'Fotografía', price: 40000, isFixed: false, icon: ICON_MAP['FOTO'] },
-    { id: 'VIDEO', label: 'Video Recorrido', price: 45000, isFixed: false, icon: ICON_MAP['VIDEO'] },
-    { id: 'REEL', label: 'Reel Vertical', price: 40000, isFixed: false, icon: ICON_MAP['REEL'] },
-    { id: 'TH', label: 'Talking Head', price: 15000, isFixed: false, icon: ICON_MAP['TH'] },
-    { id: 'PLANO', label: 'Plano 2D', price: 15000, isFixed: false, icon: ICON_MAP['PLANO'] },
-    { id: 'TOUR', label: 'Video Tour', price: 25000, isFixed: false, icon: ICON_MAP['TOUR'] },
-    { id: 'DRONE', label: 'Drone Aéreo', price: 45000, isFixed: true, icon: ICON_MAP['DRONE'] },
-    { id: 'FPV', label: 'Drone FPV', price: 65000, isFixed: true, icon: ICON_MAP['FPV'] }
-  ],
-  multipliers: [
-    { id: 'm100', label: 'Hasta 100m²', value: 1, sheetValue: 100 },
-    { id: 'm200', label: '101 a 200m²', value: 1.25, sheetValue: 200 },
-    { id: 'm300', label: '201 a 300m²', value: 1.5, sheetValue: 300 },
-    { id: 'm400', label: 'Más de 300m²', value: 2, sheetValue: 400 }
-  ],
-  discountThreshold: 3,
-  discountAmount: 5000
-};
-
   const timeOptions = useMemo(() => [
     '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00',
     '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
@@ -113,6 +113,7 @@ const FALLBACK_DB = {
   // ==========================================
   useEffect(() => {
     const fetchPrices = async () => {
+      // 🚀 NOW HITTING THE V2 RAM CACHE IN GOOGLE APPS SCRIPT
       const GOOGLE_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=init_v2";
       
       try {
@@ -143,14 +144,15 @@ const FALLBACK_DB = {
 
           const freshDb = { services: mappedServices, multipliers: mappedMultipliers, discountThreshold: 3, discountAmount: 5000 };
 
+          // Save pure JSON to memory for their next visit
           localStorage.setItem('re_prices_cache', JSON.stringify(freshDb));
+
+          // Attach icons and update state silently
           freshDb.services = freshDb.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
           setDb(freshDb);
         }
       } catch (error) {
         console.error("Background sync failed:", error);
-      } finally {
-        setIsLoadingPrices(false); 
       }
     };
 
@@ -161,8 +163,6 @@ const FALLBACK_DB = {
   // GOOGLE MAPS AUTOCOMPLETE INITIALIZATION
   // ==========================================
   useEffect(() => {
-    if (isLoadingPrices) return;
-
     if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=es`;
@@ -192,7 +192,7 @@ const FALLBACK_DB = {
         });
       }
     }
-  }, [isLoadingPrices]); 
+  }, []); 
 
   // --- CALCULATION ENGINE ---
   const { total, discountApplied, baseCount } = useMemo(() => {
@@ -314,16 +314,6 @@ const FALLBACK_DB = {
       dateScrollRef.current.scrollBy({ left: 240, behavior: 'smooth' });
     }
   };
-
-  // 🚀 SHOW LOADING STATE ONLY IF CACHE IS EMPTY
-  if (isLoadingPrices || !db) {
-    return (
-      <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center">
-         <div className="w-12 h-12 border-4 border-gray-200 border-t-[#EB4511] rounded-full animate-spin mb-4"></div>
-         <p className="text-gray-500 font-bold tracking-widest uppercase text-sm">Sincronizando Precios...</p>
-      </div>
-    );
-  }
 
   // Check the Vite Environment Variable
   const isPortalEnabled = import.meta.env.VITE_ENABLE_PORTAL === 'true';
