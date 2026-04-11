@@ -48,9 +48,19 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   const [uniqueCompanies, setUniqueCompanies] = useState([]);
   
   // Form State
-  const [selectedServices, setSelectedServices] = useState([]);
+const [selectedServices, setSelectedServices] = useState([]);
+  const [postProdServices, setPostProdServices] = useState([]); // 🚀 NEW: Self-Editing Memory
   const [multiplier, setMultiplier] = useState(1.0);
   const [dateOptions] = useState(generateDates);
+
+  // 🚀 NEW: Auto-cleanup self-editing if the parent service is deselected
+  useEffect(() => {
+    setPostProdServices(prev => prev.filter(id => selectedServices.includes(id)));
+  }, [selectedServices]);
+
+  const togglePostProd = (id) => {
+    setPostProdServices(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+  };
   const [selectedDateObj, setSelectedDateObj] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [duration, setDuration] = useState('1 Hora');
@@ -95,8 +105,8 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       setError(null);
       try {
         const fetchPromises = [
-          fetch(GAS_API_URL + "?api=prices").then(r => r.json()),
-          fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'get_portal_data' }) }).then(r => r.json())
+          fetch(GAS_API_URL + "?api=init_v2").then(r => r.json()), // 🚀 LIVE V2 ENDPOINT
+          fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'get_portal_data_v2' }) }).then(r => r.json()) // 🚀 LIVE V2 ENDPOINT
         ];
 
         if (!isNewBooking) {
@@ -106,21 +116,21 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
         }
 
         const results = await Promise.all(fetchPromises);
-        const priceData = results[0];
+        const initData = results[0];
         const portalData = results[1];
         const detailData = isNewBooking ? { success: true, data: {} } : results[2];
 
-        if (priceData.success && detailData.success && portalData.success) {
-          const mappedServices = priceData.services.map(s => ({ id: s.id, label: s.id, price: s.price, isFixed: s.isFixed }));
-          const mappedMultipliers = priceData.multipliers.map((m, idx) => {
+        if (initData.success && detailData.success && portalData.success) {
+          const mappedServices = initData.prices.services.map(s => ({ id: s.id, label: s.id, price: s.price, isFixed: s.isFixed }));
+          const mappedMultipliers = initData.prices.multipliers.map((m, idx) => {
             let label = `Hasta ${m.sheetValue}m²`;
-            if (idx > 0) label = `${parseInt(priceData.multipliers[idx - 1].sheetValue) + 1} a ${m.sheetValue}m²`;
-            if (idx === priceData.multipliers.length - 1) label = `Más de ${priceData.multipliers[idx - 1].sheetValue}m²`;
+            if (idx > 0) label = `${parseInt(initData.prices.multipliers[idx - 1].sheetValue) + 1} a ${m.sheetValue}m²`;
+            if (idx === initData.prices.multipliers.length - 1) label = `Más de ${initData.prices.multipliers[idx - 1].sheetValue}m²`;
             return { id: `m${m.sheetValue}`, label, value: m.value, sheetValue: m.sheetValue };
           });
           
           setDb({ services: mappedServices, multipliers: mappedMultipliers, discountThreshold: 3, discountAmount: 5000 });
-          setConfig(portalData.config || {});
+          setConfig(initData.config || {}); // 🚀 EXTRACTED FROM INIT_V2
           
           const clients = portalData.clients || [];
           setClientDb(clients);
@@ -409,6 +419,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       duracion: duration,
       metrosCuadrados: db.multipliers.find(m => m.value === multiplier)?.sheetValue || '100',
       selectedServices: selectedServices,
+      postProdServices: postProdServices, // 🚀 NEW: Sends Self-Editing preferences to GAS Checkout
       extrasDescripcion: formData.extrasDesc,
       costoExtras: formData.costoExtras,
       pagoEditorExtras: formData.pagoEditor,
@@ -657,6 +668,36 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
               </button>
             )}
           </div>
+
+          {/* 🚀 POST-PRODUCCIÓN PROPIA REVEAL */}
+          {selectedServices.filter(s => s !== 'EXTRAS').length > 0 && (
+            <div className="mt-4 md:mt-6 p-4 md:p-5 bg-indigo-50/30 rounded-xl md:rounded-2xl border border-indigo-100 animate-in slide-in-from-top-2 fade-in duration-200">
+              <label className="block text-[10px] md:text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">
+                ¿Vas a post-producir alguno de estos servicios?
+              </label>
+              <div className="flex flex-wrap gap-2 md:gap-3">
+                {selectedServices.filter(s => s !== 'EXTRAS').map((srv) => {
+                  const isSelfEdited = postProdServices.includes(srv);
+                  return (
+                    <button
+                      key={`pp-${srv}`}
+                      type="button"
+                      onClick={() => togglePostProd(srv)}
+                      className={`px-4 py-2 rounded-full font-bold text-[10px] md:text-xs tracking-wide transition-all select-none border
+                        ${isSelfEdited 
+                          ? 'bg-indigo-500 text-white border-indigo-500 shadow-md transform -translate-y-0.5' 
+                          : 'bg-white text-indigo-400 border-indigo-200 hover:bg-indigo-50'}`}
+                    >
+                      {isSelfEdited ? '✓ ' : ''}{srv}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-indigo-400 mt-3 font-medium leading-relaxed">
+                * Al marcar un servicio, se te asignará automáticamente la edición en Archivo y no se generará una carpeta de Crudos.
+              </p>
+            </div>
+          )}
 
           {/* 🚀 THE EXTRAS DETAILS REVEAL (MOVED TO BELONG WITH SERVICES) */}
           {selectedServices.includes('EXTRAS') && (

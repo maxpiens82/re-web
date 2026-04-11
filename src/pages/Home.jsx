@@ -48,25 +48,21 @@ export default function Home() {
   }, []);
 
   // ==========================================
-  // 2. SYNCHRONOUS MEMORY LOAD (ZERO FLICKER)
+  // 2. SYNCHRONOUS MEMORY LOAD (ZERO FLICKER & NO WHITE SCREENS)
   // ==========================================
   const [db, setDb] = useState(() => {
     try {
       const cached = localStorage.getItem('re_prices_cache');
       if (cached) {
         const parsed = JSON.parse(cached);
-        // Reattach icons instantly before the screen even draws
         parsed.services = parsed.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
         return parsed;
       }
-    } catch (e) { console.error(e); }
-    return null;
+    } catch (e) { console.error("Cache error, falling back.", e); }
+    return FALLBACK_DB; // 🚀 NEVER RETURNS NULL AGAIN. ZERO WHITE SCREENS.
   });
 
-  // If db loaded successfully from memory, loading is FALSE instantly. No spinner.
-  const [isLoadingPrices, setIsLoadingPrices] = useState(() => {
-    return localStorage.getItem('re_prices_cache') ? false : true;
-  });
+  const [isLoadingPrices, setIsLoadingPrices] = useState(false); // 🚀 ALWAYS FALSE. WE ALWAYS HAVE DATA.
 
   // Date & Time Picker State
   const [dateOptions] = useState(generateDates);
@@ -84,6 +80,28 @@ export default function Home() {
 
   const brandColor = "#EB4511";
 
+  // 🚀 THE FALLBACK DB: Guarantees instant 0-second load and prevents white screens
+const FALLBACK_DB = {
+  services: [
+    { id: 'FOTO', label: 'Fotografía', price: 40000, isFixed: false, icon: ICON_MAP['FOTO'] },
+    { id: 'VIDEO', label: 'Video Recorrido', price: 45000, isFixed: false, icon: ICON_MAP['VIDEO'] },
+    { id: 'REEL', label: 'Reel Vertical', price: 40000, isFixed: false, icon: ICON_MAP['REEL'] },
+    { id: 'TH', label: 'Talking Head', price: 15000, isFixed: false, icon: ICON_MAP['TH'] },
+    { id: 'PLANO', label: 'Plano 2D', price: 15000, isFixed: false, icon: ICON_MAP['PLANO'] },
+    { id: 'TOUR', label: 'Video Tour', price: 25000, isFixed: false, icon: ICON_MAP['TOUR'] },
+    { id: 'DRONE', label: 'Drone Aéreo', price: 45000, isFixed: true, icon: ICON_MAP['DRONE'] },
+    { id: 'FPV', label: 'Drone FPV', price: 65000, isFixed: true, icon: ICON_MAP['FPV'] }
+  ],
+  multipliers: [
+    { id: 'm100', label: 'Hasta 100m²', value: 1, sheetValue: 100 },
+    { id: 'm200', label: '101 a 200m²', value: 1.25, sheetValue: 200 },
+    { id: 'm300', label: '201 a 300m²', value: 1.5, sheetValue: 300 },
+    { id: 'm400', label: 'Más de 300m²', value: 2, sheetValue: 400 }
+  ],
+  discountThreshold: 3,
+  discountAmount: 5000
+};
+
   const timeOptions = useMemo(() => [
     '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00',
     '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
@@ -95,14 +113,14 @@ export default function Home() {
   // ==========================================
   useEffect(() => {
     const fetchPrices = async () => {
-      const GOOGLE_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=prices";
+      const GOOGLE_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=init_v2";
       
       try {
         const response = await fetch(GOOGLE_URL);
         const data = await response.json();
         
         if (data.success) {
-          const mappedServices = data.services.map(s => ({
+          const mappedServices = data.prices.services.map(s => ({
             id: s.id,
             label: s.id === 'TH' ? 'Talking Head' : 
                    s.id === 'FOTO' ? 'Fotografía' : 
@@ -116,19 +134,16 @@ export default function Home() {
             isFixed: s.isFixed
           }));
 
-          const mappedMultipliers = data.multipliers.map((m, index) => {
+          const mappedMultipliers = data.prices.multipliers.map((m, index) => {
             let label = `Hasta ${m.sheetValue}m²`;
-            if (index > 0) label = `${parseInt(data.multipliers[index - 1].sheetValue) + 1} a ${m.sheetValue}m²`;
-            if (index === data.multipliers.length - 1) label = `Más de ${data.multipliers[index - 1].sheetValue}m²`;
+            if (index > 0) label = `${parseInt(data.prices.multipliers[index - 1].sheetValue) + 1} a ${m.sheetValue}m²`;
+            if (index === data.prices.multipliers.length - 1) label = `Más de ${data.prices.multipliers[index - 1].sheetValue}m²`;
             return { id: `m${m.sheetValue}`, label, value: m.value, sheetValue: m.sheetValue };
           });
 
           const freshDb = { services: mappedServices, multipliers: mappedMultipliers, discountThreshold: 3, discountAmount: 5000 };
 
-          // Save pure JSON to memory for their next visit
           localStorage.setItem('re_prices_cache', JSON.stringify(freshDb));
-
-          // Attach icons and update state silently
           freshDb.services = freshDb.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
           setDb(freshDb);
         }
