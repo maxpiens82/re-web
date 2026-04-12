@@ -372,7 +372,7 @@ export default function Home() {
               }}
             />
             <h1 className="text-xl md:text-2xl font-semibold tracking-wide opacity-90 uppercase">
-              Simulador de Presupuestos
+              Simulador de Precios
             </h1>
           </div>
           
@@ -382,7 +382,7 @@ export default function Home() {
       {/* 🚀 THE SLIDING CARDS */}
       <main 
         className="relative z-10 max-w-4xl mx-auto px-4 space-y-6 animate-cards"
-        style={{ marginTop: window.innerWidth < 768 ? '52vh' : '45vh' }}
+        style={{ marginTop: window.innerWidth < 768 ? '380px' : '45vh' }}
       >
         
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
