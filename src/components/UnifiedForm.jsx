@@ -1,5 +1,5 @@
 import LoadingLogo from './LoadingLogo';
-import BreatheLogo from './BreatheLogo';
+import MiniLogo from './MiniLogo';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Camera, Video, Clapperboard, Mic, Map as MapIcon, Compass, Plane, Crosshair,
@@ -60,7 +60,8 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   
   const [formData, setFormData] = useState({
     name: '', lastName: '', company: '', email: '', phone: '', address: '', instructions: '',
-    realizador: '', observaciones: '', extrasDesc: '', costoExtras: '', pagoEditor: ''
+    realizador: '', observaciones: '', extrasDesc: '', costoExtras: '', pagoEditor: '',
+    modalidadPago: 'Individual'
   });
 
   // 🚀 NEW: Auto-cleanup self-editing if the parent service is deselected
@@ -181,7 +182,8 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       email: data.email || '', phone: data.telefono ? String(data.telefono).replace(/[^0-9+]/g, '') : '',
       address: data.locacionFormateada || data.locacion || '', instructions: data.indicaciones || '',
       realizador: data.realizacion || '', observaciones: data.observaciones || '',
-      extrasDesc: data.extrasDescripcion || '', costoExtras: data.costoExtras || '', pagoEditor: data.pagoEditorExtras || ''
+      extrasDesc: data.extrasDescripcion || '', costoExtras: data.costoExtras || '', pagoEditor: data.pagoEditorExtras || '',
+      modalidadPago: data.modalidadPago || 'Individual'
     });
   };
 
@@ -358,7 +360,10 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   };
 
   const selectClient = (c) => {
-    setFormData(prev => ({ ...prev, name: c.nombre, lastName: c.apellido, company: c.empresa, email: c.email, phone: c.telefono }));
+    setFormData(prev => ({ 
+      ...prev, name: c.nombre, lastName: c.apellido, company: c.empresa, 
+      email: c.email, phone: c.telefono, modalidadPago: c.modalidadPago || 'Individual' 
+    }));
     setClientSearchQuery('');
     setClientSuggestions([]);
   };
@@ -425,6 +430,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       extrasDescripcion: formData.extrasDesc,
       costoExtras: formData.costoExtras,
       pagoEditorExtras: formData.pagoEditor,
+      modalidadPago: formData.modalidadPago,
       skipValidation: true,
       
       descripcionServicio: selectedServices.join(', '),
@@ -534,7 +540,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
         <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-4 md:mb-6 flex justify-between items-center">
             <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>Cliente & Contacto</h2>
-            <button className="text-[10px] md:text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 md:px-3 md:py-1 rounded-md transition-colors" onClick={() => setFieldStates({ name: 'existing', lastName: 'existing', company: 'existing', email: 'existing', phone: 'existing' })}>💾 Forzar Guardado</button>
+            <button className="text-[10px] md:text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 md:px-3 md:py-1 rounded-md transition-colors" onClick={() => setFieldStates({ name: 'existing', lastName: 'existing', company: 'existing', email: 'existing', phone: 'existing' })}>💾 Modificar cliente</button>
           </div>
 
           {/* DEDICATED SEARCH BAR */}
@@ -608,6 +614,21 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
                 <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-sm pr-24 md:pr-28" style={getFieldStyle('email')} />
                 {renderSwapButton('email', 'email')}
               </div>
+            </div>
+            {/* 🚀 MODALIDAD DE PAGO (B2B) */}
+            <div className="sm:col-span-2 mt-2 p-3 md:p-4 bg-[#FAF5FF] border border-[#D6BCFA] rounded-xl md:rounded-2xl shadow-sm">
+              <label className="block text-[10px] md:text-xs font-bold text-[#6B46C1] uppercase tracking-widest mb-2">
+                Modalidad de Pago (Cobranzas)
+              </label>
+              <select 
+                name="modalidadPago" 
+                value={formData.modalidadPago} 
+                onChange={handleInputChange} 
+                className="w-full bg-white border border-[#B794F4] text-[#44337A] py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl focus:ring-2 focus:ring-[#9F7AEA]/30 font-bold outline-none text-xs md:text-sm transition-all cursor-pointer"
+              >
+                <option value="Individual">Individual (Cobro Directo al Cliente)</option>
+                <option value="Corporativo">Corporativo (Cobro Consolidado a la Empresa)</option>
+              </select>
             </div>
           </div>
         </section>
@@ -799,10 +820,10 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
             <button 
               onClick={() => handleFormSubmit('create_booking')}
               disabled={isSubmitting}
-              className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm transition-all disabled:opacity-50 text-center" 
+              className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm transition-all disabled:opacity-50 text-center flex items-center justify-center" 
               style={{ backgroundColor: brandColor }}
             >
-              {isSubmitting ? '...' : 'Cargar Reserva'}
+              {isSubmitting ? <><MiniLogo /> Procesando</> : 'Cargar Reserva'}
             </button>
           ) : isWebRequest ? (
             <>
@@ -810,9 +831,9 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
               <button 
                 onClick={() => handleFormSubmit('update_booking')}
                 disabled={isSubmitting}
-                className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-yellow-500 text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm transition-all disabled:opacity-50 text-center"
+                className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-yellow-500 text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm transition-all disabled:opacity-50 text-center flex items-center justify-center"
               >
-                {isSubmitting ? '...' : 'Aprobar'}
+                {isSubmitting ? <><MiniLogo /> Aprobando</> : 'Aprobar'}
               </button>
             </>
           ) : (
@@ -820,18 +841,18 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
               <button 
                 onClick={() => handleFormSubmit('checkout_booking')}
                 disabled={isSubmitting}
-                className="flex-1 md:flex-none px-2 py-3 md:px-8 md:py-3.5 bg-white border-2 border-green-500 text-green-600 font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide transition-colors disabled:opacity-50 whitespace-nowrap text-center"
+                className="flex-1 md:flex-none px-2 py-3 md:px-8 md:py-3.5 bg-white border-2 border-green-500 text-green-600 font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide transition-colors disabled:opacity-50 whitespace-nowrap text-center flex items-center justify-center"
               >
-                {isSubmitting ? '...' : 'Checkout'}
+                {isSubmitting ? <><MiniLogo /> Procesando</> : 'Checkout'}
               </button>
               
               <button 
                 onClick={() => handleFormSubmit('update_booking')}
                 disabled={isSubmitting}
-                className="flex-1 md:flex-none px-2 py-3 md:px-8 md:py-3.5 text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm transition-all disabled:opacity-50 text-center" 
+                className="flex-1 md:flex-none px-2 py-3 md:px-8 md:py-3.5 text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm transition-all disabled:opacity-50 text-center flex items-center justify-center" 
                 style={{ backgroundColor: brandColor }}
               >
-                {isSubmitting ? '...' : 'Actualizar'}
+                {isSubmitting ? <><MiniLogo /> Guardando</> : 'Actualizar'}
               </button>
             </>
           )}

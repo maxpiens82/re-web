@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+/* 1. Slide-up fade for the white cards */
+@keyframes slideUpFade {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-cards {
+  animation: slideUpFade 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 2. Soft fade for the logo text so it doesn't jump */
+@keyframes softFade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-logo {
+  animation: softFade 1s ease-out forwards;
+}

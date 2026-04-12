@@ -1,3 +1,4 @@
+import MiniLogo from '../components/MiniLogo';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -311,8 +312,7 @@ export default function Home() {
 
   // 🚀 RENDER MAIN UI
   return (
-    <div className="min-h-screen text-[#2d2d2d] font-sans pb-32 bg-[#F0F2F5]">
-      
+    <div className="min-h-screen text-[#2d2d2d] font-sans pb-32 bg-[#F0F2F5]">  
       {/* 🚀 THE FIXED "ROOF" (NAV BAR) */}
       {isPortalEnabled && (
         <div className="fixed top-0 left-0 w-full z-50 bg-[#1a1a1a] text-white px-6 py-3 flex justify-between items-center text-sm font-bold tracking-wide shadow-lg">
@@ -332,7 +332,7 @@ export default function Home() {
         style={{ backgroundColor: brandColor, height: '60vh' }}
       >
         <div 
-          className="w-full max-w-4xl mx-auto flex flex-col items-center will-change-transform"
+          className="w-full max-w-4xl mx-auto flex flex-col items-center will-change-transform animate-logo"
           style={{ 
             transform: `scale(${Math.max(0.7, 1 - scrollY / 400)})`,
             opacity: Math.max(0, 1 - scrollY / 250),
@@ -342,7 +342,7 @@ export default function Home() {
           <img 
             src="https://lh3.googleusercontent.com/d/1oHw3lpx4-EAI59BDMccfjPl_I529xqWU" 
             alt="RE! Contenido Audiovisual" 
-            className="w-[280px] sm:w-[340px] md:w-[480px] h-auto object-contain mb-2 md:mb-1"
+            className="w-full max-w-[480px] h-auto object-contain mb-1"
             onError={(e) => {
               e.target.onerror = null; 
               e.target.src = "https://placehold.co/600x200/EB4511/FFFFFF/png?text=RE!+Contenido+Audiovisual";
@@ -356,8 +356,8 @@ export default function Home() {
 
       {/* 🚀 THE SLIDING CARDS */}
       <main 
-        className="relative z-10 max-w-4xl mx-auto px-4 space-y-6"
-        style={{ marginTop: '45vh' }}
+        className="relative z-10 max-w-4xl mx-auto px-4 space-y-6 animate-cards"
+        style={{ marginTop: window.innerWidth < 768 ? '52vh' : '45vh' }}
       >
         
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
@@ -647,13 +647,7 @@ export default function Home() {
               style={{ backgroundColor: total === 0 ? undefined : brandColor }}
             >
               {isSubmitting ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Enviando
-                </>
+                <><MiniLogo /> Procesando...</>
               ) : (
                 'Solicitar Reserva'
               )}
