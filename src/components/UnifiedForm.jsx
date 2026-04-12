@@ -667,37 +667,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
                 EXTRAS
               </button>
             )}
-          </div>
-
-          {/* 🚀 POST-PRODUCCIÓN PROPIA REVEAL */}
-          {selectedServices.filter(s => s !== 'EXTRAS').length > 0 && (
-            <div className="mt-4 md:mt-6 p-4 md:p-5 bg-indigo-50/30 rounded-xl md:rounded-2xl border border-indigo-100 animate-in slide-in-from-top-2 fade-in duration-200">
-              <label className="block text-[10px] md:text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">
-                ¿Vas a post-producir alguno de estos servicios?
-              </label>
-              <div className="flex flex-wrap gap-2 md:gap-3">
-                {selectedServices.filter(s => s !== 'EXTRAS').map((srv) => {
-                  const isSelfEdited = postProdServices.includes(srv);
-                  return (
-                    <button
-                      key={`pp-${srv}`}
-                      type="button"
-                      onClick={() => togglePostProd(srv)}
-                      className={`px-4 py-2 rounded-full font-bold text-[10px] md:text-xs tracking-wide transition-all select-none border
-                        ${isSelfEdited 
-                          ? 'bg-indigo-500 text-white border-indigo-500 shadow-md transform -translate-y-0.5' 
-                          : 'bg-white text-indigo-400 border-indigo-200 hover:bg-indigo-50'}`}
-                    >
-                      {isSelfEdited ? '✓ ' : ''}{srv}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[10px] text-indigo-400 mt-3 font-medium leading-relaxed">
-                * Al marcar un servicio, se te asignará automáticamente la edición en Archivo y no se generará una carpeta de Crudos.
-              </p>
-            </div>
-          )}
+          </div>          
 
           {/* 🚀 THE EXTRAS DETAILS REVEAL */}
           {selectedServices.includes('EXTRAS') && (
@@ -728,6 +698,37 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
             </div>
           )}
         </section>
+
+        {/* 🚀 POST-PRODUCCIÓN PROPIA CARD */}
+        {selectedServices.filter(s => s !== 'EXTRAS').length > 0 && (
+          <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100 animate-in slide-in-from-top-2 fade-in duration-200">
+            <div className="mb-4 md:mb-6">
+              <h2 className="text-base md:text-lg font-bold uppercase text-[#38a169]">
+                ¿Vas a post-producir alguno de estos servicios?
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:flex md:flex-wrap gap-2 md:gap-3">
+              {selectedServices.filter(s => s !== 'EXTRAS').map((srv) => {
+                const isSelfEdited = postProdServices.includes(srv);
+                return (
+                  <button
+                    key={`pp-${srv}`}
+                    type="button"
+                    onClick={() => togglePostProd(srv)}
+                    className={`w-full h-[36px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none
+                      ${isSelfEdited 
+                        ? 'text-white shadow-[0_4px_14px_rgba(56,161,105,0.35)] -translate-y-0.5' 
+                        : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}
+                    style={isSelfEdited ? { backgroundColor: '#38a169' } : {}}
+                  >
+                    {srv}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* 4. FECHA Y HORA */}
         <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100">
