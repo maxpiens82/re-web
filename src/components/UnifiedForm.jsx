@@ -1,4 +1,5 @@
 import LoadingLogo from './LoadingLogo';
+import BreatheLogo from './BreatheLogo';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Camera, Video, Clapperboard, Mic, Map as MapIcon, Compass, Plane, Crosshair,

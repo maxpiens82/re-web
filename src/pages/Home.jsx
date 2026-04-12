@@ -332,7 +332,7 @@ export default function Home() {
         style={{ backgroundColor: brandColor, height: '60vh' }}
       >
         <div 
-          className="max-w-4xl mx-auto flex flex-col items-center will-change-transform"
+          className="w-full max-w-4xl mx-auto flex flex-col items-center will-change-transform"
           style={{ 
             transform: `scale(${Math.max(0.7, 1 - scrollY / 400)})`,
             opacity: Math.max(0, 1 - scrollY / 250),
@@ -342,7 +342,7 @@ export default function Home() {
           <img 
             src="https://lh3.googleusercontent.com/d/1oHw3lpx4-EAI59BDMccfjPl_I529xqWU" 
             alt="RE! Contenido Audiovisual" 
-            className="w-full max-w-[480px] h-auto object-contain mb-1"
+            className="w-[280px] sm:w-[340px] md:w-[480px] h-auto object-contain mb-2 md:mb-1"
             onError={(e) => {
               e.target.onerror = null; 
               e.target.src = "https://placehold.co/600x200/EB4511/FFFFFF/png?text=RE!+Contenido+Audiovisual";
