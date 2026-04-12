@@ -234,14 +234,33 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !selectedDateObj || !selectedTime) {
-      alert("⚠️ Por favor, ingresa tu nombre y selecciona una fecha y hora preferida.");
+    // 1. Strict Validation: Contact Info
+    if (!formData.name.trim()) { alert("⚠️ Por favor, ingresa tu Nombre y Apellido."); return; }
+    if (!formData.company.trim()) { alert("⚠️ Por favor, ingresa tu Empresa o Inmobiliaria (o escribe 'Particular')."); return; }
+    if (!formData.email.trim()) { alert("⚠️ Por favor, ingresa tu Correo Electrónico."); return; }
+    if (!formData.phone.trim()) { alert("⚠️ Por favor, ingresa tu Teléfono (WhatsApp)."); return; }
+    
+    // 2. Strict Validation: Address
+    if (!formData.address.trim()) { alert("⚠️ Por favor, ingresa la Dirección de la propiedad."); return; }
+    if (!isAddressValid) {
+      alert("📍 Por favor, selecciona la dirección desde las sugerencias de Google Maps para asegurar que sea válida.");
+      if(addressInputRef.current) addressInputRef.current.focus();
       return;
     }
 
-    if (!isAddressValid) {
-      alert("📍 Por favor, selecciona una dirección válida de las sugerencias de Google Maps.");
-      if(addressInputRef.current) addressInputRef.current.focus();
+    // 3. Strict Validation: Date & Time
+    if (!selectedDateObj) { alert("⚠️ Por favor, selecciona una Fecha."); return; }
+    if (!selectedTime) { alert("⚠️ Por favor, selecciona una Hora."); return; }
+
+    // 4. Strict Validation: Services (Must have at least one base service or EXTRAS)
+    if (selectedServices.length === 0) {
+      alert("⚠️ Por favor, selecciona al menos un Servicio.");
+      return;
+    }
+    
+    // If they selected EXTRAS, force them to explain what it is
+    if (selectedServices.includes('EXTRAS') && (!formData.extrasDesc || formData.extrasDesc.trim() === '')) {
+      alert("⚠️ Has seleccionado 'EXTRAS'. Por favor describe qué necesitas en el campo de texto.");
       return;
     }
 
@@ -331,26 +350,32 @@ export default function Home() {
         className="fixed top-0 left-0 w-full text-white pt-6 pb-32 px-6 text-center overflow-hidden z-0"
         style={{ backgroundColor: brandColor, height: '60vh' }}
       >
-        <div 
-          className="w-full max-w-4xl mx-auto flex flex-col items-center will-change-transform animate-logo"
-          style={{ 
-            transform: `scale(${Math.max(0.7, 1 - scrollY / 400)})`,
-            opacity: Math.max(0, 1 - scrollY / 250),
-            transformOrigin: 'center center'
-          }}
-        >
-          <img 
-            src="https://lh3.googleusercontent.com/d/1oHw3lpx4-EAI59BDMccfjPl_I529xqWU" 
-            alt="RE! Contenido Audiovisual" 
-            className="w-full max-w-[480px] h-auto object-contain mb-1"
-            onError={(e) => {
-              e.target.onerror = null; 
-              e.target.src = "https://placehold.co/600x200/EB4511/FFFFFF/png?text=RE!+Contenido+Audiovisual";
+        {/* OUTSIDE: Handles the 1-second entrance fade-in safely */}
+        <div className="w-full animate-logo">
+          
+          {/* INSIDE: Handles the Parallax Scroll fade-out seamlessly */}
+          <div 
+            className="max-w-4xl mx-auto flex flex-col items-center will-change-transform"
+            style={{ 
+              transform: `scale(${Math.max(0.7, 1 - scrollY / 400)})`,
+              opacity: Math.max(0, 1 - scrollY / 250),
+              transformOrigin: 'center center'
             }}
-          />
-          <h1 className="text-xl md:text-2xl font-semibold tracking-wide opacity-90 uppercase">
-            Simulador de Presupuestos
-          </h1>
+          >
+            <img 
+              src="https://lh3.googleusercontent.com/d/1oHw3lpx4-EAI59BDMccfjPl_I529xqWU" 
+              alt="RE! Contenido Audiovisual" 
+              className="w-[280px] sm:w-[340px] md:w-[480px] h-auto object-contain mb-2 md:mb-1"
+              onError={(e) => {
+                e.target.onerror = null; 
+                e.target.src = "https://placehold.co/600x200/EB4511/FFFFFF/png?text=RE!+Contenido+Audiovisual";
+              }}
+            />
+            <h1 className="text-xl md:text-2xl font-semibold tracking-wide opacity-90 uppercase">
+              Simulador de Presupuestos
+            </h1>
+          </div>
+          
         </div>
       </header>
 

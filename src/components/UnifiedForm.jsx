@@ -403,6 +403,24 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   const handleFormSubmit = async (actionType) => {
     setIsSubmitting(true);
 
+    // 🚀 CRM CHECKOUT GATEKEEPER
+    if (actionType === 'checkout_booking') {
+      // 1. No fields can be Yellow (modified)
+      const hasYellowFields = Object.values(fieldStates).some(state => state === 'modified');
+      if (hasYellowFields) {
+        alert("⚠️ Hay datos de cliente modificados (en amarillo). Por favor, revierte los cambios o haz clic en '💾 Forzar Guardado' para actualizar la base de datos antes de hacer el checkout.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Name, Company, and Phone MUST be Green (existing)
+      if (fieldStates.name !== 'existing' || fieldStates.company !== 'existing' || fieldStates.phone !== 'existing') {
+        alert("⚠️ Para hacer Checkout, el Nombre, Empresa y Teléfono deben estar registrados (en verde). Selecciona un cliente de la lista o haz clic en '💾 Forzar Guardado' para registrarlo.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     // Intercept and clean the "SOLICITUD WEB" status text
     let finalObservaciones = formData.observaciones;
     if (actionType === 'update_booking' && String(finalObservaciones).includes('SOLICITUD WEB - Pendiente')) {
