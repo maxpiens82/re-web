@@ -90,8 +90,7 @@ export default function Home() {
   const [dateOptions] = useState(generateDates);
   const [selectedDateObj, setSelectedDateObj] = useState(dateOptions[0]);
   const [selectedTime, setSelectedTime] = useState(null);
-  const [duration, setDuration] = useState('1 Hora');
-
+  
   const dateScrollRef = useRef(null);
   const addressInputRef = useRef(null);
   const autocompleteRef = useRef(null);
@@ -260,8 +259,8 @@ export default function Home() {
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
-        instructions: formData.instructions + (duration ? ` (Duración estimada: ${duration})` : ''),
-        datetime: validIsoDateTime, // <--- THE BUG FIX
+        instructions: formData.instructions,
+        datetime: validIsoDateTime,
         services: selectedServices,
         multiplierLabel: db.multipliers.find(m => m.value === multiplier)?.sheetValue || '100',
         total: total
@@ -546,31 +545,7 @@ export default function Home() {
                   )
                 })}
               </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            <div>
-              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
-                Duración Estimada
-              </label>
-              <div className="relative">
-                <select 
-                  className="w-full appearance-none bg-[#F4F4F5] border-none text-gray-800 py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors cursor-pointer font-medium text-sm"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                >
-                  <option value="1 Hora">1 Hora</option>
-                  <option value="1.5 Horas">1.5 Horas</option>
-                  <option value="2 Horas">2 Horas</option>
-                  <option value="3 Horas">3 Horas</option>
-                  <option value="Jornada Completa">Jornada Completa</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                </div>
-              </div>
-            </div>
+            </div>      
 
           </div>
         </section>
@@ -707,8 +682,7 @@ export default function Home() {
                   setMultiplier(1.0);
                   setIsAddressValid(false);
                   setSelectedDateObj(dateOptions[0]); 
-                  setSelectedTime(null);
-                  setDuration('1 Hora');
+                  setSelectedTime(null);                  
                   if(dateScrollRef.current) dateScrollRef.current.scrollTo({ left: 0 });
                 }}
                 className="w-full text-white font-bold py-3.5 px-6 rounded-full transition-transform hover:-translate-y-0.5 active:translate-y-0 uppercase text-sm tracking-wide"
