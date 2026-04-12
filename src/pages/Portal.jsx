@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User } from 'lucide-react';
 import UnifiedForm from '../components/UnifiedForm';
+import LoadingLogo from '../components/LoadingLogo';
 
 // Make sure this is your actual GAS URL!
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec";
@@ -93,10 +94,7 @@ export default function Portal() {
         {/* Lists */}
         <div className="flex-1 overflow-y-auto p-3 space-y-5 bg-gray-50/50">
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
-              <Loader2 className="animate-spin mb-2" size={24} />
-              <span className="text-sm font-bold uppercase tracking-wider">Sincronizando...</span>
-            </div>
+            <LoadingLogo message="Sincronizando..." />
           ) : (
             <>
               {/* Web Requests */}

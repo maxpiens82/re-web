@@ -17,14 +17,14 @@ const ICON_MAP = {
 // 🚀 THE FALLBACK DB: Guarantees instant 0-second load and prevents white screens
 const FALLBACK_DB = {
   services: [
-    { id: 'FOTO', label: 'Fotografía', price: 40000, isFixed: false, icon: ICON_MAP['FOTO'] },
-    { id: 'VIDEO', label: 'Video Recorrido', price: 45000, isFixed: false, icon: ICON_MAP['VIDEO'] },
-    { id: 'REEL', label: 'Reel Vertical', price: 40000, isFixed: false, icon: ICON_MAP['REEL'] },
-    { id: 'TH', label: 'Talking Head', price: 15000, isFixed: false, icon: ICON_MAP['TH'] },
-    { id: 'PLANO', label: 'Plano 2D', price: 15000, isFixed: false, icon: ICON_MAP['PLANO'] },
-    { id: 'TOUR', label: 'Video Tour', price: 25000, isFixed: false, icon: ICON_MAP['TOUR'] },
-    { id: 'DRONE', label: 'Drone Aéreo', price: 45000, isFixed: true, icon: ICON_MAP['DRONE'] },
-    { id: 'FPV', label: 'Drone FPV', price: 65000, isFixed: true, icon: ICON_MAP['FPV'] }
+    { id: 'FOTO', price: 40000, isFixed: false, icon: ICON_MAP['FOTO'] },
+    { id: 'VIDEO', price: 45000, isFixed: false, icon: ICON_MAP['VIDEO'] },
+    { id: 'REEL', price: 40000, isFixed: false, icon: ICON_MAP['REEL'] },
+    { id: 'TH', price: 15000, isFixed: false, icon: ICON_MAP['TH'] },
+    { id: 'PLANO', price: 15000, isFixed: false, icon: ICON_MAP['PLANO'] },
+    { id: 'TOUR', price: 25000, isFixed: false, icon: ICON_MAP['TOUR'] },
+    { id: 'DRONE', price: 45000, isFixed: true, icon: ICON_MAP['DRONE'] },
+    { id: 'FPV', price: 65000, isFixed: true, icon: ICON_MAP['FPV'] }
   ],
   multipliers: [
     { id: 'm100', label: 'Hasta 100m²', value: 1, sheetValue: 100 },
@@ -123,14 +123,6 @@ export default function Home() {
         if (data.success) {
           const mappedServices = data.prices.services.map(s => ({
             id: s.id,
-            label: s.id === 'TH' ? 'Talking Head' : 
-                   s.id === 'FOTO' ? 'Fotografía' : 
-                   s.id === 'VIDEO' ? 'Video Recorrido' : 
-                   s.id === 'REEL' ? 'Reel Vertical' : 
-                   s.id === 'PLANO' ? 'Plano 2D' : 
-                   s.id === 'TOUR' ? 'Video Tour' : 
-                   s.id === 'DRONE' ? 'Drone Aéreo' : 
-                   s.id === 'FPV' ? 'Drone FPV' : s.id,
             price: s.price,
             isFixed: s.isFixed
           }));

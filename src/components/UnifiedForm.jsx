@@ -1,3 +1,4 @@
+import LoadingLogo from './LoadingLogo';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Camera, Video, Clapperboard, Mic, Map as MapIcon, Compass, Plane, Crosshair,
@@ -473,9 +474,8 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   };
 
   if (loading || !db) return (
-    <div className="flex flex-col items-center justify-center h-full w-full bg-white rounded-3xl shadow-xl">
-      <Loader2 className="animate-spin mb-4" style={{ color: brandColor }} size={40} />
-      <p className="font-bold uppercase text-gray-500 tracking-wider">Cargando Formulario...</p>
+    <div className="h-full w-full bg-white rounded-3xl shadow-xl overflow-hidden flex items-center justify-center">
+      <LoadingLogo message="Cargando Formulario..." />
     </div>
   );
 
