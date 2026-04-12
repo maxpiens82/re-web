@@ -381,8 +381,7 @@ export default function Home() {
 
       {/* 🚀 THE SLIDING CARDS */}
       <main 
-        className="relative z-10 max-w-4xl mx-auto px-4 space-y-6 animate-cards"
-        style={{ marginTop: window.innerWidth < 768 ? '380px' : '45vh' }}
+        className="relative z-10 max-w-4xl mx-auto px-4 space-y-6 animate-cards mt-[280px] sm:mt-[320px] md:mt-[45vh]"
       >
         
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
