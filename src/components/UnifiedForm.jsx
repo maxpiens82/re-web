@@ -96,7 +96,8 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   const brandColor = "#EB4511"; 
 
   const isNewBooking = jobId === 'NEW';
-  const isWebRequest = jobId.startsWith('REQ-');
+  // 🚀 BOTH Web Requests AND Voice Bookings should trigger the "Aprobar/Rechazar" UI
+  const isWebRequest = jobId.startsWith('REQ-') || jobId.startsWith('VOZ-');
   const modeTitle = isNewBooking ? "Nueva Reserva" : (isWebRequest ? "Aprobar Solicitud Web" : "Detalle de Reserva");
 
   // ==========================================
