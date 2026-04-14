@@ -56,21 +56,48 @@ export default function Portal() {
   };
 
   // Helper component for rendering list items
-  const JobCard = ({ job, isPending }) => (
-    <div 
-      onClick={() => handleJobClick(job.eventId)}
-      className={`p-3 rounded-lg cursor-pointer transition-all border-l-[3px] shadow-sm hover:shadow-md mb-2
-        ${selectedJobId === job.eventId ? 'bg-white border-[#EB4511] ring-1 ring-[#EB4511]/20' : 'bg-white border-transparent hover:bg-gray-50'}
-        ${isPending ? 'border-l-yellow-400' : 'border-l-green-500'}
-      `}
-    >
-      <h4 className="font-bold text-gray-800 text-[13px] leading-tight mb-1 truncate">{job.address}</h4>
-      <div className="flex items-center justify-between text-[11px] text-gray-500">
-        <span className="flex items-center gap-1 truncate max-w-[60%]"><User size={10} className="shrink-0"/> {job.client}</span>
-        <span className="flex items-center gap-1 shrink-0"><Clock size={10} /> {job.date}</span>
+  const JobCard = ({ job, isPending }) => {
+    const isVoice = job.eventId.startsWith('VOZ-');
+    
+    // Default: Confirmed (Green)
+    let borderClass = 'border-l-green-500';
+    let bgClass = 'bg-white';
+    let badge = null;
+
+    if (isPending) {
+      if (isVoice) {
+        borderClass = 'border-l-blue-500';
+        bgClass = 'bg-blue-50/40'; // Soft blue hue
+        badge = <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ml-2 shrink-0">Voz</span>;
+      } else {
+        borderClass = 'border-l-yellow-400';
+        bgClass = 'bg-yellow-50/40'; // Soft yellow hue
+        badge = <span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ml-2 shrink-0">Web</span>;
+      }
+    }
+
+    return (
+      <div 
+        onClick={() => handleJobClick(job.eventId)}
+        className={`p-3 rounded-lg cursor-pointer transition-all border-l-[4px] shadow-sm hover:shadow-md mb-2
+          ${selectedJobId === job.eventId ? `ring-2 ring-[#EB4511]/30 ${bgClass}` : `border-transparent hover:bg-gray-50 ${bgClass}`}
+          ${borderClass}
+        `}
+      >
+        <div className="flex justify-between items-start mb-1.5">
+          <h4 className="font-bold text-gray-800 text-[13px] leading-tight truncate flex-1">
+            {isVoice && <span className="mr-1">🎙️</span>}
+            {job.address}
+          </h4>
+          {badge}
+        </div>
+        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
+          <span className="flex items-center gap-1 truncate max-w-[60%]"><User size={11} className="shrink-0"/> {job.client}</span>
+          <span className="flex items-center gap-1 shrink-0"><Clock size={11} /> {job.date}</span>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="flex h-[100dvh] bg-[#F0F2F5] overflow-hidden font-sans">

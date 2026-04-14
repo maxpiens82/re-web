@@ -845,7 +845,17 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
             </button>
           ) : isWebRequest ? (
             <>
-              <button className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide transition-colors text-center">Rechazar</button>
+              <button 
+      onClick={() => {
+        if (confirm("¿Estás seguro de rechazar y eliminar esta solicitud permanentemente?")) {
+          handleFormSubmit('reject_booking');
+        }
+      }}
+      disabled={isSubmitting}
+      className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide transition-colors text-center"
+    >
+      {isSubmitting ? '...' : 'Rechazar'}
+    </button>
               <button 
                 onClick={() => handleFormSubmit('update_booking')}
                 disabled={isSubmitting}
