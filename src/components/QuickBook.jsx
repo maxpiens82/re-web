@@ -8,8 +8,8 @@ export default function QuickBook() {
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef(null);
 
-  // 🛑 FEATURE DISABLED TEMPORARILY: Do not render the button for anyone.
-  return null;
+  // If not logged in, don't render the button at all
+  if (!currentUser) return null;
 
   const startListening = () => {
     // Check browser support
