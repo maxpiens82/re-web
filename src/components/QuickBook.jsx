@@ -24,13 +24,24 @@ export default function QuickBook() {
     recognition.interimResults = true; // Show text while talking
     recognition.continuous = true;
 
-    // 🚀 THE FIX: Clean Array mapping that works flawlessly on Android & Desktop
+    // 🚀 THE FIX: Smart Reducer that handles both Android and Desktop perfectly
     recognition.onresult = (event) => {
-      const currentString = Array.from(event.results)
-        .map(result => result[0].transcript)
-        .join('');
+      const chunks = Array.from(event.results).map(r => r[0].transcript.trim());
+      
+      let cleanString = chunks[0] || '';
+      
+      for (let i = 1; i < chunks.length; i++) {
+        // If Android is duplicating the string (e.g., "Agrega" -> "Agrega una")
+        if (chunks[i].toLowerCase().startsWith(cleanString.toLowerCase())) {
+          cleanString = chunks[i]; // Replace it instead of adding to it
+        } 
+        // If Desktop is sending separate words (e.g., "Agrega" -> "una")
+        else {
+          cleanString += ' ' + chunks[i]; // Add the new word to the end
+        }
+      }
         
-      setTranscript(currentString);
+      setTranscript(cleanString);
     };
 
     recognition.onerror = (event) => {
