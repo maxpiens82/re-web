@@ -6,8 +6,7 @@ export default function QuickBook() {
   const { currentUser } = useAuth();
   const [state, setState] = useState('idle'); // idle, listening, processing, success, error
   const [transcript, setTranscript] = useState('');
-  const recognitionRef = useRef(null);
-  const finalTranscriptRef = useRef(''); // 🚀 ADD THIS NEW LINE
+  const recognitionRef = useRef(null);  
 
   // If not logged in, don't render the button at all
   if (!currentUser) return null;
@@ -29,21 +28,14 @@ export default function QuickBook() {
     finalTranscriptRef.current = '';
 
     recognition.onresult = (event) => {
-      let interimTranscript = '';
-      
-      // Loop through only the NEW results provided by the engine
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          // If the engine confirms the word is final, lock it into memory
-          finalTranscriptRef.current += event.results[i][0].transcript + ' ';
-        } else {
-          // If the engine is still guessing, hold it in interim
-          interimTranscript += event.results[i][0].transcript;
-        }
-      }
-      
-      // Combine locked memory + current guess to show the user
-      setTranscript((finalTranscriptRef.current + interimTranscript).trim());
+      // Map over the results array and join it into one clean string.
+      // This works perfectly on both Desktop (which splits words into array items)
+      // and Android (which dumps the whole sentence into the first array item).
+      const currentString = Array.from(event.results)
+        .map(result => result[0].transcript)
+        .join('');
+        
+      setTranscript(currentString);
     };
 
     recognition.onerror = (event) => {
