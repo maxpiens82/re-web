@@ -42,6 +42,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingClient, setIsSavingClient] = useState(false); // 🚀 NEW: CRM Loading 
   
   // Data State
   const [db, setDb] = useState(null);
@@ -376,6 +377,66 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     setCompanySuggestions(uniqueCompanies.filter(c => c.toLowerCase().includes(val)).slice(0, 10));
   };
 
+  // 🚀 ACTUALIZA EL CLIENTE EN LA BASE DE DATOS (GOOGLE SHEETS)
+  const handleUpdateClient = async () => {
+    if (!formData.name || !formData.lastName || !formData.phone) {
+      alert("⚠️ Se requiere Nombre, Apellido y Teléfono para guardar o actualizar el cliente.");
+      return;
+    }
+
+    setIsSavingClient(true);
+
+    const payload = {
+      originalKey: matchedClient ? (matchedClient.telefono || matchedClient.email || `${matchedClient.nombre} ${matchedClient.apellido}`) : '',
+      nombre: formData.name,
+      apellido: formData.lastName,
+      empresa: formData.company,
+      email: formData.email,
+      telefono: formData.phone,
+      modalidadPago: formData.modalidadPago
+    };
+
+    try {
+      const response = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'update_client_profile', payload })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        // 1. Force the UI to go green
+        setFieldStates({ name: 'existing', lastName: 'existing', company: 'existing', email: 'existing', phone: 'existing' });
+        
+        // 2. Update the local memory so it doesn't instantly revert back to yellow
+        const updatedClient = {
+          nombre: formData.name, apellido: formData.lastName, empresa: formData.company,
+          email: formData.email, telefono: formData.phone, modalidadPago: formData.modalidadPago
+        };
+        
+        setClientDb(prev => {
+          const newDb = [...prev];
+          const existingIdx = newDb.findIndex(c => 
+            (matchedClient && c.telefono === matchedClient.telefono) || 
+            (c.telefono && c.telefono === formData.phone)
+          );
+          if (existingIdx > -1) newDb[existingIdx] = { ...newDb[existingIdx], ...updatedClient };
+          else newDb.push(updatedClient);
+          return newDb;
+        });
+        
+        setMatchedClient(updatedClient);
+        alert("✅ " + (data.message || "Cliente guardado correctamente."));
+      } else {
+        alert("Error del servidor: " + data.error);
+      }
+    } catch (err) {
+      alert("Fallo de red al actualizar el cliente.");
+    } finally {
+      setIsSavingClient(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -559,7 +620,17 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
         <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100">
           <div className="mb-4 md:mb-6 flex justify-between items-center">
             <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>Cliente & Contacto</h2>
-            <button className="text-[10px] md:text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-1 md:px-3 md:py-1 rounded-md transition-colors" onClick={() => setFieldStates({ name: 'existing', lastName: 'existing', company: 'existing', email: 'existing', phone: 'existing' })}>💾 Modificar cliente</button>
+            <button 
+              type="button"
+              disabled={isSavingClient}
+              onClick={handleUpdateClient}
+              className={`text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-md transition-colors shadow-sm
+                ${isSavingClient 
+                  ? 'bg-green-100 text-green-700 cursor-wait' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'}`}
+            >
+              {isSavingClient ? '⏳ Guardando...' : '💾 Guardar / Modificar'}
+            </button>
           </div>
 
           {/* DEDICATED SEARCH BAR */}
