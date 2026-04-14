@@ -6,7 +6,7 @@ export default function QuickBook() {
   const { currentUser } = useAuth();
   const [state, setState] = useState('idle'); // idle, listening, processing, success, error
   const [transcript, setTranscript] = useState('');
-  const recognitionRef = useRef(null);  
+  const recognitionRef = useRef(null);
 
   // If not logged in, don't render the button at all
   if (!currentUser) return null;
@@ -24,13 +24,8 @@ export default function QuickBook() {
     recognition.interimResults = true; // Show text while talking
     recognition.continuous = true;
 
-    // 🚀 RESET THE MEMORY WHEN LISTENING STARTS
-    finalTranscriptRef.current = '';
-
+    // 🚀 THE FIX: Clean Array mapping that works flawlessly on Android & Desktop
     recognition.onresult = (event) => {
-      // Map over the results array and join it into one clean string.
-      // This works perfectly on both Desktop (which splits words into array items)
-      // and Android (which dumps the whole sentence into the first array item).
       const currentString = Array.from(event.results)
         .map(result => result[0].transcript)
         .join('');
@@ -46,7 +41,7 @@ export default function QuickBook() {
 
     recognition.onend = () => {
       // If user manually stopped it, state will be 'processing'. 
-      // If it timed out, force stop it.
+      // If it timed out naturally, force stop it.
       if (state === 'listening') stopListening(recognition);
     };
 
