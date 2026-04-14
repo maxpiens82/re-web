@@ -51,9 +51,8 @@ export default function QuickBook() {
     };
 
     recognition.onend = () => {
-      // If user manually stopped it, state will be 'processing'. 
-      // If it timed out naturally, force stop it.
-      if (state === 'listening') stopListening(recognition);
+      // Android cuts off the mic aggressively. 
+      // We do nothing here. We wait for the user to manually press the button to submit.
     };
 
     recognitionRef.current = recognition;
@@ -100,6 +99,7 @@ export default function QuickBook() {
       }
     } catch (error) {
       console.error(error);
+      alert("Error de la IA: " + error.message); // <--- AHORA VEREMOS EL ERROR REAL
       setState('error');
       setTimeout(() => setState('idle'), 4000);
     }
