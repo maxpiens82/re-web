@@ -1,3 +1,4 @@
+import QuickBook from '../components/QuickBook';
 import MiniLogo from '../components/MiniLogo';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -711,6 +712,10 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* 🚀 AI VOICE BOOKING BUTTON MOVED HERE (Outside the modal!) */}
+        <QuickBook />
+
     </div>
   );
 }
