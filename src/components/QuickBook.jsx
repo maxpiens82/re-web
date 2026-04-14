@@ -7,9 +7,10 @@ export default function QuickBook() {
   const [state, setState] = useState('idle'); // idle, listening, processing, success, error
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef(null);
+  const finalTranscriptRef = useRef(''); // 🚀 ADD THIS NEW LINE
 
   // If not logged in, don't render the button at all
-  //if (!currentUser) return null;
+  if (!currentUser) return null;
 
   const startListening = () => {
     // Check browser support
@@ -24,12 +25,25 @@ export default function QuickBook() {
     recognition.interimResults = true; // Show text while talking
     recognition.continuous = true;
 
+    // 🚀 RESET THE MEMORY WHEN LISTENING STARTS
+    finalTranscriptRef.current = '';
+
     recognition.onresult = (event) => {
-      let currentTranscript = '';
-      for (let i = 0; i < event.results.length; i++) {
-        currentTranscript += event.results[i][0].transcript;
+      let interimTranscript = '';
+      
+      // Loop through only the NEW results provided by the engine
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          // If the engine confirms the word is final, lock it into memory
+          finalTranscriptRef.current += event.results[i][0].transcript + ' ';
+        } else {
+          // If the engine is still guessing, hold it in interim
+          interimTranscript += event.results[i][0].transcript;
+        }
       }
-      setTranscript(currentTranscript);
+      
+      // Combine locked memory + current guess to show the user
+      setTranscript((finalTranscriptRef.current + interimTranscript).trim());
     };
 
     recognition.onerror = (event) => {
