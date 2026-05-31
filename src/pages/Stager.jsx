@@ -1,12 +1,19 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, Sparkles, Image as ImageIcon, ArrowRight, CheckCircle2, Download, Trash2, X } from 'lucide-react';
+import { 
+  UploadCloud, Sparkles, Image as ImageIcon, ArrowRight, 
+  CheckCircle2, Download, Trash2, X, Key, AlertTriangle 
+} from 'lucide-react';
 
 export default function Stager() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [selectedStyle, setSelectedStyle] = useState('minimalist');
+  const [accessCode, setAccessCode] = useState('');
+  
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImage, setResultImage] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [remainingCredits, setRemainingCredits] = useState(null);
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   
   const fileInputRef = useRef(null);
@@ -24,26 +31,113 @@ export default function Stager() {
       setSelectedImage(file);
       setPreviewUrl(URL.createObjectURL(file));
       setResultImage(null);
+      setErrorMsg(null);
     }
-  };
-
-  const handleGenerate = () => {
-    if (!selectedImage) return;
-    
-    setIsGenerating(true);
-    
-    // MOCKED API CALL (Simulating Vercel -> Google AI)
-    setTimeout(() => {
-      setResultImage("https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&q=80&w=1000");
-      setIsGenerating(false);
-    }, 3500);
   };
 
   const clearWorkspace = () => {
     setSelectedImage(null);
     setPreviewUrl(null);
     setResultImage(null);
+    setErrorMsg(null);
+    setRemainingCredits(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // 🛡️ THE BULLET DODGER: Client-Side Compression to beat Vercel's 4.5MB limit
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1024;
+          const MAX_HEIGHT = 1024;
+          let width = img.width;
+          let height = img.height;
+
+          // Maintain aspect ratio while scaling down
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Compress to 80% quality JPEG (~200KB - 500KB payload)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedImage || !accessCode.trim()) {
+      setErrorMsg("Por favor, sube una imagen e ingresa tu código de acceso.");
+      return;
+    }
+    
+    setIsGenerating(true);
+    setErrorMsg(null);
+    
+    try {
+      // 1. Compress before network transit
+      const base64Image = await compressImage(selectedImage);
+
+      // 2. Hit our Decoupled Vercel Middleware
+      const response = await fetch('/api/stager', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: base64Image,
+          styleId: selectedStyle,
+          accessCode: accessCode.trim().toUpperCase()
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Ocurrió un error en el servidor.');
+      }
+
+      // 3. Success! Set image and update ledger view
+      setResultImage(data.image);
+      setRemainingCredits(data.creditsRemaining);
+
+    } catch (error) {
+      console.error("Generation failed:", error);
+      setErrorMsg(error.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Helper to trigger download
+  const handleDownload = () => {
+    if (!resultImage) return;
+    const link = document.createElement('a');
+    link.href = resultImage;
+    link.download = `RE-Staged-${selectedStyle}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -63,20 +157,16 @@ export default function Stager() {
           </p>
         </header>
 
-        {/* 🚀 THE DISCLAIMER BANNER */}
         {showDisclaimer && (
           <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-xl mb-8 flex items-start gap-3 shadow-sm relative pr-12 animate-in slide-in-from-top-4 fade-in duration-300">
             <Sparkles className="text-amber-500 mt-0.5 flex-shrink-0" size={20} />
             <div>
               <h3 className="text-amber-800 font-bold text-sm uppercase tracking-wide mb-1">Aviso Importante</h3>
               <p className="text-amber-700 text-sm leading-relaxed">
-                Esta es una herramienta conceptual impulsada por Inteligencia Artificial (Beta). Los amoblamientos y proporciones generadas son representaciones artísticas destinadas a visualizar el potencial del espacio, y pueden no reflejar medidas arquitectónicas exactas ni garantizar la disponibilidad física de los muebles mostrados.
+                Esta es una herramienta conceptual impulsada por Inteligencia Artificial. Los amoblamientos generados son representaciones artísticas para visualizar el potencial del espacio y pueden no reflejar medidas arquitectónicas exactas.
               </p>
             </div>
-            <button 
-              onClick={() => setShowDisclaimer(false)} 
-              className="absolute top-4 right-4 text-amber-500 hover:text-amber-700 transition-colors p-1"
-            >
+            <button onClick={() => setShowDisclaimer(false)} className="absolute top-4 right-4 text-amber-500 hover:text-amber-700 transition-colors p-1">
               <X size={18} strokeWidth={2.5} />
             </button>
           </div>
@@ -87,6 +177,7 @@ export default function Stager() {
           {/* LEFT COLUMN: UPLOAD & CONTROLS */}
           <div className="lg:col-span-5 space-y-6">
             
+            {/* Step 1: Upload */}
             <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
               <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
                 <span className="bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs text-gray-500">1</span>
@@ -94,13 +185,10 @@ export default function Stager() {
               </h2>
               
               {!previewUrl ? (
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-[#EB4511] hover:bg-[#EB4511]/5 transition-colors group"
-                >
+                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-[#EB4511] hover:bg-[#EB4511]/5 transition-colors group">
                   <UploadCloud size={40} className="mx-auto text-gray-400 group-hover:text-[#EB4511] mb-3 transition-colors" />
                   <p className="font-semibold text-gray-700 mb-1">Haz clic para subir una foto</p>
-                  <p className="text-xs text-gray-500">JPG o PNG (Max 5MB). Idealmente un ambiente vacío.</p>
+                  <p className="text-xs text-gray-500">JPG o PNG. Idealmente un ambiente vacío.</p>
                 </div>
               ) : (
                 <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
@@ -115,63 +203,85 @@ export default function Stager() {
                   </div>
                 </div>
               )}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleImageUpload} 
-                accept="image/jpeg, image/png" 
-                className="hidden" 
-              />
+              <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/jpeg, image/png" className="hidden" />
             </div>
 
-            <div className={`bg-white p-6 rounded-2xl shadow-lg border border-gray-100 transition-opacity ${!previewUrl ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-              <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <span className="bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs text-gray-500">2</span>
-                Elige el estilo
-              </h2>
+            {/* Controls (Fade if no image) */}
+            <div className={`space-y-6 transition-opacity duration-300 ${!previewUrl ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
               
-              <div className="space-y-3">
-                {styles.map(style => (
-                  <label 
-                    key={style.id} 
-                    className={`flex items-start p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedStyle === style.id ? 'border-[#EB4511] bg-[#EB4511]/5' : 'border-gray-100 hover:border-gray-200'}`}
-                  >
-                    <input 
-                      type="radio" 
-                      name="style" 
-                      className="mt-1 mr-3 text-[#EB4511] focus:ring-[#EB4511]"
-                      checked={selectedStyle === style.id}
-                      onChange={() => setSelectedStyle(style.id)}
-                    />
-                    <div>
-                      <div className={`font-bold ${selectedStyle === style.id ? 'text-[#EB4511]' : 'text-gray-700'}`}>{style.label}</div>
-                      <div className="text-xs text-gray-500">{style.desc}</div>
-                    </div>
-                  </label>
-                ))}
+              {/* Step 2: Style */}
+              <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+                  <span className="bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs text-gray-500">2</span>
+                  Elige el estilo
+                </h2>
+                <div className="space-y-3">
+                  {styles.map(style => (
+                    <label key={style.id} className={`flex items-start p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedStyle === style.id ? 'border-[#EB4511] bg-[#EB4511]/5' : 'border-gray-100 hover:border-gray-200'}`}>
+                      <input type="radio" name="style" className="mt-1 mr-3 text-[#EB4511] focus:ring-[#EB4511]" checked={selectedStyle === style.id} onChange={() => setSelectedStyle(style.id)} />
+                      <div>
+                        <div className={`font-bold ${selectedStyle === style.id ? 'text-[#EB4511]' : 'text-gray-700'}`}>{style.label}</div>
+                        <div className="text-xs text-gray-500">{style.desc}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
 
-              <button 
-                onClick={handleGenerate}
-                disabled={isGenerating || !previewUrl}
-                className="w-full mt-6 bg-[#EB4511] text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2 hover:bg-[#c42e0d] transition-colors shadow-lg shadow-[#EB4511]/30 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {isGenerating ? (
-                  <><Sparkles className="animate-pulse" size={20} /> Generando magia...</>
-                ) : (
-                  <>Generar Staging <ArrowRight size={20} /></>
+              {/* Step 3: Access Code & Submit */}
+              <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+                  <span className="bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs text-gray-500">3</span>
+                  Código de Acceso
+                </h2>
+                <div className="relative mb-6">
+                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="Ej. RE-VIP-2026"
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#EB4511] focus:ring-0 transition-colors uppercase font-mono"
+                  />
+                </div>
+
+                {errorMsg && (
+                  <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-start gap-2 border border-red-100">
+                    <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
+                    <span>{errorMsg}</span>
+                  </div>
                 )}
-              </button>
+
+                <button 
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !previewUrl || !accessCode.trim()}
+                  className="w-full bg-[#EB4511] text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2 hover:bg-[#c42e0d] transition-colors shadow-lg shadow-[#EB4511]/30 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isGenerating ? (
+                    <><Sparkles className="animate-pulse" size={20} /> Generando magia...</>
+                  ) : (
+                    <>Generar Staging <ArrowRight size={20} /></>
+                  )}
+                </button>
+              </div>
+
             </div>
           </div>
 
           {/* RIGHT COLUMN: RESULT */}
           <div className="lg:col-span-7">
-            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 h-full min-h-[400px] flex flex-col">
-              <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <span className="bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs text-gray-500">3</span>
-                Resultado
-              </h2>
+            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 h-full min-h-[500px] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-lg flex items-center gap-2">
+                  <span className="bg-gray-100 w-6 h-6 flex items-center justify-center rounded-full text-xs text-gray-500">4</span>
+                  Resultado
+                </h2>
+                {remainingCredits !== null && (
+                  <span className="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-200">
+                    {remainingCredits} créditos restantes
+                  </span>
+                )}
+              </div>
 
               <div className="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center relative overflow-hidden">
                 {!previewUrl && !resultImage && (
@@ -184,14 +294,14 @@ export default function Stager() {
                 {previewUrl && !resultImage && isGenerating && (
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
                     <div className="w-16 h-16 border-4 border-gray-200 border-t-[#EB4511] rounded-full animate-spin mb-4"></div>
-                    <p className="font-bold text-gray-700 animate-pulse">Analizando geometría...</p>
-                    <p className="text-xs text-gray-500 mt-2">Aplicando estilo {styles.find(s => s.id === selectedStyle)?.label}</p>
+                    <p className="font-bold text-gray-700 animate-pulse">Analizando arquitectura...</p>
+                    <p className="text-xs text-gray-500 mt-2">Aplicando diseño {styles.find(s => s.id === selectedStyle)?.label}</p>
                   </div>
                 )}
 
                 {resultImage && (
                   <div className="absolute inset-0 animate-in fade-in zoom-in-95 duration-500">
-                    <img src={resultImage} alt="Staged Result" className="w-full h-full object-cover" />
+                    <img src={resultImage} alt="Staged Result" className="w-full h-full object-contain bg-black/5" />
                     <div className="absolute top-4 left-4 bg-green-500 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-md flex items-center gap-1">
                       <CheckCircle2 size={14} /> Amoblado ({styles.find(s => s.id === selectedStyle)?.label})
                     </div>
@@ -202,10 +312,16 @@ export default function Stager() {
               {/* Action Buttons */}
               {resultImage && (
                 <div className="mt-4 grid grid-cols-2 gap-4 animate-in slide-in-from-bottom-4 duration-500">
-                  <button className="bg-gray-100 text-gray-700 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors">
-                    <Sparkles size={18} /> Re-generar
+                  <button 
+                    onClick={() => setResultImage(null)}
+                    className="bg-gray-100 text-gray-700 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
+                  >
+                    <Sparkles size={18} /> Modificar
                   </button>
-                  <button className="bg-gray-900 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-black transition-colors shadow-lg">
+                  <button 
+                    onClick={handleDownload}
+                    className="bg-gray-900 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-black transition-colors shadow-lg"
+                  >
                     <Download size={18} /> Descargar HD
                   </button>
                 </div>
