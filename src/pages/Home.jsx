@@ -115,7 +115,7 @@ export default function Home() {
   useEffect(() => {
     const fetchPrices = async () => {
       // 🚀 NOW HITTING THE V2 RAM CACHE IN GOOGLE APPS SCRIPT
-      const GOOGLE_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec?api=init_v2";
+      const GOOGLE_URL = `${import.meta.env.VITE_GAS_API_URL}?api=init_v2`;
       
       try {
         const response = await fetch(GOOGLE_URL);
@@ -267,9 +267,10 @@ export default function Home() {
 
     setIsSubmitting(true);
     
-    const API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec";
+    const API_URL = import.meta.env.VITE_GAS_API_URL;
 
     // Reconstruct the strict ISO format that Google Apps Script requires: "YYYY-MM-DDTHH:mm"
+
     const validIsoDateTime = `${selectedDateObj.id}T${selectedTime}`;
 
     const payload = {

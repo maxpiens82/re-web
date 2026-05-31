@@ -5,7 +5,7 @@ import UnifiedForm from '../components/UnifiedForm';
 import LoadingLogo from '../components/LoadingLogo';
 
 // Make sure this is your actual GAS URL!
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec";
+const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
 
 export default function Portal() {
   const { currentUser, userRole, logout } = useAuth();

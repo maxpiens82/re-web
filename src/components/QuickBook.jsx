@@ -81,7 +81,7 @@ export default function QuickBook() {
       }
     };
 
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxEsNMFfHhTJT46AG2lgdS83u48eQiCKrxYjWLSsrU2ri7uUhRkbei_9D26J9W05UkdFQ/exec";
+    const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
 
     try {
       const response = await fetch(GAS_API_URL, {
