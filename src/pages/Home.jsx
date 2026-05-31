@@ -87,6 +87,15 @@ export default function Home() {
   });
 
   const [isLoadingPrices, setIsLoadingPrices] = useState(false); // 🚀 ALWAYS FALSE. WE ALWAYS HAVE DATA.
+  
+  // 🚀 ENGINE: Date-Aware Pricing State
+  const [pricingData, setPricingData] = useState(() => {
+    try {
+      const cached = localStorage.getItem('re_pricing_engine');
+      if (cached) return JSON.parse(cached);
+    } catch(e){}
+    return null;
+  });
 
   // Date & Time Picker State
   const [dateOptions] = useState(generateDates);
@@ -143,6 +152,12 @@ export default function Home() {
           // Attach icons and update state silently
           freshDb.services = freshDb.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
           setDb(freshDb);
+          
+          // 🚀 Inject the Pricing Engine
+          if (data.pricingData) {
+            setPricingData(data.pricingData);
+            localStorage.setItem('re_pricing_engine', JSON.stringify(data.pricingData));
+          }
         }
       } catch (error) {
         console.error("Background sync failed:", error);
@@ -191,6 +206,19 @@ export default function Home() {
   const { total, discountApplied, baseCount } = useMemo(() => {
     if (!db) return { total: 0, discountApplied: 0, baseCount: 0 };
 
+    // 1. Determine active Pricing Era based on selected Date
+    let isNewEra = false;
+    if (pricingData && pricingData.pricingConfig && pricingData.pricingConfig.threshold) {
+      let targetMs = Date.now();
+      if (pricingData.pricingConfig.rule === "FECHA" && selectedDateObj) {
+        const p = selectedDateObj.id.split('-');
+        targetMs = new Date(p[0], p[1]-1, p[2], 12, 0, 0).getTime();
+      }
+      isNewEra = targetMs >= pricingData.pricingConfig.threshold;
+    }
+
+    const activePrices = isNewEra && pricingData ? (pricingData.newPrices || {}) : (pricingData ? pricingData.currentPrices || {} : {});
+
     let baseMult = 0;
     let baseFixed = 0;
     let serviceCount = 0;
@@ -198,10 +226,13 @@ export default function Home() {
     selectedServices.forEach(serviceId => {
       const service = db.services.find(s => s.id === serviceId);
       if (service) {
+        // Fallback to legacy price array if engine isn't loaded yet
+        const price = (pricingData && activePrices[serviceId] !== undefined) ? activePrices[serviceId] : service.price;
+        
         if (service.isFixed) {
-          baseFixed += service.price;
+          baseFixed += price;
         } else {
-          baseMult += service.price;
+          baseMult += price;
           serviceCount++;
         }
       }
@@ -219,7 +250,7 @@ export default function Home() {
       discountApplied: discount > 0 ? discount * multiplier : 0, 
       baseCount: serviceCount
     };
-  }, [selectedServices, multiplier, db]);
+  }, [selectedServices, multiplier, db, pricingData, selectedDateObj]);
 
   // --- HANDLERS ---
   const toggleService = (id) => {
@@ -509,18 +540,20 @@ export default function Home() {
                   <ChevronLeft size={20} strokeWidth={2.5}/>
                 </button>
 
+                {/* 🚀 FIX: Added 'relative' and removed CSS snap to allow smooth JS centering */}
                 <div 
                   ref={dateScrollRef}
-                  className="flex flex-1 gap-2 md:gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth py-2 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                  className="relative flex flex-1 gap-2 md:gap-3 overflow-x-auto scroll-smooth py-2 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                 >
                   {dateOptions.map(d => {
                     const isSelected = selectedDateObj?.id === d.id;
                     return (
                       <button 
                         key={d.id} 
+                        data-date={d.id}
                         onClick={() => setSelectedDateObj(d)} 
                         type="button"
-                        className={`flex flex-col items-center justify-center w-[64px] h-[64px] md:w-[72px] md:h-[72px] shrink-0 rounded-2xl border-2 transition-all select-none snap-start
+                        className={`flex flex-col items-center justify-center w-[64px] h-[64px] md:w-[72px] md:h-[72px] shrink-0 rounded-2xl border-2 transition-all select-none
                           ${isSelected 
                             ? 'border-[#EB4511] shadow-[0_4px_14px_rgba(235,69,17,0.2)] bg-white -translate-y-0.5' 
                             : 'border-transparent bg-[#F4F4F5] hover:bg-gray-200'}`}
