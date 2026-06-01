@@ -71,6 +71,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   });
 
   // Validation State & CRM Memory Engine
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [fieldStates, setFieldStates] = useState({ 
     name: 'new', lastName: 'new', company: 'new', email: 'new', phone: 'new',
     dniCuit: 'new', condicionIva: 'new', modalidadPago: 'new' 
@@ -343,6 +344,19 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       return 'modified';
     };
 
+    // 🚀 AUTO-FILL: If the user just typed the phone number and it matches, auto-fill the boring stuff!
+    setFormData(prev => {
+      const next = { ...prev };
+      let changed = false;
+      
+      // Only auto-fill if the current input is empty, to prevent overwriting deliberate typing
+      if (!next.dniCuit && dbMatch.dniCuit) { next.dniCuit = dbMatch.dniCuit; changed = true; }
+      if (!next.condicionIva && dbMatch.condicionIva) { next.condicionIva = dbMatch.condicionIva; changed = true; }
+      if (next.modalidadPago === 'Individual' && dbMatch.modalidadPago === 'Corporativo') { next.modalidadPago = 'Corporativo'; changed = true; }
+      
+      return changed ? next : prev;
+    });
+
     newStates.name = checkMatch(formData.name, dbMatch.nombre);
     newStates.lastName = checkMatch(formData.lastName, dbMatch.apellido);
     newStates.company = checkMatch(formData.company, dbMatch.empresa);
@@ -579,6 +593,29 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     }
   };
 
+  // 🚀 CANCEL BOOKING
+  const handleCancelBooking = async () => {
+    setShowCancelModal(false);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(GAS_API_URL, { 
+        method: 'POST', 
+        body: JSON.stringify({ action: 'cancel_booking', payload: { eventId: jobId } }) 
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert("✅ Reserva cancelada y archivada exitosamente.");
+        if (onSuccess) onSuccess(); else onCancel();
+      } else {
+        alert("Error al cancelar: " + data.error);
+      }
+    } catch (err) {
+      alert("Fallo de red al intentar cancelar.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // 🚀 FORM SUBMIT
   const handleFormSubmit = async (actionType) => {
     setIsSubmitting(true);
@@ -681,11 +718,21 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       
       {/* HEADER */}
       <div className="px-4 py-3 md:px-8 md:py-5 border-b border-gray-200 flex justify-between items-center bg-white z-10 shrink-0">
-        <div className="truncate pr-4 flex-1">
+        <div className="truncate pr-4 flex-1 flex flex-col md:flex-row md:items-center gap-2">
           <h2 className="text-base md:text-xl font-extrabold uppercase tracking-wide truncate" style={{ color: brandColor }}>
             {modeTitle}
           </h2>
-          {!isNewBooking && <p className="hidden md:block text-xs text-gray-400 mt-1 font-bold tracking-wider truncate">ID: {jobId}</p>}
+          {!isNewBooking && !isWebRequest && (
+            <div className="flex items-center gap-3">
+              <p className="hidden md:block text-xs text-gray-400 font-bold tracking-wider truncate">ID: {jobId}</p>
+              <button 
+                onClick={() => setShowCancelModal(true)} 
+                className="text-[10px] md:text-xs font-bold px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors shadow-sm"
+              >
+                🚫 Cancelar Reserva
+              </button>
+            </div>
+          )}
         </div>
         <button onClick={onCancel} className="text-gray-500 hover:bg-gray-100 font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl border border-gray-200 transition-colors text-xs md:text-sm shrink-0 shadow-sm">
           ✕ Cerrar
@@ -1024,7 +1071,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
           ) : (
             <>
               <button onClick={() => handleFormSubmit('checkout_booking')} disabled={isSubmitting} className="flex-1 md:flex-none px-2 py-3 md:px-8 md:py-3.5 bg-white border-2 border-green-500 text-green-600 font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase flex items-center justify-center disabled:opacity-50 shadow-sm hover:shadow-md transition-all">
-                'Checkout'
+                Checkout
               </button>
               
               <button 
@@ -1036,12 +1083,48 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
                     : 'bg-[#EB4511] text-white hover:bg-[#c42e0d] shadow-md hover:shadow-lg hover:-translate-y-0.5'
                   }`}
               >
-                'Actualizar'
+                Actualizar
               </button>
             </>
           )}
         </div>
       </div>
+
+      {/* 🚀 CANCEL WARNING MODAL */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] max-w-[380px] w-full px-6 py-8 text-center relative animate-in zoom-in-95 duration-200">
+            <div className="text-[50px] mb-2 leading-none">⚠️</div>
+            <h3 className="text-xl font-extrabold text-[#E53B12] mb-3">¿Cancelar Reserva?</h3>
+            <p className="text-gray-600 text-sm leading-relaxed mb-6 font-medium">
+              Esta acción moverá la reserva al <b>Archivo</b>, establecerá todos los montos en <b>$0</b> y marcará el evento del calendario en <b>rojo</b>.<br/><br/>
+              <i>Esta acción no se puede deshacer fácilmente.</i>
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-colors uppercase text-xs"
+              >
+                Atrás
+              </button>
+              <button 
+                onClick={handleCancelBooking}
+                className="flex-1 bg-[#E53B12] hover:bg-[#c42e0d] text-white font-bold py-3 rounded-xl transition-colors shadow-md uppercase text-xs"
+              >
+                Sí, Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🚀 FULL-SCREEN PROCESSING OVERLAY */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[999] bg-gray-900/60 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-200">
+          <LoadingLogo message="Procesando operación..." />
+        </div>
+      )}
+
     </div>
   );
 }
