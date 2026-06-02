@@ -4,15 +4,19 @@ import { useAuth } from '../context/AuthContext';
 
 export default function QuickBook() {
   const { currentUser } = useAuth();
-  const [state, setState] = useState('idle'); // idle, listening, processing, success, error
+  const [state, setState] = useState('idle'); 
+  const stateRef = useRef('idle'); // 🚀 Prevents stale closure traps
   const [transcript, setTranscript] = useState('');
+  const transcriptRef = useRef(''); // 🚀 Prevents stale closure traps
   const recognitionRef = useRef(null);
 
-  // If not logged in, don't render the button at all
+  // Wrapper to keep refs and state in sync instantly
+  const syncState = (s) => { stateRef.current = s; setState(s); };
+  const syncTranscript = (t) => { transcriptRef.current = t; setTranscript(t); };
+
   if (!currentUser) return null;
 
   const startListening = () => {
-    // Check browser support
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("Tu navegador no soporta dictado por voz. Usa Chrome o Safari actualizado.");
@@ -20,64 +24,59 @@ export default function QuickBook() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'es-AR'; // Optimize for Argentine Spanish
-    recognition.interimResults = true; // Show text while talking
+    recognition.lang = 'es-AR'; 
+    recognition.interimResults = true; 
     recognition.continuous = true;
 
-    // 🚀 THE FIX: Smart Reducer that handles both Android and Desktop perfectly
     recognition.onresult = (event) => {
       const chunks = Array.from(event.results).map(r => r[0].transcript.trim());
-      
       let cleanString = chunks[0] || '';
       
       for (let i = 1; i < chunks.length; i++) {
-        // If Android is duplicating the string (e.g., "Agrega" -> "Agrega una")
         if (chunks[i].toLowerCase().startsWith(cleanString.toLowerCase())) {
-          cleanString = chunks[i]; // Replace it instead of adding to it
-        } 
-        // If Desktop is sending separate words (e.g., "Agrega" -> "una")
-        else {
-          cleanString += ' ' + chunks[i]; // Add the new word to the end
+          cleanString = chunks[i]; 
+        } else {
+          cleanString += ' ' + chunks[i]; 
         }
       }
-        
-      setTranscript(cleanString);
+      syncTranscript(cleanString);
     };
 
     recognition.onerror = (event) => {
       console.error("Speech recognition error", event.error);
-      setState('error');
-      setTimeout(() => setState('idle'), 3000);
+      syncState('error');
+      setTimeout(() => syncState('idle'), 3000);
     };
 
     recognition.onend = () => {
-      // Android cuts off the mic aggressively. 
-      // We do nothing here. We wait for the user to manually press the button to submit.
+      // 🚀 FIX: Automatically trigger processing when silence cuts off the mic natively!
+      if (stateRef.current === 'listening') {
+        processVoiceCommand();
+      }
     };
 
     recognitionRef.current = recognition;
     recognition.start();
-    setState('listening');
-    setTranscript('');
+    syncState('listening');
+    syncTranscript('');
   };
 
-  const stopListening = async (rec = recognitionRef.current) => {
-    if (rec) rec.stop();
-    setState('processing');
-
-    const finalTranscript = transcript.trim();
+  // Extracted processing logic to be called safely from onend
+  const processVoiceCommand = async () => {
+    syncState('processing');
+    const finalTranscript = transcriptRef.current.trim();
+    
     if (!finalTranscript) {
-      setState('idle');
+      syncState('idle');
       return;
     }
-
-    // Prepare payload for GAS
+    
     const payload = {
       action: 'quick_voice_booking',
       payload: {
         transcript: finalTranscript,
         producerName: currentUser.reName || currentUser.displayName || 'Productor',
-        currentDateStr: new Date().toLocaleString('es-AR') // Gives AI current local time context
+        currentDateStr: new Date().toLocaleString('es-AR')
       }
     };
 
@@ -92,16 +91,23 @@ export default function QuickBook() {
       const data = await response.json();
       
       if (data.success) {
-        setState('success');
-        setTimeout(() => { setState('idle'); setTranscript(''); }, 3000);
+        syncState('success');
+        setTimeout(() => { syncState('idle'); syncTranscript(''); }, 3000);
       } else {
         throw new Error(data.error);
       }
     } catch (error) {
       console.error(error);
-      alert("Error de la IA: " + error.message); // <--- AHORA VEREMOS EL ERROR REAL
-      setState('error');
-      setTimeout(() => setState('idle'), 4000);
+      alert("Error de la IA: " + error.message);
+      syncState('error');
+      setTimeout(() => syncState('idle'), 4000);
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+       // Clicking the button manually triggers recognition.onend natively!
+       recognitionRef.current.stop(); 
     }
   };
 
