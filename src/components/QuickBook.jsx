@@ -4,19 +4,15 @@ import { useAuth } from '../context/AuthContext';
 
 export default function QuickBook() {
   const { currentUser } = useAuth();
-  const [state, setState] = useState('idle'); 
-  const stateRef = useRef('idle'); // 🚀 Prevents stale closure traps
+  const [state, setState] = useState('idle'); // idle, listening, processing, success, error
   const [transcript, setTranscript] = useState('');
-  const transcriptRef = useRef(''); // 🚀 Prevents stale closure traps
   const recognitionRef = useRef(null);
 
-  // Wrapper to keep refs and state in sync instantly
-  const syncState = (s) => { stateRef.current = s; setState(s); };
-  const syncTranscript = (t) => { transcriptRef.current = t; setTranscript(t); };
-
+  // If not logged in, don't render the button at all
   if (!currentUser) return null;
 
   const startListening = () => {
+    // Check browser support
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("Tu navegador no soporta dictado por voz. Usa Chrome o Safari actualizado.");
@@ -24,59 +20,64 @@ export default function QuickBook() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'es-AR'; 
-    recognition.interimResults = true; 
+    recognition.lang = 'es-AR'; // Optimize for Argentine Spanish
+    recognition.interimResults = true; // Show text while talking
     recognition.continuous = true;
 
+    // 🚀 THE FIX: Smart Reducer that handles both Android and Desktop perfectly
     recognition.onresult = (event) => {
       const chunks = Array.from(event.results).map(r => r[0].transcript.trim());
+      
       let cleanString = chunks[0] || '';
       
       for (let i = 1; i < chunks.length; i++) {
+        // If Android is duplicating the string (e.g., "Agrega" -> "Agrega una")
         if (chunks[i].toLowerCase().startsWith(cleanString.toLowerCase())) {
-          cleanString = chunks[i]; 
-        } else {
-          cleanString += ' ' + chunks[i]; 
+          cleanString = chunks[i]; // Replace it instead of adding to it
+        } 
+        // If Desktop is sending separate words (e.g., "Agrega" -> "una")
+        else {
+          cleanString += ' ' + chunks[i]; // Add the new word to the end
         }
       }
-      syncTranscript(cleanString);
+        
+      setTranscript(cleanString);
     };
 
     recognition.onerror = (event) => {
       console.error("Speech recognition error", event.error);
-      syncState('error');
-      setTimeout(() => syncState('idle'), 3000);
+      setState('error');
+      setTimeout(() => setState('idle'), 3000);
     };
 
     recognition.onend = () => {
-      // 🚀 FIX: Automatically trigger processing when silence cuts off the mic natively!
-      if (stateRef.current === 'listening') {
-        processVoiceCommand();
-      }
+      // Android cuts off the mic aggressively. 
+      // We do nothing here. We wait for the user to manually press the button to submit.
     };
 
     recognitionRef.current = recognition;
     recognition.start();
-    syncState('listening');
-    syncTranscript('');
+    setState('listening');
+    setTranscript('');
   };
 
-  // Extracted processing logic to be called safely from onend
-  const processVoiceCommand = async () => {
-    syncState('processing');
-    const finalTranscript = transcriptRef.current.trim();
-    
+  const stopListening = async (rec = recognitionRef.current) => {
+    if (rec) rec.stop();
+    setState('processing');
+
+    const finalTranscript = transcript.trim();
     if (!finalTranscript) {
-      syncState('idle');
+      setState('idle');
       return;
     }
-    
+
+    // Prepare payload for GAS
     const payload = {
       action: 'quick_voice_booking',
       payload: {
         transcript: finalTranscript,
         producerName: currentUser.reName || currentUser.displayName || 'Productor',
-        currentDateStr: new Date().toLocaleString('es-AR')
+        currentDateStr: new Date().toLocaleString('es-AR') // Gives AI current local time context
       }
     };
 
@@ -91,33 +92,17 @@ export default function QuickBook() {
       const data = await response.json();
       
       if (data.success) {
-        syncState('success');
-        setTimeout(() => { syncState('idle'); syncTranscript(''); }, 3000);
+        setState('success');
+        setTimeout(() => { setState('idle'); setTranscript(''); }, 3000);
       } else {
         throw new Error(data.error);
       }
     } catch (error) {
       console.error(error);
-      alert("Error de la IA: " + error.message);
-      syncState('error');
-      setTimeout(() => syncState('idle'), 4000);
+      alert("Error de la IA: " + error.message); // <--- AHORA VEREMOS EL ERROR REAL
+      setState('error');
+      setTimeout(() => setState('idle'), 4000);
     }
-  };
-
-const stopListening = () => {
-    if (recognitionRef.current && stateRef.current === 'listening') {
-       recognitionRef.current.stop(); 
-    }
-  };
-
-  const handlePressStart = (e) => {
-    e.preventDefault(); 
-    if (stateRef.current === 'idle') startListening();
-  };
-
-  const handlePressEnd = (e) => {
-    e.preventDefault();
-    if (stateRef.current === 'listening') stopListening();
   };
 
   // --- UI RENDER ---
@@ -132,16 +117,12 @@ const stopListening = () => {
         </div>
       )}
 
-      {/* Floating Action Button (Push to Talk) */}
+      {/* Floating Action Button */}
       <button
-        onPointerDown={handlePressStart}
-        onPointerUp={handlePressEnd}
-        onPointerLeave={handlePressEnd}
-        onContextMenu={(e) => e.preventDefault()}
-        style={{ touchAction: 'none' }}
+        onClick={state === 'listening' ? () => stopListening() : startListening}
         disabled={state === 'processing' || state === 'success' || state === 'error'}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform select-none
-          ${state === 'idle' ? 'bg-[#2B6CB0] text-white hover:bg-[#2C5282] hover:scale-105 active:scale-95' : ''}
+        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-105 active:scale-95
+          ${state === 'idle' ? 'bg-[#2B6CB0] text-white hover:bg-[#2C5282]' : ''}
           ${state === 'listening' ? 'bg-[#E53B12] text-white animate-pulse shadow-[0_0_20px_rgba(229,59,18,0.5)] scale-110' : ''}
           ${state === 'processing' ? 'bg-gray-800 text-white cursor-not-allowed' : ''}
           ${state === 'success' ? 'bg-[#38a169] text-white' : ''}
@@ -149,7 +130,7 @@ const stopListening = () => {
         `}
       >
         {state === 'idle' && <Mic size={24} />}
-        {state === 'listening' && <Mic size={24} fill="currentColor" />}
+        {state === 'listening' && <Square size={20} fill="currentColor" />}
         {state === 'processing' && <Loader2 size={24} className="animate-spin" />}
         {state === 'success' && <Check size={28} strokeWidth={3} />}
         {state === 'error' && <AlertCircle size={24} />}
