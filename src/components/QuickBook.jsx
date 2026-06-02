@@ -104,11 +104,20 @@ export default function QuickBook() {
     }
   };
 
-  const stopListening = () => {
-    if (recognitionRef.current) {
-       // Clicking the button manually triggers recognition.onend natively!
+const stopListening = () => {
+    if (recognitionRef.current && stateRef.current === 'listening') {
        recognitionRef.current.stop(); 
     }
+  };
+
+  const handlePressStart = (e) => {
+    e.preventDefault(); 
+    if (stateRef.current === 'idle') startListening();
+  };
+
+  const handlePressEnd = (e) => {
+    e.preventDefault();
+    if (stateRef.current === 'listening') stopListening();
   };
 
   // --- UI RENDER ---
@@ -123,12 +132,16 @@ export default function QuickBook() {
         </div>
       )}
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button (Push to Talk) */}
       <button
-        onClick={state === 'listening' ? () => stopListening() : startListening}
+        onPointerDown={handlePressStart}
+        onPointerUp={handlePressEnd}
+        onPointerLeave={handlePressEnd}
+        onContextMenu={(e) => e.preventDefault()}
+        style={{ touchAction: 'none' }}
         disabled={state === 'processing' || state === 'success' || state === 'error'}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-105 active:scale-95
-          ${state === 'idle' ? 'bg-[#2B6CB0] text-white hover:bg-[#2C5282]' : ''}
+        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 transform select-none
+          ${state === 'idle' ? 'bg-[#2B6CB0] text-white hover:bg-[#2C5282] hover:scale-105 active:scale-95' : ''}
           ${state === 'listening' ? 'bg-[#E53B12] text-white animate-pulse shadow-[0_0_20px_rgba(229,59,18,0.5)] scale-110' : ''}
           ${state === 'processing' ? 'bg-gray-800 text-white cursor-not-allowed' : ''}
           ${state === 'success' ? 'bg-[#38a169] text-white' : ''}
@@ -136,7 +149,7 @@ export default function QuickBook() {
         `}
       >
         {state === 'idle' && <Mic size={24} />}
-        {state === 'listening' && <Square size={20} fill="currentColor" />}
+        {state === 'listening' && <Mic size={24} fill="currentColor" />}
         {state === 'processing' && <Loader2 size={24} className="animate-spin" />}
         {state === 'success' && <Check size={28} strokeWidth={3} />}
         {state === 'error' && <AlertCircle size={24} />}
