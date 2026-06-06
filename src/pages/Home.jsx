@@ -222,6 +222,7 @@ export default function Home() {
     let baseMult = 0;
     let baseFixed = 0;
     let serviceCount = 0;
+    let hasStandardService = false;
 
     selectedServices.forEach(serviceId => {
       const service = db.services.find(s => s.id === serviceId);
@@ -234,9 +235,14 @@ export default function Home() {
         } else {
           baseMult += price;
           serviceCount++;
+          hasStandardService = true;
         }
       }
     });
+
+    if (hasStandardService) {
+      baseMult += 30000; // Tarifa base por unidad
+    }
 
     let discount = 0;
     if (serviceCount > db.discountThreshold) {

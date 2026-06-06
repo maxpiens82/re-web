@@ -80,7 +80,7 @@ export default function Portal() {
       <div 
         onClick={() => handleJobClick(job.eventId)}
         className={`p-3 rounded-lg cursor-pointer transition-all border-l-[4px] shadow-sm hover:shadow-md mb-2
-          ${selectedJobId === job.eventId ? `ring-2 ring-[#EB4511]/30 ${bgClass}` : `border-transparent hover:bg-gray-50 ${bgClass}`}
+          ${selectedJobId === job.eventId ? 'bg-[#F0FFF4]' : `border-transparent hover:bg-gray-50 ${bgClass}`}
           ${borderClass}
         `}
       >

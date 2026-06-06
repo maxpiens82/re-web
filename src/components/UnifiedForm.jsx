@@ -43,6 +43,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingClient, setIsSavingClient] = useState(false); 
+  const [isSendingQuote, setIsSendingQuote] = useState(false); 
   
   // Data State
   const [db, setDb] = useState(null);
@@ -72,6 +73,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
 
   // Validation State & CRM Memory Engine
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showProducerPayout, setShowProducerPayout] = useState(false);
   const [fieldStates, setFieldStates] = useState({ 
     name: 'new', lastName: 'new', company: 'new', email: 'new', phone: 'new',
     dniCuit: 'new', condicionIva: 'new', modalidadPago: 'new' 
@@ -246,15 +248,22 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     return Array.from(set);
   }, [units]);
 
-  useEffect(() => {
-    // Purge team/post-prod selections if service is unchecked globally
-    setTeamMembers(prev => prev.map(m => ({ ...m, services: m.services.filter(s => allActiveServices.includes(s)) })));
+ useEffect(() => {
+    setTeamMembers(prev => {
+      // ⚡ AUTO-ASSIGN: If there is only one producer, dynamically sync all active services to them
+      if (prev.length === 1) {
+        return [{ ...prev[0], services: [...allActiveServices] }];
+      }
+      // Otherwise (multi-producer), just purge services that are no longer globally checked
+      return prev.map(m => ({ ...m, services: m.services.filter(s => allActiveServices.includes(s)) }));
+    });
+    
     setGlobalPostProd(prev => prev.filter(s => allActiveServices.includes(s)));
   }, [allActiveServices]);
 
   // 🚀 ENGINE: DATE-AWARE PRICING CALCULATOR
-  const { total, discountApplied, baseCount } = useMemo(() => {
-    if (!db || !pricingData) return { total: 0, discountApplied: 0, baseCount: 0 };
+  const { total, producerPayout, discountApplied, baseCount } = useMemo(() => {
+    if (!db || !pricingData) return { total: 0, producerPayout: 0, discountApplied: 0, baseCount: 0 };
     
     // 1. Determine active Pricing Era
     let isNewEra = false;
@@ -268,33 +277,91 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     }
 
     const activePrices = isNewEra ? (pricingData.newPrices || {}) : (pricingData.currentPrices || {});
+    const activeProdPrices = isNewEra ? (pricingData.newProdPrices || {}) : (pricingData.currentProdPrices || {});
+    const activePostPrices = isNewEra ? (pricingData.newPostPrices || {}) : (pricingData.currentPostPrices || {});
     const sizeMults = pricingData.multipliers || {};
+    const constants = pricingData.constants || { viaticos: 0, comboVR: 0, ppMultiplier: 1 };
 
     let grandTotal = 0;
     let globalServiceCount = 0;
+    let totalProdPayout = 0;
+    let anyUnitHasServices = false;
 
     // 2. Calculate per unit
     units.forEach(unit => {
       let unitBaseMult = 0;
       let unitBaseFixed = 0;
+      let hasStandardService = false;
+      
+      let prodFeeBase = 0;
+      let prodFeeFixed = 0;
       
       unit.selectedServices.forEach(srv => {
         if (srv !== 'EXTRAS') {
+          anyUnitHasServices = true;
           globalServiceCount++;
+          
+          // Client Price Math
           const price = activePrices[srv] || 0;
-          if (srv === 'DRONE' || srv === 'FPV') unitBaseFixed += price;
-          else unitBaseMult += price;
+          if (srv === 'DRONE' || srv === 'FPV') {
+            unitBaseFixed += price;
+          } else {
+            unitBaseMult += price;
+            hasStandardService = true;
+          }
+
+          // Producer Payout Math
+          const prodPrice = activeProdPrices[srv] || 0;
+          if (srv === 'DRONE' || srv === 'FPV') prodFeeFixed += prodPrice;
+          else prodFeeBase += prodPrice;
         }
       });
 
+      if (hasStandardService) {
+        unitBaseMult += 30000; // Tarifa base por unidad (Cliente)
+      }
+
       const multValue = sizeMults[unit.metrosCuadrados] || 1;
-      let unitSubtotal = (unitBaseMult * multValue) + unitBaseFixed;
       
+      // --- Client Unit Total ---
+      let unitSubtotal = (unitBaseMult * multValue) + unitBaseFixed;
       if (unit.selectedServices.includes('EXTRAS')) {
         unitSubtotal += (Number(unit.costoExtras) || 0);
       }
       grandTotal += unitSubtotal;
+
+      // --- Producer Unit Total ---
+      let unitProdPayout = (prodFeeBase * multValue) + prodFeeFixed;
+      if (unit.selectedServices.includes('EXTRAS')) {
+        unitProdPayout += (Number(unit.pagoEditorExtras) || 0); 
+      }
+
+      // --- Post-Prod Unit Total (for self-edited) ---
+      let postFeeBase = 0;
+      let postFeeFixed = 0;
+      const ppServices = globalPostProd.filter(s => unit.selectedServices.includes(s));
+      
+      ppServices.forEach(srv => {
+        if (srv !== 'EXTRAS') {
+          let cost = activePostPrices[srv] || 0;
+          if (srv === 'REEL' && ppServices.includes('VIDEO')) {
+            const comboMult = (constants.comboVR > 0) ? constants.comboVR : 1;
+            cost = cost * comboMult;
+          }
+          if (srv === 'DRONE' || srv === 'FPV') postFeeFixed += cost;
+          else postFeeBase += cost;
+        }
+      });
+
+      let unitPostPayout = ((postFeeBase * multValue) + postFeeFixed) * (constants.ppMultiplier || 1);
+      
+      totalProdPayout += (unitProdPayout + unitPostPayout);
     });
+
+    // Viaticos apply once globally
+    if (anyUnitHasServices) {
+      totalProdPayout += (constants.viaticos || 0);
+    }
 
     let discount = 0;
     if (globalServiceCount > db.discountThreshold) {
@@ -304,8 +371,8 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     grandTotal -= discount;
     if (grandTotal < 0) grandTotal = 0;
 
-    return { total: grandTotal, discountApplied: discount, baseCount: globalServiceCount };
-  }, [units, selectedDateObj, db, pricingData]);
+    return { total: grandTotal, producerPayout: totalProdPayout, discountApplied: discount, baseCount: globalServiceCount };
+  }, [units, selectedDateObj, db, pricingData, globalPostProd]);
 
   // ==========================================
   // CRM LOGIC
@@ -593,6 +660,45 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     }
   };
 
+  // 🚀 SEND QUOTATION (PRESUPUESTO)
+  const handleSendQuote = async () => {
+    if (!formData.name.trim() || !formData.email.trim()) {
+      alert("⚠️ Por favor, ingresa el Nombre y Correo Electrónico del cliente para enviarle el presupuesto."); 
+      return;
+    }
+    if (total === 0) {
+      alert("⚠️ El presupuesto actual es $0. Selecciona al menos un servicio."); 
+      return;
+    }
+
+    setIsSendingQuote(true);
+    const payload = {
+      action: 'send_quotation',
+      payload: {
+        nombre: formData.name,
+        email: formData.email,
+        locacion: formData.address || 'A confirmar',
+        units: units,
+        total: total,
+        discount: discountApplied
+      }
+    };
+
+    try {
+      const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+      const data = await response.json();
+      if (data.success) {
+        alert("✅ Cotización enviada exitosamente a " + formData.email);
+      } else {
+        alert("Error del servidor: " + data.error);
+      }
+    } catch (err) {
+      alert("Fallo de red al enviar el presupuesto.");
+    } finally {
+      setIsSendingQuote(false);
+    }
+  };
+
   // 🚀 CANCEL BOOKING
   const handleCancelBooking = async () => {
     setShowCancelModal(false);
@@ -663,7 +769,13 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       dniCuit: formData.dniCuit,
       condicionIva: formData.condicionIva,
       skipValidation: true,
-      units: units.map(u => ({ ...u, postProdServices: globalPostProd })) // Inject global post-prod choices
+      units: units.map((u, idx) => ({ 
+        ...u, 
+        indicaciones: (isNewBooking && String(u.indicaciones || '').trim() === '' && units.length > 1) 
+          ? `Unidad ${idx + 1}` 
+          : String(u.indicaciones || '').trim(),
+        postProdServices: globalPostProd 
+      })) 
     };
 
     if (actionType === 'create_booking' || actionType === 'update_booking') {
@@ -1051,16 +1163,59 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
 
       {/* FOOTER */}
       <div className="p-4 md:px-8 md:py-5 bg-white border-t border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0 gap-3 md:gap-0" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
-        <div className="flex flex-row md:flex-col justify-between items-center md:items-start w-full md:w-auto shrink-0">
-           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Estimado</span>
-           <div className="text-xl md:text-2xl font-extrabold leading-none" style={{ color: brandColor }}>{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(total)}</div>
+        
+        {/* MOBILE: Toggle Layout */}
+        <div 
+          className="flex md:hidden flex-row justify-between items-center w-full shrink-0 cursor-pointer group select-none"
+          onClick={() => setShowProducerPayout(!showProducerPayout)}
+        >
+           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 transition-colors group-hover:text-gray-600">
+             {showProducerPayout ? 'Pago Prod.' : 'Total Estimado'}
+             <svg className="w-3 h-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+           </span>
+           <div className="text-xl font-extrabold leading-none transition-colors" style={{ color: showProducerPayout ? '#38a169' : brandColor }}>
+             {formatCurrency(showProducerPayout ? producerPayout : total)}
+           </div>
+        </div>
+
+        {/* DESKTOP: Side-by-Side Layout */}
+        <div className="hidden md:flex flex-row items-center gap-6 shrink-0">
+          <div className="flex flex-col justify-between items-start w-auto">
+             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Estimado</span>
+             <div className="flex items-baseline gap-2">
+               <span className="text-2xl font-extrabold leading-none" style={{ color: brandColor }}>
+                 {formatCurrency(total)}
+               </span>
+               {discountApplied > 0 && (
+                 <span className="text-sm font-semibold text-gray-400 line-through">
+                   {formatCurrency(total + discountApplied)}
+                 </span>
+               )}
+             </div>
+          </div>
+          
+          <div className="flex flex-col justify-between items-start w-auto border-l border-gray-200 pl-6">
+             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pago Prod.</span>
+             <div className="text-2xl font-extrabold leading-none text-[#38a169]">
+               {formatCurrency(producerPayout)}
+             </div>
+          </div>
         </div>
         
         <div className="flex flex-row gap-2 w-full md:w-auto justify-end">
           {isNewBooking ? (
-            <button onClick={() => handleFormSubmit('create_booking')} disabled={isSubmitting} className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-[#EB4511] text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm flex items-center justify-center disabled:opacity-50">
-              {isSubmitting ? <><MiniLogo /> Procesando</> : 'Cargar Reserva'}
-            </button>
+            <>
+              <button 
+                onClick={handleSendQuote} 
+                disabled={isSubmitting || isSendingQuote || total === 0} 
+                className="flex-1 md:flex-none px-3 py-3 md:px-6 md:py-3.5 bg-white border-2 border-[#EB4511] text-[#EB4511] font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm flex items-center justify-center gap-2 hover:bg-orange-50 transition-colors disabled:opacity-50"
+              >
+                {isSendingQuote ? <><Loader2 size={16} className="animate-spin" /> Enviando...</> : <><Mail size={16} /> Enviar Presupuesto</>}
+              </button>
+              <button onClick={() => handleFormSubmit('create_booking')} disabled={isSubmitting} className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-[#EB4511] text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm flex items-center justify-center disabled:opacity-50">
+                {isSubmitting ? <><MiniLogo /> Procesando</> : 'Cargar Reserva'}
+              </button>
+            </>
           ) : isWebRequest ? (
             <>
               <button onClick={() => { if(confirm("¿Rechazar solicitud?")) handleFormSubmit('reject_booking'); }} disabled={isSubmitting} className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-red-50 text-red-600 font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase disabled:opacity-50">Rechazar</button>
