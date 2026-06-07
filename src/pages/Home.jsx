@@ -916,31 +916,34 @@ export default function Home() {
       </section>
 
       {/* 🚀 REVIEWS / SOCIAL PROOF */}
-      <section className="py-24 bg-white text-[#2d2d2d] border-y border-gray-200">
+      <section className="py-16 md:py-24 bg-white text-[#2d2d2d] border-y border-gray-200">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16 flex flex-col items-center">
-            <h2 className="text-3xl md:text-4xl font-extrabold mb-4 tracking-tight flex items-center justify-center gap-1.5">
-              <ArrowUpRight className="text-[#E53B12]" size={36} strokeWidth={3} />
-              Lo que dicen nuestros clientes
+          <div className="text-center mb-12 md:mb-16 flex flex-col items-center">
+            {/* Fix: En móviles la flecha va arriba centrada, en PC va al lado */}
+            <h2 className="text-[26px] md:text-4xl font-extrabold mb-4 tracking-tight flex flex-col md:flex-row items-center justify-center gap-2 md:gap-1.5 leading-tight">
+              <ArrowUpRight className="text-[#E53B12] w-8 h-8 md:w-9 md:h-9" strokeWidth={3} />
+              <span className="text-center">Lo que dicen nuestros clientes</span>
             </h2>
             <div className="flex justify-center gap-1 text-[#E53B12]">
-              {[...Array(5)].map((_, i) => <Star key={i} fill="currentColor" size={24} />)}
+              {[...Array(5)].map((_, i) => <Star key={i} fill="currentColor" className="w-5 h-5 md:w-6 md:h-6" />)}
             </div>
-            <p className="mt-4 text-gray-400 uppercase tracking-widest text-sm font-bold">Reseñas Verificadas</p>
+            <p className="mt-3 md:mt-4 text-gray-400 uppercase tracking-widest text-[10px] md:text-sm font-bold">Reseñas Verificadas</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {[
-              { name: 'Martín S.', agency: 'RE/MAX', text: 'Santiago y el equipo son unos profesionales absolutos. La calidad del video con drone nos ayudó a cerrar la venta en tiempo récord.' },
+              { name: 'Santiago y el equipo', agency: 'RE/MAX', text: 'Son unos profesionales absolutos. La calidad del video con drone nos ayudó a cerrar la venta en tiempo récord.' },
               { name: 'Carolina B.', agency: 'Sotheby\'s', text: 'Impecable atención a los detalles. Siempre llegan a tiempo, la edición es rápida y el resultado final supera las expectativas.' },
               { name: 'Alejandro T.', agency: 'Coldwell Banker', text: 'Los tours 3D y la fotografía son de otro nivel. Mis clientes quedan fascinados con la presentación impecable de sus propiedades.' }
             ].map((rev, i) => (
-              <div key={i} className="bg-[#EAEAEA] p-8 rounded-3xl border border-gray-200 relative hover:shadow-md transition-all">
-                <div className="text-[#E53B12] mb-6 flex gap-1">
-                  {[...Array(5)].map((_, j) => <Star key={j} fill="currentColor" size={16} />)}
+              <div key={i} className="bg-[#EAEAEA] p-6 md:p-8 rounded-3xl border border-gray-200 relative hover:shadow-md transition-all">
+                <div className="text-[#E53B12] mb-4 md:mb-6 flex gap-1">
+                   {[...Array(5)].map((_, j) => <Star key={j} fill="currentColor" size={14} className="md:w-4 md:h-4" />)}
                 </div>
-                <p className="text-gray-600 mb-8 italic leading-relaxed text-lg">"{rev.text}"</p>
-                <div className="font-bold text-[#2d2d2d] tracking-wide">{rev.name}</div>
-                <div className="text-gray-500 text-sm font-medium">{rev.agency}</div>
+                {/* Fix: Redujimos el texto de lg a 15px en móviles */}
+                <p className="text-gray-600 mb-6 md:mb-8 italic leading-relaxed text-[15px] md:text-lg">"{rev.text}"</p>
+                <div className="font-bold text-[#2d2d2d] tracking-wide text-sm md:text-base">{rev.name}</div>
+                <div className="text-gray-500 text-xs md:text-sm font-medium">{rev.agency}</div>
               </div>
             ))}
           </div>
