@@ -660,9 +660,9 @@ export default function Home() {
               <div
                 key={i}
                 onClick={() => { if (!item.iframe) setLightboxImg(item.img); }}
-                /* Eliminamos el scale en móviles para evitar bugs de z-index y click */
-                className={`relative rounded-2xl overflow-hidden shadow-sm h-72 bg-black transition-all duration-500 ease-out
-    ${!item.iframe ? 'cursor-pointer md:hover:scale-[1.05] md:hover:z-10 hover:shadow-2xl' : ''}`}
+                /* md:hover:scale aplica el zoom SOLO en PC. Así mantenemos Android a salvo y la PC elegante */
+                className={`relative rounded-2xl overflow-hidden shadow-sm h-72 bg-black transition-all duration-500 ease-out hover:shadow-2xl md:hover:scale-[1.05] md:hover:z-10
+                  ${!item.iframe ? 'cursor-pointer' : ''}`}
               >
                 {item.iframe ? (
                   <div className="absolute inset-0 z-0 pointer-events-auto">
