@@ -660,8 +660,8 @@ export default function Home() {
               <div
                 key={i}
                 onClick={() => { if (!item.iframe) setLightboxImg(item.img); }}
-                /* md:hover:scale aplica el zoom SOLO en PC. Así mantenemos Android a salvo y la PC elegante */
-                className={`relative rounded-2xl overflow-hidden shadow-sm h-72 bg-black transition-all duration-500 ease-out hover:shadow-2xl md:hover:scale-[1.05] md:hover:z-10
+                /* Añadimos 'group' para controlar las animaciones internas al pasar el mouse */
+                className={`group relative rounded-2xl overflow-hidden shadow-sm h-72 bg-black transition-all duration-500 ease-out hover:shadow-2xl md:hover:scale-[1.05] md:hover:z-10
                   ${!item.iframe ? 'cursor-pointer' : ''}`}
               >
                 {item.iframe ? (
@@ -677,15 +677,13 @@ export default function Home() {
                   <img src={item.img} alt={item.title} className="w-full h-full object-cover absolute inset-0 z-0" />
                 )}
 
-                {/* Solo mostramos el overlay de texto y degradado oscuro si ES UNA IMAGEN ESTÁTICA */}
-                {!item.iframe && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a]/90 via-[#1a1a1a]/20 to-transparent flex flex-col justify-end p-6 pointer-events-none z-10">
-                    <h3 className="text-white font-bold text-xl drop-shadow-md">{item.title}</h3>
-                    <p className="text-white/80 text-sm font-medium drop-shadow-md flex items-center gap-1 mt-1">
-                      <MapPin size={12} /> {item.loc}
-                    </p>
-                  </div>
-                )}
+                {/* Ahora el degradado está en TODAS las tarjetas, pero desaparece suavemente al pasar el mouse (group-hover:opacity-0) */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a]/95 via-[#1a1a1a]/30 to-transparent flex flex-col justify-end p-6 pointer-events-none z-10 transition-opacity duration-300 opacity-100 group-hover:opacity-0">
+                  <h3 className="text-white font-bold text-xl drop-shadow-md">{item.title}</h3>
+                  <p className="text-white/80 text-sm font-medium drop-shadow-md flex items-center gap-1 mt-1">
+                    <MapPin size={12} /> {item.loc}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -700,7 +698,7 @@ export default function Home() {
             Cotizá al instante.
           </h2>
           <p className="text-gray-500 font-medium text-lg max-w-2xl mx-auto">
-            Seleccioná los servicios, elegí tu fecha ideal y confirmá tu reserva online. Sin intermediarios ni demoras.
+            Seleccioná los servicios, elegí tu fecha ideal y solicitá tu reserva online. Sin intermediarios ni demoras.
           </p>
         </div>
 
