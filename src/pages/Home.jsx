@@ -2,14 +2,30 @@ import QuickBook from '../components/QuickBook';
 import MiniLogo from '../components/MiniLogo';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { 
+import { useAuth } from '../context/AuthContext';
+import {
   Camera, Video, Clapperboard, Mic, Map as MapIcon, Compass,
   Plane, Crosshair, MapPin, Calendar, User, Building, Mail,
   Phone, CheckCircle2, Check, Info, X, ChevronLeft, ChevronRight,
   Star, ArrowRight, PlayCircle, ArrowUpRight
 } from 'lucide-react';
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE"; 
+// Manual SVG Icons to avoid library version errors
+const InstagramIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
+);
+
+const YoutubeIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m10 15 5-3-5-3z"/></svg>
+);
+
+const WhatsAppIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 448 512" fill="currentColor">
+    <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.7 17.8 69.4 27.2 106.2 27.2h.1c122.3 0 222-99.6 222-222 0-59.3-23-115.1-65.1-157.1zM223.9 445.2c-33.1 0-65.6-8.9-93.9-25.7l-6.7-4-69.8 18.3L72 365.4l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-82.7 184.6-184.5 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18s-8.8-2.8-12.4 2.8-14.1 18-17.3 21.6-6.4 4.1-12 1.4c-5.5-2.8-23.4-8.6-44.5-27.5-16.4-14.6-27.5-32.7-30.7-38.2-3.2-5.5-.3-8.5 2.5-11.2 2.5-2.6 5.5-6.4 8.3-9.6 2.8-3.2 3.7-5.5 5.5-9.1 1.8-3.7.9-6.9-.5-9.6-1.4-2.8-12.4-29.8-17-41.1-4.5-10.9-9.1-9.4-12.4-9.6-3.2-.1-6.9-.2-10.5-.2-3.7 0-9.6 1.4-14.7 6.9-5.1 5.5-19.3 18.8-19.3 45.9s19.7 53.3 22.5 57c2.8 3.7 38.8 59.3 94.1 83.2 13.2 5.7 23.4 9.1 31.4 11.7 13.2 4.2 25.2 3.6 34.8 2.1 10.6-1.5 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+  </svg>
+);
+
+const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE";
 
 // 1. EXTRACT ICONS OUTSIDE SO MEMORY CAN USE THEM INSTANTLY
 const ICON_MAP = {
@@ -45,7 +61,7 @@ const generateDates = () => {
   for (let i = 0; i < 90; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
-    const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' }).substring(0, 3).toUpperCase().replace('.', ''); 
+    const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' }).substring(0, 3).toUpperCase().replace('.', '');
     const dayNumber = d.getDate();
     const monthNumber = String(d.getMonth() + 1).padStart(2, '0');
     options.push({
@@ -58,6 +74,7 @@ const generateDates = () => {
 };
 
 export default function Home() {
+  const { currentUser } = useAuth();
   const [selectedServices, setSelectedServices] = useState([]);
   const [multiplier, setMultiplier] = useState(1.0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,8 +87,8 @@ export default function Home() {
   useEffect(() => {
     if (typeof navigator !== 'undefined') {
       const isAndroid = /android/i.test(navigator.userAgent);
-      const ram = navigator.deviceMemory; 
-      
+      const ram = navigator.deviceMemory;
+
       if (isAndroid) {
         // En Android, asumimos por defecto que el blur le hará daño al rendimiento
         let lowEnd = true;
@@ -83,7 +100,7 @@ export default function Home() {
       }
     }
   }, []);
-  
+
   // Estados para la galería de fotos (Zoom, Pan & Pinch)
   const [lightboxImg, setLightboxImg] = useState(null);
   const [scale, setScale] = useState(1);
@@ -173,11 +190,11 @@ export default function Home() {
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       const delta = dist / initialTouchDist;
       // Permitimos que se aleje un poco más de 1 (hasta 0.5) para dar ese efecto "elástico" al pellizcar hacia adentro
-      setScale(prev => Math.min(Math.max(0.5, prev * delta), 5)); 
+      setScale(prev => Math.min(Math.max(0.5, prev * delta), 5));
       setInitialTouchDist(dist);
     }
   };
-  
+
   const handleTouchEnd = () => setInitialTouchDist(0);
 
   // ==========================================
@@ -196,13 +213,13 @@ export default function Home() {
   });
 
   const [isLoadingPrices, setIsLoadingPrices] = useState(false); // 🚀 ALWAYS FALSE. WE ALWAYS HAVE DATA.
-  
+
   // 🚀 ENGINE: Date-Aware Pricing State
   const [pricingData, setPricingData] = useState(() => {
     try {
       const cached = localStorage.getItem('re_pricing_engine');
       if (cached) return JSON.parse(cached);
-    } catch(e){}
+    } catch (e) { }
     return null;
   });
 
@@ -210,7 +227,7 @@ export default function Home() {
   const [dateOptions] = useState(generateDates);
   const [selectedDateObj, setSelectedDateObj] = useState(dateOptions[0]);
   const [selectedTime, setSelectedTime] = useState(null);
-  
+
   const dateScrollRef = useRef(null);
   const addressInputRef = useRef(null);
   const autocompleteRef = useRef(null);
@@ -234,11 +251,11 @@ export default function Home() {
     const fetchPrices = async () => {
       // 🚀 NOW HITTING THE V2 RAM CACHE IN GOOGLE APPS SCRIPT
       const GOOGLE_URL = `${import.meta.env.VITE_GAS_API_URL}?api=init_v2`;
-      
+
       try {
         const response = await fetch(GOOGLE_URL);
         const data = await response.json();
-        
+
         if (data.success) {
           const mappedServices = data.prices.services.map(s => ({
             id: s.id,
@@ -261,7 +278,7 @@ export default function Home() {
           // Attach icons and update state silently
           freshDb.services = freshDb.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
           setDb(freshDb);
-          
+
           // 🚀 Inject the Pricing Engine
           if (data.pricingData) {
             setPricingData(data.pricingData);
@@ -302,14 +319,14 @@ export default function Home() {
           const place = autocompleteRef.current.getPlace();
           if (place.formatted_address) {
             setFormData(prev => ({ ...prev, address: place.formatted_address }));
-            setIsAddressValid(true); 
+            setIsAddressValid(true);
           } else {
             setIsAddressValid(false);
           }
         });
       }
     }
-  }, []); 
+  }, []);
 
   // --- CALCULATION ENGINE ---
   const { total, discountApplied, baseCount } = useMemo(() => {
@@ -321,7 +338,7 @@ export default function Home() {
       let targetMs = Date.now();
       if (pricingData.pricingConfig.rule === "FECHA" && selectedDateObj) {
         const p = selectedDateObj.id.split('-');
-        targetMs = new Date(p[0], p[1]-1, p[2], 12, 0, 0).getTime();
+        targetMs = new Date(p[0], p[1] - 1, p[2], 12, 0, 0).getTime();
       }
       isNewEra = targetMs >= pricingData.pricingConfig.threshold;
     }
@@ -338,7 +355,7 @@ export default function Home() {
       if (service) {
         // Fallback to legacy price array if engine isn't loaded yet
         const price = (pricingData && activePrices[serviceId] !== undefined) ? activePrices[serviceId] : service.price;
-        
+
         if (service.isFixed) {
           baseFixed += price;
         } else {
@@ -362,14 +379,14 @@ export default function Home() {
 
     return {
       total: calculatedTotal,
-      discountApplied: discount > 0 ? discount * multiplier : 0, 
+      discountApplied: discount > 0 ? discount * multiplier : 0,
       baseCount: serviceCount
     };
   }, [selectedServices, multiplier, db, pricingData, selectedDateObj]);
 
   // --- HANDLERS ---
   const toggleService = (id) => {
-    setSelectedServices(prev => 
+    setSelectedServices(prev =>
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
     );
   };
@@ -386,12 +403,12 @@ export default function Home() {
     if (!formData.company.trim()) { alert("⚠️ Por favor, ingresa tu Empresa o Inmobiliaria (o escribe 'Particular')."); return; }
     if (!formData.email.trim()) { alert("⚠️ Por favor, ingresa tu Correo Electrónico."); return; }
     if (!formData.phone.trim()) { alert("⚠️ Por favor, ingresa tu Teléfono (WhatsApp)."); return; }
-    
+
     // 2. Strict Validation: Address
     if (!formData.address.trim()) { alert("⚠️ Por favor, ingresa la Dirección de la propiedad."); return; }
     if (!isAddressValid) {
       alert("📍 Por favor, selecciona la dirección desde las sugerencias de Google Maps para asegurar que sea válida.");
-      if(addressInputRef.current) addressInputRef.current.focus();
+      if (addressInputRef.current) addressInputRef.current.focus();
       return;
     }
 
@@ -404,7 +421,7 @@ export default function Home() {
       alert("⚠️ Por favor, selecciona al menos un Servicio.");
       return;
     }
-    
+
     // If they selected EXTRAS, force them to explain what it is
     if (selectedServices.includes('EXTRAS') && (!formData.extrasDesc || formData.extrasDesc.trim() === '')) {
       alert("⚠️ Has seleccionado 'EXTRAS'. Por favor describe qué necesitas en el campo de texto.");
@@ -412,7 +429,7 @@ export default function Home() {
     }
 
     setIsSubmitting(true);
-    
+
     const API_URL = import.meta.env.VITE_GAS_API_URL;
 
     // Reconstruct the strict ISO format that Google Apps Script requires: "YYYY-MM-DDTHH:mm"
@@ -438,7 +455,7 @@ export default function Home() {
     try {
       await fetch(API_URL, {
         method: "POST",
-        mode: "no-cors", 
+        mode: "no-cors",
         headers: {
           "Content-Type": "text/plain;charset=utf-8",
         },
@@ -455,10 +472,10 @@ export default function Home() {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-AR', { 
-      style: 'currency', 
-      currency: 'ARS', 
-      maximumFractionDigits: 0 
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
@@ -477,34 +494,40 @@ export default function Home() {
   // Check the Vite Environment Variable
   const isPortalEnabled = import.meta.env.VITE_ENABLE_PORTAL === 'true';
 
+  const whatsappMessage = encodeURIComponent("¡Hola Santiago! Vi tu web y me gustaría consultar por una sesión de fotos/video.");
+  const whatsappUrl = `https://wa.me/5491168876507?text=${whatsappMessage}`;
+
  // 🚀 RENDER MAIN UI
   return (
-    <div className="min-h-screen text-[#2d2d2d] font-sans bg-[#EAEAEA]">  
-      
+    <div className="min-h-screen text-[#2d2d2d] font-sans bg-[#EAEAEA]">
+
       {/* 🚀 NAV BAR */}
       <nav className={`fixed top-0 left-0 w-full z-50 text-white px-4 py-1 md:px-6 md:py-2 flex justify-between items-center font-bold tracking-wide shadow-sm border-b border-white/5 transition-colors
         ${isLowEndDevice ? 'bg-[#1a1a1a]/95' : 'bg-[#1a1a1a]/80 backdrop-blur-md'}
       `}>
         <div className="flex items-center gap-4 md:gap-6">
-          <img 
-            src="/Logos_RE!_naranja.png" 
-            alt="RE! Logo" 
-            className="h-10 md:h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
-            onClick={() => window.scrollTo({top:0, behavior:'smooth'})}
+          <img
+            src="/Logos_RE!_naranja.png"
+            alt="RE! Logo"
+            className="h-10 md:h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           />
           {isPortalEnabled && (
             <Link to="/staging" className="hover:text-[#E53B12] transition-colors hidden md:block text-gray-300 text-sm">AI Stager</Link>
           )}
         </div>
         <div className="flex items-center gap-4 md:gap-6">
-          <button onClick={() => document.getElementById('portfolio').scrollIntoView({behavior: 'smooth'})} className="hidden md:block hover:text-[#E53B12] text-gray-300 transition-colors uppercase text-xs tracking-widest">Portfolio</button>
-          <button onClick={() => document.getElementById('calculadora').scrollIntoView({behavior: 'smooth'})} className="hidden md:block hover:text-[#E53B12] text-gray-300 transition-colors uppercase text-xs tracking-widest">Servicios</button>
+          <a href="https://www.instagram.com/somos.re.ok/" target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-[#E53B12] transition-colors">
+            <InstagramIcon size={18} />
+          </a>
+          <button onClick={() => document.getElementById('portfolio').scrollIntoView({ behavior: 'smooth' })} className="hidden md:block hover:text-[#E53B12] text-gray-300 transition-colors uppercase text-xs tracking-widest">Portfolio</button>
+          <button onClick={() => document.getElementById('calculadora').scrollIntoView({ behavior: 'smooth' })} className="hidden md:block hover:text-[#E53B12] text-gray-300 transition-colors uppercase text-xs tracking-widest">Servicios</button>
           {isPortalEnabled ? (
             <Link to="/portal" className="bg-white/10 border border-white/20 text-white px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:bg-white/20 transition-all shadow-sm text-[10px] md:text-xs uppercase tracking-wider font-bold">
               Staff
             </Link>
           ) : (
-            <button onClick={() => document.getElementById('calculadora').scrollIntoView({behavior: 'smooth'})} className="bg-[#E53B12] text-white px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:bg-[#c42e0d] transition-all shadow-md text-[10px] md:text-xs uppercase tracking-wider font-bold">
+            <button onClick={() => document.getElementById('calculadora').scrollIntoView({ behavior: 'smooth' })} className="bg-[#E53B12] text-white px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:bg-[#c42e0d] transition-all shadow-md text-[10px] md:text-xs uppercase tracking-wider font-bold">
               Cotizar
             </button>
           )}
@@ -514,18 +537,18 @@ export default function Home() {
       {/* 🚀 HERO SECTION */}
       <section className="relative pt-24 pb-16 md:pt-48 md:pb-36 px-4 md:px-6 overflow-hidden bg-[#1a1a1a]">
         <div className="absolute inset-0 z-0 bg-[#1a1a1a]">
-          
-          <img 
-            src="https://re-portfolio-foto.b-cdn.net/Poster-banner_2984_1989_1492_995.jpg" 
-            alt="Background" 
-            className={`absolute inset-0 w-full h-full object-cover z-10 transition-opacity duration-[1500ms] ease-in-out pointer-events-none ${isVideoPlaying ? 'opacity-0' : 'opacity-100'}`} 
+
+          <img
+            src="https://re-portfolio-foto.b-cdn.net/Poster-banner_2984_1989_1492_995.jpg"
+            alt="Background"
+            className={`absolute inset-0 w-full h-full object-cover z-10 transition-opacity duration-[1500ms] ease-in-out pointer-events-none ${isVideoPlaying ? 'opacity-0' : 'opacity-100'}`}
           />
-          
-          <video 
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
+
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
             disablePictureInPicture
             preload="auto"
             onPlaying={() => setIsVideoPlaying(true)}
@@ -536,34 +559,34 @@ export default function Home() {
             {/* DESKTOP/TABLETS: Carga el Video Horizontal */}
             <source src="https://vz-8b1827c7-938.b-cdn.net/64c650ac-bb47-45a5-b2f6-0ae16a68639b/play_1080p.mp4" type="video/mp4" />
           </video>
-          
+
           <div className="absolute inset-0 bg-black/10 z-20 pointer-events-none"></div>
           <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-black/80 to-transparent z-20 pointer-events-none"></div>
         </div>
-        
+
         <div className="max-w-5xl mx-auto flex flex-col items-center text-center relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000 mt-6 md:mt-0">
-          
+
           <div className={`inline-flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 rounded-full border text-white/90 text-[9px] md:text-xs font-bold tracking-widest uppercase mb-6 md:mb-8 shadow-lg transition-colors
             ${isLowEndDevice ? 'bg-black/60 border-black/40' : 'bg-white/10 border-white/20 backdrop-blur-sm'}
           `}>
             <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#E53B12] ${!isLowEndDevice ? 'animate-pulse' : ''}`}></span>
             Disponibilidad Inmediata
           </div>
-          
+
           {/* font-normal aplica la fuente LightExtended. font-black hace que "Propiedades" resalte */}
           <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-normal tracking-tight mb-4 md:mb-6 text-white leading-tight px-2" style={isLowEndDevice ? { textShadow: '0 2px 10px rgba(0,0,0,0.8)' } : { filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }}>
-            Elevá el nivel visual de <br className="hidden md:block"/> tus <span className="text-[#E53B12] font-black" style={isLowEndDevice ? { textShadow: '0 2px 5px rgba(0,0,0,0.5)' } : { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>Propiedades</span>.
+            Elevá el nivel visual de <br className="hidden md:block" /> tus <span className="text-[#E53B12] font-black" style={isLowEndDevice ? { textShadow: '0 2px 5px rgba(0,0,0,0.5)' } : { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>Propiedades</span>
           </h1>
-          
+
           <p className="text-sm sm:text-base md:text-xl text-gray-100 max-w-2xl mb-8 md:mb-10 leading-relaxed font-medium px-4 md:px-0" style={isLowEndDevice ? { textShadow: '0 2px 8px rgba(0,0,0,0.9)' } : { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>
             Fotografía de interiores, video cinemático y tomas aéreas para el mercado inmobiliario más exigente. Cotizá y reservá online en menos de 1 minuto.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-3 md:gap-4 w-full sm:w-auto px-4 sm:px-0">
-            <button onClick={() => document.getElementById('calculadora').scrollIntoView({behavior: 'smooth'})} className="w-full sm:w-auto px-6 py-3.5 md:px-8 md:py-4 bg-[#E53B12] text-white text-sm md:text-base rounded-full font-bold uppercase tracking-wide hover:bg-[#c42e0d] transition-transform hover:-translate-y-1 shadow-[0_0_20px_rgba(235,69,17,0.3)] flex items-center justify-center gap-2">
+            <button onClick={() => document.getElementById('calculadora').scrollIntoView({ behavior: 'smooth' })} className="w-full sm:w-auto px-6 py-3.5 md:px-8 md:py-4 bg-[#E53B12] text-white text-sm md:text-base rounded-full font-bold uppercase tracking-wide hover:bg-[#c42e0d] transition-transform hover:-translate-y-1 shadow-[0_0_20px_rgba(235,69,17,0.3)] flex items-center justify-center gap-2">
               Cotizar Ahora <ArrowRight size={16} className="md:w-[18px] md:h-[18px]" />
             </button>
-            <button onClick={() => document.getElementById('portfolio').scrollIntoView({behavior: 'smooth'})} className={`w-full sm:w-auto px-6 py-3.5 md:px-8 md:py-4 border-2 md:border-white/20 text-white text-sm md:text-base rounded-full font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2
+            <button onClick={() => document.getElementById('portfolio').scrollIntoView({ behavior: 'smooth' })} className={`w-full sm:w-auto px-6 py-3.5 md:px-8 md:py-4 border-2 md:border-white/20 text-white text-sm md:text-base rounded-full font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2
               ${isLowEndDevice ? 'bg-black/60 border-white/10' : 'bg-white/10 md:bg-transparent border-white/30 hover:bg-white/20 backdrop-blur-sm'}
             `}>
               <PlayCircle size={16} className="md:w-[18px] md:h-[18px]" /> Ver Portfolio
@@ -596,63 +619,63 @@ export default function Home() {
               </h2>
               <p className="text-gray-500 font-medium text-lg ml-0 md:ml-10">Imágenes que cierran ventas por sí solas.</p>
             </div>
-            <button onClick={() => document.getElementById('calculadora').scrollIntoView({behavior: 'smooth'})} className="text-[#E53B12] font-bold uppercase tracking-widest text-sm hover:underline flex items-center gap-1">
+            <button onClick={() => document.getElementById('calculadora').scrollIntoView({ behavior: 'smooth' })} className="text-[#E53B12] font-bold uppercase tracking-widest text-sm hover:underline flex items-center gap-1">
               Agendar Sesión <ArrowRight size={16} />
             </button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { 
-                title: 'Video Cinemático', 
-                loc: 'Haras Santa Maria', 
-                iframe: 'https://player.mediadelivery.net/embed/677860/807ad57f-1b0b-481b-a3ad-eb7c072b9ac3?autoplay=false&loop=false&muted=false&preload=true&responsive=true' 
+              {
+                title: 'Video Cinemático',
+                loc: 'Haras Santa Maria',
+                iframe: 'https://player.mediadelivery.net/embed/677860/807ad57f-1b0b-481b-a3ad-eb7c072b9ac3?autoplay=false&loop=false&muted=false&preload=true&responsive=true'
               },
-              { 
-                title: 'Fotografía HDR', 
-                loc: 'La Isla, Nordelta', 
-                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0009_2996_1995.jpg' 
+              {
+                title: 'Fotografía HDR',
+                loc: 'La Isla, Nordelta',
+                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0009_2996_1995.jpg'
               },
-              { 
-                title: 'Tour Virtual 360', 
-                loc: 'Carlos A. López 4700', 
-                iframe: 'https://kuula.co/share/collection/7MkBg?logo=1&info=0&fs=1&vr=1&initload=1&autoplay=1&thumbs=0&inst=es' 
+              {
+                title: 'Tour Virtual 360',
+                loc: 'Carlos A. López 4700',
+                iframe: 'https://kuula.co/share/collection/7MkBg?logo=1&info=0&fs=1&vr=1&initload=1&autoplay=1&thumbs=0&inst=es'
               },
-              { 
-                title: 'Diseño de Interiores', 
-                loc: 'La Isla, Nordelta', 
-                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0021_2992_1992.jpg' 
+              {
+                title: 'Diseño de Interiores',
+                loc: 'La Isla, Nordelta',
+                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0021_2992_1992.jpg'
               },
-              { 
-                title: 'Documentación Arquitectónica', 
-                loc: 'La Isla, Nordelta', 
-                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0023_2994_1994.jpg' 
+              {
+                title: 'Documentación Arquitectónica',
+                loc: 'La Isla, Nordelta',
+                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0023_2994_1994.jpg'
               },
-              { 
-                title: 'Tomas Aéreas & Sunset', 
-                loc: 'La Isla, Nordelta', 
-                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0059_2528_1684.jpg' 
+              {
+                title: 'Tomas Aéreas & Sunset',
+                loc: 'La Isla, Nordelta',
+                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0059_2528_1684.jpg'
               }
             ].map((item, i) => (
-              <div 
-  key={i} 
-  onClick={() => { if (!item.iframe) setLightboxImg(item.img); }}
-  /* Eliminamos el scale en móviles para evitar bugs de z-index y click */
-  className={`relative rounded-2xl overflow-hidden shadow-sm h-72 bg-black transition-all duration-500 ease-out
+              <div
+                key={i}
+                onClick={() => { if (!item.iframe) setLightboxImg(item.img); }}
+                /* Eliminamos el scale en móviles para evitar bugs de z-index y click */
+                className={`relative rounded-2xl overflow-hidden shadow-sm h-72 bg-black transition-all duration-500 ease-out
     ${!item.iframe ? 'cursor-pointer md:hover:scale-[1.05] md:hover:z-10 hover:shadow-2xl' : ''}`}
->
-  {item.iframe ? (
-    <div className="absolute inset-0 z-0 pointer-events-auto">
-      <iframe 
-        src={item.iframe} 
-        className="w-full h-full border-none relative z-10" 
-        allow="autoplay; fullscreen; picture-in-picture; xr-spatial-tracking; gyroscope; accelerometer"
-        loading="lazy"
-      ></iframe>
-    </div>
-  ) : (
-    <img src={item.img} alt={item.title} className="w-full h-full object-cover absolute inset-0 z-0" />
-  )}
+              >
+                {item.iframe ? (
+                  <div className="absolute inset-0 z-0 pointer-events-auto">
+                    <iframe
+                      src={item.iframe}
+                      className="w-full h-full border-none relative z-10"
+                      allow="autoplay; fullscreen; picture-in-picture; xr-spatial-tracking; gyroscope; accelerometer"
+                      loading="lazy"
+                    ></iframe>
+                  </div>
+                ) : (
+                  <img src={item.img} alt={item.title} className="w-full h-full object-cover absolute inset-0 z-0" />
+                )}
 
                 {/* Solo mostramos el overlay de texto y degradado oscuro si ES UNA IMAGEN ESTÁTICA */}
                 {!item.iframe && (
@@ -682,7 +705,7 @@ export default function Home() {
         </div>
 
         <div className="max-w-4xl mx-auto px-3 md:px-4 space-y-4 md:space-y-6">
-          
+
           {/* 1. SERVICIOS */}
           <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
             <div className="mb-4 md:mb-6">
@@ -690,7 +713,7 @@ export default function Home() {
                 Servicios
               </h2>
             </div>
-            
+
             <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-3">
               {db.services.map((srv) => {
                 const isSelected = selectedServices.includes(srv.id);
@@ -699,8 +722,8 @@ export default function Home() {
                     key={srv.id}
                     onClick={() => toggleService(srv.id)}
                     className={`relative w-full md:w-[100px] h-[36px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all duration-200 select-none flex items-center justify-center shrink-0
-                      ${isSelected 
-                        ? 'bg-[#E53B12] text-white shadow-[0_6px_16px_rgba(235,69,17,0.35)] -translate-y-0.5' 
+                      ${isSelected
+                        ? 'bg-[#E53B12] text-white shadow-[0_6px_16px_rgba(235,69,17,0.35)] -translate-y-0.5'
                         : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'
                       }`}
                   >
@@ -715,7 +738,7 @@ export default function Home() {
                 <Info className={`mt-0.5 flex-shrink-0 w-4 h-4 md:w-5 md:h-5 ${baseCount >= 4 ? 'text-green-600' : 'text-gray-400'}`} />
                 <div className="text-xs md:text-sm font-medium">
                   <span className="block mb-0.5 md:mb-1 font-bold">* Descuento automático por volumen:</span>
-                  Llevando 4 o más servicios base, se aplica una bonificación. 
+                  Llevando 4 o más servicios base, se aplica una bonificación.
                   {baseCount >= 4 && <span className="block mt-1 text-green-700 font-bold">¡Descuento activado!</span>}
                 </div>
               </div>
@@ -729,12 +752,12 @@ export default function Home() {
                 Locación
               </h2>
             </div>
-            
+
             <div className="space-y-4 md:space-y-6">
               <div>
                 <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Metros Cuadrados</label>
                 <div className="relative">
-                  <select 
+                  <select
                     className="w-full appearance-none bg-[#F4F4F5] border-none text-gray-800 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E53B12]/20 transition-colors cursor-pointer font-medium text-sm md:text-base"
                     value={multiplier}
                     onChange={(e) => setMultiplier(parseFloat(e.target.value))}
@@ -744,7 +767,7 @@ export default function Home() {
                     ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 md:px-4 text-gray-500">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
                   </div>
                 </div>
               </div>
@@ -754,8 +777,8 @@ export default function Home() {
                   Dirección del Servicio {!isAddressValid && formData.address && <span className="text-red-500 ml-1 md:ml-2 normal-case">(Seleccioná de la lista)</span>}
                 </label>
                 <div className="relative">
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="address"
                     ref={addressInputRef}
                     value={formData.address}
@@ -773,8 +796,8 @@ export default function Home() {
                   Indicaciones (Piso, Depto, Torre)
                 </label>
                 <div className="relative">
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="instructions"
                     value={formData.instructions}
                     onChange={handleInputChange}
@@ -801,7 +824,7 @@ export default function Home() {
                 </label>
                 <div className="flex items-center gap-1.5 md:gap-4">
                   <button onClick={scrollLeft} type="button" className="w-7 h-7 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#E53B12] hover:bg-gray-50 transition-colors shadow-sm">
-                    <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5}/>
+                    <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5} />
                   </button>
 
                   <div ref={dateScrollRef} className="relative flex flex-1 gap-1.5 md:gap-3 overflow-x-auto scroll-smooth py-1 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -818,7 +841,7 @@ export default function Home() {
                   </div>
 
                   <button onClick={scrollRight} type="button" className="w-7 h-7 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#E53B12] hover:bg-gray-50 transition-colors shadow-sm">
-                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5}/>
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5} />
                   </button>
                 </div>
 
@@ -846,18 +869,18 @@ export default function Home() {
                     )
                   })}
                 </div>
-              </div>      
+              </div>
             </div>
           </section>
 
           {/* 4. TUS DATOS */}
           <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
-             <div className="mb-4 md:mb-6">
+            <div className="mb-4 md:mb-6">
               <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>
                 Tus Datos
               </h2>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 md:pl-3.5 flex items-center pointer-events-none">
@@ -865,7 +888,7 @@ export default function Home() {
                 </div>
                 <input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Nombre y Apellido" className="w-full bg-[#F4F4F5] border-none text-gray-800 py-2.5 pl-9 pr-3 md:py-3.5 md:pl-11 md:pr-4 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E53B12]/20 transition-colors font-medium text-sm md:text-base" />
               </div>
-              
+
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 md:pl-3.5 flex items-center pointer-events-none">
                   <Building className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
@@ -907,13 +930,13 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { name: 'Martín S.', agency: 'RE/MAX', text: 'Rafael y el equipo son unos profesionales absolutos. La calidad del video con drone nos ayudó a cerrar la venta en tiempo récord.' },
+              { name: 'Martín S.', agency: 'RE/MAX', text: 'Santiago y el equipo son unos profesionales absolutos. La calidad del video con drone nos ayudó a cerrar la venta en tiempo récord.' },
               { name: 'Carolina B.', agency: 'Sotheby\'s', text: 'Impecable atención a los detalles. Siempre llegan a tiempo, la edición es rápida y el resultado final supera las expectativas.' },
               { name: 'Alejandro T.', agency: 'Coldwell Banker', text: 'Los tours 3D y la fotografía son de otro nivel. Mis clientes quedan fascinados con la presentación impecable de sus propiedades.' }
             ].map((rev, i) => (
               <div key={i} className="bg-[#EAEAEA] p-8 rounded-3xl border border-gray-200 relative hover:shadow-md transition-all">
                 <div className="text-[#E53B12] mb-6 flex gap-1">
-                   {[...Array(5)].map((_, j) => <Star key={j} fill="currentColor" size={16} />)}
+                  {[...Array(5)].map((_, j) => <Star key={j} fill="currentColor" size={16} />)}
                 </div>
                 <p className="text-gray-600 mb-8 italic leading-relaxed text-lg">"{rev.text}"</p>
                 <div className="font-bold text-[#2d2d2d] tracking-wide">{rev.name}</div>
@@ -926,22 +949,22 @@ export default function Home() {
 
       {/* 🚀 SITE FOOTER */}
       <footer className="relative bg-[#0f0f0f] text-gray-400 pt-24 pb-40 md:pb-32 border-t border-white/10 overflow-hidden">
-        
+
         {/* 🚀 BACKGROUND BRAND PATTERN */}
         <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center opacity-[0.03] md:opacity-5">
-          <img 
-            src="/logo-outline.png" 
-            alt="" 
-            className="w-[200%] md:w-[120%] h-auto object-contain -rotate-6" 
-            onError={(e) => { 
-              e.target.src = "/Logos_RE!_naranja.png"; 
-              e.target.classList.add('grayscale'); 
-            }} 
+          <img
+            src="/logo-outline.png"
+            alt=""
+            className="w-[200%] md:w-[120%] h-auto object-contain -rotate-6"
+            onError={(e) => {
+              e.target.src = "/Logos_RE!_naranja.png";
+              e.target.classList.add('grayscale');
+            }}
           />
         </div>
 
         <div className="relative z-10 max-w-6xl mx-auto px-6">
-          
+
           {/* 🚀 TU PARTNER CREATIVO */}
           <div className="text-center max-w-3xl mx-auto mb-20 md:mb-24">
             <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight uppercase">Tu Partner Creativo</h2>
@@ -968,52 +991,57 @@ export default function Home() {
             <div>
               <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Contacto</h4>
               <ul className="space-y-3 text-sm font-medium">
-                <li>hola@somosreok.com</li>
+                <li><a href="mailto:hola@somosreok.com" className="hover:text-[#E53B12] transition-colors">hola@somosreok.com</a></li>
                 <li>Buenos Aires, Argentina</li>
+                <li><a href="https://wa.me/5491168876507" target="_blank" rel="noopener noreferrer" className="hover:text-[#E53B12] transition-colors">WhatsApp Directo</a></li>
               </ul>
             </div>
           </div>
-          
+
           <div className="mt-16 pt-8 border-t border-white/10 text-sm text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-6">
             <p className="font-medium">© 2026 RE! Producciones. Todos los derechos reservados.</p>
-            <div className="flex justify-center gap-6 font-bold tracking-widest text-xs uppercase">
-              <a href="#" className="hover:text-[#E53B12] transition-colors">Instagram</a>
-              <a href="#" className="hover:text-[#E53B12] transition-colors">YouTube</a>
+            <div className="flex justify-center gap-8 items-center">
+              <a href="https://www.instagram.com/somos.re.ok/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-[#E53B12] transition-colors font-bold tracking-widest text-xs uppercase text-white/60">
+                <InstagramIcon size={16} /> Instagram
+              </a>
+              <a href="https://www.youtube.com/@somosreok" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-[#E53B12] transition-colors font-bold tracking-widest text-xs uppercase text-white/60">
+                <YoutubeIcon size={16} /> YouTube
+              </a>
             </div>
           </div>
         </div>
       </footer>
 
       {/* 🚀 STICKY CALCULATOR BAR (Appears only when total > 0) */}
-      <div 
+      <div
         className={`fixed bottom-0 left-0 w-full border-t border-gray-100 shadow-[0_-4px_30px_rgba(0,0,0,0.08)] z-50 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
           ${isLowEndDevice ? 'bg-white' : 'bg-white/95 backdrop-blur-md'}
           ${total > 0 ? 'translate-y-0' : 'translate-y-full'}`}
       >
         <div className="max-w-5xl mx-auto px-6 py-4 md:py-5 flex items-center justify-between gap-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
-          
+
           <div className="flex flex-col">
-             <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
-               Total Estimado
-             </span>
-             <div className="flex items-baseline gap-2">
-               <span className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: brandColor }}>
-                 {formatCurrency(total)}
-               </span>
-               {discountApplied > 0 && (
-                 <span className="text-sm font-bold text-gray-400 line-through hidden sm:inline-block">
-                   {formatCurrency(total + discountApplied)}
-                 </span>
-               )}
-             </div>
+            <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+              Total Estimado
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: brandColor }}>
+                {formatCurrency(total)}
+              </span>
+              {discountApplied > 0 && (
+                <span className="text-sm font-bold text-gray-400 line-through hidden sm:inline-block">
+                  {formatCurrency(total + discountApplied)}
+                </span>
+              )}
+            </div>
           </div>
 
-          <button 
+          <button
             onClick={handleSubmit}
             disabled={isSubmitting}
             className={`px-6 py-3.5 md:px-10 md:py-4 rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all duration-300 flex items-center justify-center gap-2
-              ${isSubmitting 
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
+              ${isSubmitting
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                 : 'bg-[#E53B12] text-white shadow-[0_4px_20px_rgba(235,69,17,0.35)] hover:bg-[#c42e0d] hover:shadow-[0_6px_25px_rgba(235,69,17,0.4)] hover:-translate-y-1'
               }`}
           >
@@ -1030,27 +1058,27 @@ export default function Home() {
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-[380px] w-full px-8 py-12 text-center relative animate-in zoom-in-95 duration-300">
-            
+
             <div className="mb-6 mt-2 relative">
               <div className="absolute inset-0 bg-green-100 rounded-full scale-150 animate-pulse opacity-50"></div>
               <Check size={80} className="text-[#4bbf73] mx-auto relative z-10" strokeWidth={3} />
             </div>
-            
+
             <h3 className="text-2xl font-extrabold text-[#1a1a1a] mb-4 tracking-tight">¡Solicitud Enviada!</h3>
             <p className="text-gray-500 text-[15px] leading-relaxed mb-10 font-medium">
-              Hemos recibido tu solicitud de reserva con éxito.<br/>Nuestro equipo te contactará a la brevedad para confirmar la disponibilidad.
+              Hemos recibido tu solicitud de reserva con éxito.<br />Nuestro equipo te contactará a la brevedad para confirmar la disponibilidad.
             </p>
-            
-            <button 
+
+            <button
               onClick={() => {
                 setShowModal(false);
                 setFormData({ address: '', instructions: '', name: '', company: '', email: '', phone: '' });
                 setSelectedServices([]);
                 setMultiplier(1.0);
                 setIsAddressValid(false);
-                setSelectedDateObj(dateOptions[0]); 
-                setSelectedTime(null);                  
-                if(dateScrollRef.current) dateScrollRef.current.scrollTo({ left: 0 });
+                setSelectedDateObj(dateOptions[0]);
+                setSelectedTime(null);
+                if (dateScrollRef.current) dateScrollRef.current.scrollTo({ left: 0 });
               }}
               className="w-full text-white font-bold py-4 px-6 rounded-full transition-all hover:-translate-y-1 hover:shadow-lg uppercase text-sm tracking-widest"
               style={{ backgroundColor: '#4bbf73' }}
@@ -1063,27 +1091,27 @@ export default function Home() {
 
       {/* 🚀 LIGHTBOX MODAL PARA FOTOS */}
       {lightboxImg && (
-        <div 
+        <div
           className={`fixed inset-0 z-[200] flex items-center justify-center overflow-hidden animate-in fade-in duration-300 touch-none
             ${isLowEndDevice ? 'bg-[#1a1a1a]/98' : 'bg-[#1a1a1a]/90 backdrop-blur-2xl'}
           `}
-          onClick={(e) => { 
+          onClick={(e) => {
             if (e.target.tagName !== 'IMG') {
-              setLightboxImg(null); setScale(1); setPosition({x:0, y:0}); 
+              setLightboxImg(null); setScale(1); setPosition({ x: 0, y: 0 });
             }
           }}
         >
-          <button 
+          <button
             className="fixed top-4 right-4 md:top-8 md:right-8 text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full backdrop-blur-md z-[210] transition-colors"
-            onClick={(e) => { e.stopPropagation(); setLightboxImg(null); setScale(1); setPosition({x:0, y:0}); }}
+            onClick={(e) => { e.stopPropagation(); setLightboxImg(null); setScale(1); setPosition({ x: 0, y: 0 }); }}
           >
             <X size={24} />
           </button>
-          
-          <img 
+
+          <img
             ref={imgRef}
-            src={lightboxImg} 
-            alt="Pantalla Completa" 
+            src={lightboxImg}
+            alt="Pantalla Completa"
             draggable="false"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
@@ -1092,26 +1120,48 @@ export default function Home() {
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            onClick={(e) => { 
-              e.stopPropagation(); 
+            onClick={(e) => {
+              e.stopPropagation();
               if (scale === 1) {
                 setScale(2.5);
               } else if (dragDistance < 5) {
                 setScale(1);
-                setPosition({x:0, y:0});
+                setPosition({ x: 0, y: 0 });
               }
             }}
-            style={{ 
-              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, 
+            style={{
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
               cursor: isDragging ? 'grabbing' : 'grab'
             }}
-            className={`w-full h-auto select-none transform-gpu origin-center ${(!isDragging && initialTouchDist === 0) ? 'transition-transform duration-300 ease-out' : ''}`} 
+            className={`w-full h-auto select-none transform-gpu origin-center ${(!isDragging && initialTouchDist === 0) ? 'transition-transform duration-300 ease-out' : ''}`}
           />
         </div>
       )}
 
       {/* 🚀 QUICK BOOK AI VOICE BUTTON */}
       <QuickBook />
+
+      {/* 🚀 FLOATING WHATSAPP BUTTON (Only visible to regular clients) */}
+      {!currentUser && (
+        <a 
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`fixed right-6 z-[60] flex items-center justify-center w-16 h-16 rounded-full shadow-[0_10px_25px_rgba(37,211,102,0.4)] transition-all duration-500 hover:scale-110 active:scale-95 bg-[#25D366] text-white p-4
+            ${total > 0 ? 'bottom-28 md:bottom-28' : 'bottom-8'}
+          `}
+        >
+          {/* White Pulse Animation */}
+          <span className="absolute inset-0 rounded-full bg-white animate-ping opacity-20 pointer-events-none"></span>
+          
+          <WhatsAppIcon size={32} />
+          
+          {/* Online Status Dot */}
+          <span className="absolute top-3 right-3 flex h-3 w-3">
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-white shadow-sm"></span>
+          </span>
+        </a>
+      )}
 
     </div>
   );
