@@ -5,7 +5,8 @@ import { Link } from 'react-router-dom';
 import { 
   Camera, Video, Clapperboard, Mic, Map as MapIcon, Compass,
   Plane, Crosshair, MapPin, Calendar, User, Building, Mail,
-  Phone, CheckCircle2, Check, Info, X, ChevronLeft, ChevronRight
+  Phone, CheckCircle2, Check, Info, X, ChevronLeft, ChevronRight,
+  Star, ArrowRight, PlayCircle, ArrowUpRight
 } from 'lucide-react';
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE"; 
@@ -62,14 +63,122 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isAddressValid, setIsAddressValid] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isLowEndDevice, setIsLowEndDevice] = useState(false);
 
-  // Track scroll position for the Parallax Header
+  // DETECTOR DE HARDWARE: Estrategia estricta para Android
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    if (typeof navigator !== 'undefined') {
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const ram = navigator.deviceMemory; 
+      
+      if (isAndroid) {
+        // En Android, asumimos por defecto que el blur le hará daño al rendimiento
+        let lowEnd = true;
+        // Solo encendemos el blur si el teléfono nos garantiza que tiene 8GB de RAM o más (Gama Alta)
+        if (ram && ram >= 8) {
+          lowEnd = false;
+        }
+        setIsLowEndDevice(lowEnd);
+      }
+    }
   }, []);
+  
+  // Estados para la galería de fotos (Zoom, Pan & Pinch)
+  const [lightboxImg, setLightboxImg] = useState(null);
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragDistance, setDragDistance] = useState(0);
+  const [initialTouchDist, setInitialTouchDist] = useState(0);
+  const imgRef = useRef(null);
+
+  // Efecto "Snap Back": Limita el paneo para que la foto no quede fuera de la pantalla
+  useEffect(() => {
+    if (!isDragging && initialTouchDist === 0 && imgRef.current) {
+      const imgW = imgRef.current.offsetWidth * scale;
+      const imgH = imgRef.current.offsetHeight * scale;
+      const winW = window.innerWidth;
+      const winH = window.innerHeight;
+
+      const maxX = Math.max(0, (imgW - winW) / 2);
+      const maxY = Math.max(0, (imgH - winH) / 2);
+
+      let newX = position.x;
+      let newY = position.y;
+
+      if (newX > maxX) newX = maxX;
+      if (newX < -maxX) newX = -maxX;
+      if (newY > maxY) newY = maxY;
+      if (newY < -maxY) newY = -maxY;
+
+      if (scale < 1) {
+        setScale(1);
+        newX = 0;
+        newY = 0;
+      }
+
+      if (newX !== position.x || newY !== position.y) {
+        setPosition({ x: newX, y: newY });
+      }
+    }
+  }, [isDragging, initialTouchDist, scale, position.x, position.y]);
+
+  // Mouse y 1 Dedo (Pan/Arrastrar)
+  const handlePointerDown = (e) => {
+    if (e.isPrimary) {
+      setIsDragging(true);
+      setDragDistance(0);
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    if (isDragging && e.isPrimary) {
+      setDragDistance(prev => prev + 1);
+      let newX = e.clientX - dragStart.x;
+      let newY = e.clientY - dragStart.y;
+
+      // Límites de colisión durante el arrastre
+      if (imgRef.current) {
+        const imgW = imgRef.current.offsetWidth * scale;
+        const imgH = imgRef.current.offsetHeight * scale;
+        const winW = window.innerWidth;
+        const winH = window.innerHeight;
+
+        const maxX = Math.max(0, (imgW - winW) / 2);
+        const maxY = Math.max(0, (imgH - winH) / 2);
+
+        newX = Math.min(Math.max(newX, -maxX), maxX);
+        newY = Math.min(Math.max(newY, -maxY), maxY);
+      }
+
+      setPosition({ x: newX, y: newY });
+    }
+  };
+
+  const handlePointerUp = () => setIsDragging(false);
+
+  // 2 Dedos (Pinch-to-Zoom en celulares)
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      setInitialTouchDist(dist);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      const delta = dist / initialTouchDist;
+      // Permitimos que se aleje un poco más de 1 (hasta 0.5) para dar ese efecto "elástico" al pellizcar hacia adentro
+      setScale(prev => Math.min(Math.max(0.5, prev * delta), 5)); 
+      setInitialTouchDist(dist);
+    }
+  };
+  
+  const handleTouchEnd = () => setInitialTouchDist(0);
 
   // ==========================================
   // 2. SYNCHRONOUS MEMORY LOAD (ZERO FLICKER)
@@ -110,7 +219,7 @@ export default function Home() {
     address: '', instructions: '', name: '', company: '', email: '', phone: ''
   });
 
-  const brandColor = "#EB4511";
+  const brandColor = "#E53B12"; // Exact brand manual hex
 
   const timeOptions = useMemo(() => [
     '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00',
@@ -368,393 +477,641 @@ export default function Home() {
   // Check the Vite Environment Variable
   const isPortalEnabled = import.meta.env.VITE_ENABLE_PORTAL === 'true';
 
-  // 🚀 RENDER MAIN UI
+ // 🚀 RENDER MAIN UI
   return (
-    <div className="min-h-screen text-[#2d2d2d] font-sans pb-32 bg-[#F0F2F5]">  
-      {/* 🚀 THE FIXED "ROOF" (NAV BAR) */}
-      {isPortalEnabled && (
-        <div className="fixed top-0 left-0 w-full z-50 bg-[#1a1a1a] text-white px-6 py-3 flex justify-between items-center text-sm font-bold tracking-wide shadow-lg">
-          <div className="flex items-center gap-6">
-            <span className="text-[#EB4511] font-extrabold text-lg tracking-widest">RE!</span>
-            <Link to="/staging" className="hover:text-[#EB4511] transition-colors">AI Stager</Link>
-          </div>
-          <Link to="/portal" className="bg-[#EB4511] text-white px-4 py-1.5 rounded-full hover:bg-[#c42e0d] transition-colors shadow-md">
-            Staff Portal
-          </Link>
-        </div>
-      )}
-
-      {/* 🚀 THE FIXED "WALL" (ORANGE BACKGROUND) */}
-      <header 
-        className="fixed top-0 left-0 w-full text-white pt-6 pb-32 px-6 text-center overflow-hidden z-0"
-        style={{ backgroundColor: brandColor, height: '60vh' }}
-      >
-        {/* OUTSIDE: Handles the 1-second entrance fade-in safely */}
-        <div className="w-full animate-logo">
-          
-          {/* INSIDE: Handles the Parallax Scroll fade-out seamlessly */}
-          <div 
-            className="max-w-4xl mx-auto flex flex-col items-center will-change-transform"
-            style={{ 
-              transform: `scale(${Math.max(0.7, 1 - scrollY / 400)})`,
-              opacity: Math.max(0, 1 - scrollY / 250),
-              transformOrigin: 'center center'
-            }}
-          >
-            <img 
-              src="https://lh3.googleusercontent.com/d/1oHw3lpx4-EAI59BDMccfjPl_I529xqWU" 
-              alt="RE! Contenido Audiovisual" 
-              className="w-[280px] sm:w-[340px] md:w-[480px] h-auto object-contain mb-2 md:mb-1"
-              onError={(e) => {
-                e.target.onerror = null; 
-                e.target.src = "https://placehold.co/600x200/EB4511/FFFFFF/png?text=RE!+Contenido+Audiovisual";
-              }}
-            />
-            <h1 className="text-xl md:text-2xl font-semibold tracking-wide opacity-90 uppercase">
-              Simulador de Precios
-            </h1>
-          </div>
-          
-        </div>
-      </header>
-
-      {/* 🚀 THE SLIDING CARDS */}
-      <main 
-        className="relative z-10 max-w-4xl mx-auto px-4 space-y-6 animate-cards mt-[300px] sm:mt-[320px] md:mt-[45vh]"
-      >
-        
-        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-6">
-            <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
-              Servicios
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-3">
-            {db.services.map((srv) => {
-              const isSelected = selectedServices.includes(srv.id);
-              const Icon = srv.icon || Camera;
-              return (
-                <button
-                  key={srv.id}
-                  onClick={() => toggleService(srv.id)}
-                  className={`relative w-full md:w-[100px] h-[40px] rounded-full font-bold text-[11px] md:text-sm tracking-wide transition-all duration-200 select-none flex items-center justify-center shrink-0
-                    ${isSelected 
-                      ? 'bg-[#EB4511] text-white shadow-[0_6px_16px_rgba(235,69,17,0.35)] -translate-y-0.5' 
-                      : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'
-                    }`}
-                >
-                  {srv.id}
-                </button>
-              );
-            })}
-          </div>
-
-          {baseCount > 0 && (
-            <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 transition-colors ${baseCount >= 4 ? 'bg-green-50 text-green-800' : 'bg-gray-50 text-gray-500'}`}>
-              <Info size={20} className={`mt-0.5 flex-shrink-0 ${baseCount >= 4 ? 'text-green-600' : 'text-gray-400'}`} />
-              <div className="text-sm font-medium">
-                <span className="block mb-1 font-bold">* Descuento automático por volumen:</span>
-                Llevando 4 o más servicios base, se aplica una bonificación. 
-                {baseCount >= 4 && <span className="block mt-1 text-green-700 font-bold">¡Descuento activado!</span>}
-              </div>
-            </div>
+    <div className="min-h-screen text-[#2d2d2d] font-sans bg-[#EAEAEA]">  
+      
+      {/* 🚀 NAV BAR */}
+      <nav className={`fixed top-0 left-0 w-full z-50 text-white px-4 py-1 md:px-6 md:py-2 flex justify-between items-center font-bold tracking-wide shadow-sm border-b border-white/5 transition-colors
+        ${isLowEndDevice ? 'bg-[#1a1a1a]/95' : 'bg-[#1a1a1a]/80 backdrop-blur-md'}
+      `}>
+        <div className="flex items-center gap-4 md:gap-6">
+          <img 
+            src="/Logos_RE!_naranja.png" 
+            alt="RE! Logo" 
+            className="h-10 md:h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+            onClick={() => window.scrollTo({top:0, behavior:'smooth'})}
+          />
+          {isPortalEnabled && (
+            <Link to="/staging" className="hover:text-[#E53B12] transition-colors hidden md:block text-gray-300 text-sm">AI Stager</Link>
           )}
-        </section>
+        </div>
+        <div className="flex items-center gap-4 md:gap-6">
+          <button onClick={() => document.getElementById('portfolio').scrollIntoView({behavior: 'smooth'})} className="hidden md:block hover:text-[#E53B12] text-gray-300 transition-colors uppercase text-xs tracking-widest">Portfolio</button>
+          <button onClick={() => document.getElementById('calculadora').scrollIntoView({behavior: 'smooth'})} className="hidden md:block hover:text-[#E53B12] text-gray-300 transition-colors uppercase text-xs tracking-widest">Servicios</button>
+          {isPortalEnabled ? (
+            <Link to="/portal" className="bg-white/10 border border-white/20 text-white px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:bg-white/20 transition-all shadow-sm text-[10px] md:text-xs uppercase tracking-wider font-bold">
+              Staff
+            </Link>
+          ) : (
+            <button onClick={() => document.getElementById('calculadora').scrollIntoView({behavior: 'smooth'})} className="bg-[#E53B12] text-white px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:bg-[#c42e0d] transition-all shadow-md text-[10px] md:text-xs uppercase tracking-wider font-bold">
+              Cotizar
+            </button>
+          )}
+        </div>
+      </nav>
 
-        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-6">
-            <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
-              Locación
-            </h2>
+      {/* 🚀 HERO SECTION */}
+      <section className="relative pt-24 pb-16 md:pt-48 md:pb-36 px-4 md:px-6 overflow-hidden bg-[#1a1a1a]">
+        <div className="absolute inset-0 z-0 bg-[#1a1a1a]">
+          
+          <img 
+            src="https://re-portfolio-foto.b-cdn.net/Poster-banner_2984_1989_1492_995.jpg" 
+            alt="Background" 
+            className={`absolute inset-0 w-full h-full object-cover z-10 transition-opacity duration-[1500ms] ease-in-out pointer-events-none ${isVideoPlaying ? 'opacity-0' : 'opacity-100'}`} 
+          />
+          
+          <video 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            disablePictureInPicture
+            preload="auto"
+            onPlaying={() => setIsVideoPlaying(true)}
+            className="absolute inset-0 w-full h-full object-cover transform-gpu pointer-events-none z-0"
+          >
+            {/* CELULARES: Carga el Video Vertical */}
+            <source src="https://vz-8b1827c7-938.b-cdn.net/ad586fd4-4ebb-48b5-9831-5b36f0004203/play_720p.mp4" type="video/mp4" media="(max-width: 768px)" />
+            {/* DESKTOP/TABLETS: Carga el Video Horizontal */}
+            <source src="https://vz-8b1827c7-938.b-cdn.net/64c650ac-bb47-45a5-b2f6-0ae16a68639b/play_1080p.mp4" type="video/mp4" />
+          </video>
+          
+          <div className="absolute inset-0 bg-black/10 z-20 pointer-events-none"></div>
+          <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-black/80 to-transparent z-20 pointer-events-none"></div>
+        </div>
+        
+        <div className="max-w-5xl mx-auto flex flex-col items-center text-center relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000 mt-6 md:mt-0">
+          
+          <div className={`inline-flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 rounded-full border text-white/90 text-[9px] md:text-xs font-bold tracking-widest uppercase mb-6 md:mb-8 shadow-lg transition-colors
+            ${isLowEndDevice ? 'bg-black/60 border-black/40' : 'bg-white/10 border-white/20 backdrop-blur-sm'}
+          `}>
+            <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#E53B12] ${!isLowEndDevice ? 'animate-pulse' : ''}`}></span>
+            Disponibilidad Inmediata
           </div>
           
-          <div className="space-y-6">
+          {/* font-normal aplica la fuente LightExtended. font-black hace que "Propiedades" resalte */}
+          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-normal tracking-tight mb-4 md:mb-6 text-white leading-tight px-2" style={isLowEndDevice ? { textShadow: '0 2px 10px rgba(0,0,0,0.8)' } : { filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.5))' }}>
+            Elevá el nivel visual de <br className="hidden md:block"/> tus <span className="text-[#E53B12] font-black" style={isLowEndDevice ? { textShadow: '0 2px 5px rgba(0,0,0,0.5)' } : { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>Propiedades</span>.
+          </h1>
+          
+          <p className="text-sm sm:text-base md:text-xl text-gray-100 max-w-2xl mb-8 md:mb-10 leading-relaxed font-medium px-4 md:px-0" style={isLowEndDevice ? { textShadow: '0 2px 8px rgba(0,0,0,0.9)' } : { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>
+            Fotografía de interiores, video cinemático y tomas aéreas para el mercado inmobiliario más exigente. Cotizá y reservá online en menos de 1 minuto.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 w-full sm:w-auto px-4 sm:px-0">
+            <button onClick={() => document.getElementById('calculadora').scrollIntoView({behavior: 'smooth'})} className="w-full sm:w-auto px-6 py-3.5 md:px-8 md:py-4 bg-[#E53B12] text-white text-sm md:text-base rounded-full font-bold uppercase tracking-wide hover:bg-[#c42e0d] transition-transform hover:-translate-y-1 shadow-[0_0_20px_rgba(235,69,17,0.3)] flex items-center justify-center gap-2">
+              Cotizar Ahora <ArrowRight size={16} className="md:w-[18px] md:h-[18px]" />
+            </button>
+            <button onClick={() => document.getElementById('portfolio').scrollIntoView({behavior: 'smooth'})} className={`w-full sm:w-auto px-6 py-3.5 md:px-8 md:py-4 border-2 md:border-white/20 text-white text-sm md:text-base rounded-full font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2
+              ${isLowEndDevice ? 'bg-black/60 border-white/10' : 'bg-white/10 md:bg-transparent border-white/30 hover:bg-white/20 backdrop-blur-sm'}
+            `}>
+              <PlayCircle size={16} className="md:w-[18px] md:h-[18px]" /> Ver Portfolio
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 🚀 TRUSTED BY */}
+      <section className="py-4 md:py-6 bg-[#EAEAEA] border-b border-gray-300">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 text-center">
+          <p className="text-[9px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Confían en nuestro equipo</p>
+          <div className="flex flex-wrap justify-center items-center gap-6 md:gap-12 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+            <div className="font-black text-sm md:text-xl tracking-tighter text-gray-800">Braulio Inmuebles</div>
+            <div className="font-black text-sm md:text-xl tracking-tighter text-gray-800">RE/MAX</div>
+            <div className="font-black text-sm md:text-xl tracking-tighter text-gray-800">Real Aires</div>
+            <div className="font-black text-sm md:text-xl tracking-tighter text-gray-800">Pasantes</div>
+          </div>
+        </div>
+      </section>
+
+      {/* 🚀 PORTFOLIO */}
+      <section id="portfolio" className="py-24 bg-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-4">
             <div>
-              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">Metros Cuadrados</label>
-              <div className="relative">
-                <select 
-                  className="w-full appearance-none bg-[#F4F4F5] border-none text-gray-800 py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors cursor-pointer font-medium"
-                  value={multiplier}
-                  onChange={(e) => setMultiplier(parseFloat(e.target.value))}
-                >
-                  {db.multipliers.map(m => (
-                    <option key={m.id} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-[#2d2d2d] mb-2 tracking-tight flex items-center gap-1.5">
+                <ArrowUpRight className="text-[#E53B12]" size={36} strokeWidth={3} />
+                Nuestro Trabajo
+              </h2>
+              <p className="text-gray-500 font-medium text-lg ml-0 md:ml-10">Imágenes que cierran ventas por sí solas.</p>
+            </div>
+            <button onClick={() => document.getElementById('calculadora').scrollIntoView({behavior: 'smooth'})} className="text-[#E53B12] font-bold uppercase tracking-widest text-sm hover:underline flex items-center gap-1">
+              Agendar Sesión <ArrowRight size={16} />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { 
+                title: 'Video Cinemático', 
+                loc: 'Haras Santa Maria', 
+                iframe: 'https://player.mediadelivery.net/embed/677860/807ad57f-1b0b-481b-a3ad-eb7c072b9ac3?autoplay=false&loop=false&muted=false&preload=true&responsive=true' 
+              },
+              { 
+                title: 'Fotografía HDR', 
+                loc: 'La Isla, Nordelta', 
+                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0009_2996_1995.jpg' 
+              },
+              { 
+                title: 'Tour Virtual 360', 
+                loc: 'Carlos A. López 4700', 
+                iframe: 'https://kuula.co/share/collection/7MkBg?logo=1&info=0&fs=1&vr=1&initload=1&autoplay=1&thumbs=0&inst=es' 
+              },
+              { 
+                title: 'Diseño de Interiores', 
+                loc: 'La Isla, Nordelta', 
+                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0021_2992_1992.jpg' 
+              },
+              { 
+                title: 'Documentación Arquitectónica', 
+                loc: 'La Isla, Nordelta', 
+                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0023_2994_1994.jpg' 
+              },
+              { 
+                title: 'Tomas Aéreas & Sunset', 
+                loc: 'La Isla, Nordelta', 
+                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0059_2528_1684.jpg' 
+              }
+            ].map((item, i) => (
+              <div 
+  key={i} 
+  onClick={() => { if (!item.iframe) setLightboxImg(item.img); }}
+  /* Eliminamos el scale en móviles para evitar bugs de z-index y click */
+  className={`relative rounded-2xl overflow-hidden shadow-sm h-72 bg-black transition-all duration-500 ease-out
+    ${!item.iframe ? 'cursor-pointer md:hover:scale-[1.05] md:hover:z-10 hover:shadow-2xl' : ''}`}
+>
+  {item.iframe ? (
+    <div className="absolute inset-0 z-0 pointer-events-auto">
+      <iframe 
+        src={item.iframe} 
+        className="w-full h-full border-none relative z-10" 
+        allow="autoplay; fullscreen; picture-in-picture; xr-spatial-tracking; gyroscope; accelerometer"
+        loading="lazy"
+      ></iframe>
+    </div>
+  ) : (
+    <img src={item.img} alt={item.title} className="w-full h-full object-cover absolute inset-0 z-0" />
+  )}
+
+                {/* Solo mostramos el overlay de texto y degradado oscuro si ES UNA IMAGEN ESTÁTICA */}
+                {!item.iframe && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a]/90 via-[#1a1a1a]/20 to-transparent flex flex-col justify-end p-6 pointer-events-none z-10">
+                    <h3 className="text-white font-bold text-xl drop-shadow-md">{item.title}</h3>
+                    <p className="text-white/80 text-sm font-medium drop-shadow-md flex items-center gap-1 mt-1">
+                      <MapPin size={12} /> {item.loc}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 🚀 CALCULATOR SECTION */}
+      <section id="calculadora" className="py-24 bg-[#EAEAEA] relative">
+        <div className="max-w-4xl mx-auto px-6 mb-12 text-center flex flex-col items-center">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-[#2d2d2d] mb-4 tracking-tight flex items-center justify-center gap-1.5">
+            <ArrowUpRight className="text-[#E53B12]" size={36} strokeWidth={3} />
+            Cotizá al instante.
+          </h2>
+          <p className="text-gray-500 font-medium text-lg max-w-2xl mx-auto">
+            Seleccioná los servicios, elegí tu fecha ideal y confirmá tu reserva online. Sin intermediarios ni demoras.
+          </p>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-3 md:px-4 space-y-4 md:space-y-6">
+          
+          {/* 1. SERVICIOS */}
+          <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+            <div className="mb-4 md:mb-6">
+              <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>
+                Servicios
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-3">
+              {db.services.map((srv) => {
+                const isSelected = selectedServices.includes(srv.id);
+                return (
+                  <button
+                    key={srv.id}
+                    onClick={() => toggleService(srv.id)}
+                    className={`relative w-full md:w-[100px] h-[36px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all duration-200 select-none flex items-center justify-center shrink-0
+                      ${isSelected 
+                        ? 'bg-[#E53B12] text-white shadow-[0_6px_16px_rgba(235,69,17,0.35)] -translate-y-0.5' 
+                        : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    {srv.id}
+                  </button>
+                );
+              })}
+            </div>
+
+            {baseCount > 0 && (
+              <div className={`mt-4 md:mt-6 p-3 md:p-4 rounded-xl flex items-start gap-2 md:gap-3 transition-colors ${baseCount >= 4 ? 'bg-green-50 text-green-800' : 'bg-gray-50 text-gray-500'}`}>
+                <Info className={`mt-0.5 flex-shrink-0 w-4 h-4 md:w-5 md:h-5 ${baseCount >= 4 ? 'text-green-600' : 'text-gray-400'}`} />
+                <div className="text-xs md:text-sm font-medium">
+                  <span className="block mb-0.5 md:mb-1 font-bold">* Descuento automático por volumen:</span>
+                  Llevando 4 o más servicios base, se aplica una bonificación. 
+                  {baseCount >= 4 && <span className="block mt-1 text-green-700 font-bold">¡Descuento activado!</span>}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* 2. LOCACIÓN */}
+          <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+            <div className="mb-4 md:mb-6">
+              <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>
+                Locación
+              </h2>
+            </div>
+            
+            <div className="space-y-4 md:space-y-6">
+              <div>
+                <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Metros Cuadrados</label>
+                <div className="relative">
+                  <select 
+                    className="w-full appearance-none bg-[#F4F4F5] border-none text-gray-800 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E53B12]/20 transition-colors cursor-pointer font-medium text-sm md:text-base"
+                    value={multiplier}
+                    onChange={(e) => setMultiplier(parseFloat(e.target.value))}
+                  >
+                    {db.multipliers.map(m => (
+                      <option key={m.id} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 md:px-4 text-gray-500">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">
+                  Dirección del Servicio {!isAddressValid && formData.address && <span className="text-red-500 ml-1 md:ml-2 normal-case">(Seleccioná de la lista)</span>}
+                </label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    name="address"
+                    ref={addressInputRef}
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    placeholder="Buscar dirección..."
+                    className={`w-full bg-[#F4F4F5] border py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl focus:outline-none transition-colors font-medium text-sm md:text-base
+                      ${isAddressValid ? 'border-[#4bbf73] ring-1 ring-[#4bbf73]' : 'border-transparent focus:ring-2 focus:ring-[#E53B12]/20'}`}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">
+                  Indicaciones (Piso, Depto, Torre)
+                </label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    name="instructions"
+                    value={formData.instructions}
+                    onChange={handleInputChange}
+                    placeholder="Ej: 4to B, Tocar timbre recepción..."
+                    className="w-full bg-[#F4F4F5] border border-transparent py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E53B12]/20 transition-colors font-medium text-sm md:text-base"
+                  />
                 </div>
               </div>
             </div>
+          </section>
 
-            <div>
-              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">
-                Dirección del Servicio {!isAddressValid && formData.address && <span className="text-red-500 ml-2 normal-case">(Seleccioná de la lista)</span>}
-              </label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  name="address"
-                  ref={addressInputRef}
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  placeholder="Buscar dirección..."
-                  className={`w-full bg-[#F4F4F5] border py-3.5 px-4 rounded-xl focus:outline-none transition-colors font-medium
-                    ${isAddressValid ? 'border-[#4bbf73] ring-1 ring-[#4bbf73]' : 'border-transparent focus:ring-2 focus:ring-[#EB4511]/20'}`}
-                  autoComplete="off"
-                />
-              </div>
+          {/* 3. FECHA Y HORA */}
+          <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+            <div className="mb-4 md:mb-6">
+              <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>
+                Fecha y Hora
+              </h2>
             </div>
 
-            <div>
-              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">
-                Indicaciones (Piso, Depto, Torre)
-              </label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  name="instructions"
-                  value={formData.instructions}
-                  onChange={handleInputChange}
-                  placeholder="Ej: 4to B, Tocar timbre recepción..."
-                  className="w-full bg-[#F4F4F5] border border-transparent py-3.5 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors font-medium"
-                />
+            <div className="space-y-6 md:space-y-8">
+              <div>
+                <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 md:mb-3">
+                  Seleccionar Fecha
+                </label>
+                <div className="flex items-center gap-1.5 md:gap-4">
+                  <button onClick={scrollLeft} type="button" className="w-7 h-7 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#E53B12] hover:bg-gray-50 transition-colors shadow-sm">
+                    <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5}/>
+                  </button>
+
+                  <div ref={dateScrollRef} className="relative flex flex-1 gap-1.5 md:gap-3 overflow-x-auto scroll-smooth py-1 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {dateOptions.map(d => {
+                      const isSelected = selectedDateObj?.id === d.id;
+                      return (
+                        <button key={d.id} data-date={d.id} onClick={() => setSelectedDateObj(d)} type="button" className={`flex flex-col items-center justify-center w-[54px] h-[54px] md:w-[72px] md:h-[72px] shrink-0 rounded-[14px] md:rounded-2xl border-2 transition-all select-none
+                            ${isSelected ? 'border-[#E53B12] shadow-[0_4px_10px_rgba(235,69,17,0.2)] bg-white -translate-y-0.5' : 'border-transparent bg-[#F4F4F5] hover:bg-gray-200'}`}>
+                          <span className={`text-[9px] md:text-[11px] font-bold tracking-wide uppercase ${isSelected ? 'text-[#E53B12]' : 'text-gray-500'}`}>{d.dayName}</span>
+                          <span className={`text-lg md:text-2xl font-black mt-0.5 ${isSelected ? 'text-[#2d2d2d]' : 'text-gray-500'}`}>{d.dayNumber}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <button onClick={scrollRight} type="button" className="w-7 h-7 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#E53B12] hover:bg-gray-50 transition-colors shadow-sm">
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5}/>
+                  </button>
+                </div>
+
+                <div className="mt-3 md:mt-5 text-center min-h-[20px]">
+                  {selectedDateObj && (
+                    <span className="text-[11px] md:text-[13px] font-bold uppercase tracking-wide" style={{ color: brandColor }}>
+                      {selectedDateObj.fullFormat}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        </section>
 
-        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-6">
-            <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
-              Fecha y Hora
-            </h2>
-          </div>
-
-          <div className="space-y-8">
-            <div>
-              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
-                Seleccionar Fecha
-              </label>
-              <div className="flex items-center gap-2 md:gap-4">
-                <button 
-                  onClick={scrollLeft} 
-                  type="button"
-                  className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#EB4511] hover:bg-gray-50 transition-colors shadow-sm"
-                >
-                  <ChevronLeft size={20} strokeWidth={2.5}/>
-                </button>
-
-                {/* 🚀 FIX: Added 'relative' and removed CSS snap to allow smooth JS centering */}
-                <div 
-                  ref={dateScrollRef}
-                  className="relative flex flex-1 gap-2 md:gap-3 overflow-x-auto scroll-smooth py-2 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-                >
-                  {dateOptions.map(d => {
-                    const isSelected = selectedDateObj?.id === d.id;
+              <div>
+                <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 md:mb-3">
+                  Seleccionar Hora
+                </label>
+                <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5 md:gap-3">
+                  {timeOptions.map(time => {
+                    const isSelected = selectedTime === time;
                     return (
-                      <button 
-                        key={d.id} 
-                        data-date={d.id}
-                        onClick={() => setSelectedDateObj(d)} 
-                        type="button"
-                        className={`flex flex-col items-center justify-center w-[64px] h-[64px] md:w-[72px] md:h-[72px] shrink-0 rounded-2xl border-2 transition-all select-none
-                          ${isSelected 
-                            ? 'border-[#EB4511] shadow-[0_4px_14px_rgba(235,69,17,0.2)] bg-white -translate-y-0.5' 
-                            : 'border-transparent bg-[#F4F4F5] hover:bg-gray-200'}`}
-                      >
-                        <span className={`text-[10px] md:text-[11px] font-bold tracking-wide uppercase ${isSelected ? 'text-[#EB4511]' : 'text-gray-500'}`}>{d.dayName}</span>
-                        <span className={`text-xl md:text-2xl font-black mt-0.5 ${isSelected ? 'text-[#2d2d2d]' : 'text-gray-500'}`}>{d.dayNumber}</span>
+                      <button key={time} onClick={() => setSelectedTime(time)} className={`py-1.5 md:py-2 rounded-full font-bold text-[10px] md:text-sm transition-all select-none
+                          ${isSelected ? 'bg-[#E53B12] text-white shadow-[0_4px_10px_rgba(235,69,17,0.35)] -translate-y-0.5' : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}>
+                        {time}
                       </button>
                     )
                   })}
                 </div>
+              </div>      
+            </div>
+          </section>
 
-                <button 
-                  onClick={scrollRight} 
-                  type="button"
-                  className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#EB4511] hover:bg-gray-50 transition-colors shadow-sm"
-                >
-                  <ChevronRight size={20} strokeWidth={2.5}/>
-                </button>
+          {/* 4. TUS DATOS */}
+          <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+             <div className="mb-4 md:mb-6">
+              <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>
+                Tus Datos
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 md:pl-3.5 flex items-center pointer-events-none">
+                  <User className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                </div>
+                <input type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Nombre y Apellido" className="w-full bg-[#F4F4F5] border-none text-gray-800 py-2.5 pl-9 pr-3 md:py-3.5 md:pl-11 md:pr-4 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E53B12]/20 transition-colors font-medium text-sm md:text-base" />
+              </div>
+              
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 md:pl-3.5 flex items-center pointer-events-none">
+                  <Building className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                </div>
+                <input type="text" name="company" value={formData.company} onChange={handleInputChange} placeholder="Empresa o Inmobiliaria" className="w-full bg-[#F4F4F5] border-none text-gray-800 py-2.5 pl-9 pr-3 md:py-3.5 md:pl-11 md:pr-4 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E53B12]/20 transition-colors font-medium text-sm md:text-base" />
               </div>
 
-              <div className="mt-5 text-center min-h-[20px]">
-                {selectedDateObj && (
-                  <span className="text-[13px] font-bold uppercase tracking-wide" style={{ color: brandColor }}>
-                    {selectedDateObj.fullFormat}
-                  </span>
-                )}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 md:pl-3.5 flex items-center pointer-events-none">
+                  <Mail className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                </div>
+                <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="Correo Electrónico" className="w-full bg-[#F4F4F5] border-none text-gray-800 py-2.5 pl-9 pr-3 md:py-3.5 md:pl-11 md:pr-4 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E53B12]/20 transition-all font-medium text-sm md:text-base" />
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 md:pl-3.5 flex items-center pointer-events-none">
+                  <Phone className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                </div>
+                <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Teléfono (WhatsApp)" className="w-full bg-[#F4F4F5] border-none text-gray-800 py-2.5 pl-9 pr-3 md:py-3.5 md:pl-11 md:pr-4 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E53B12]/20 transition-all font-medium text-sm md:text-base" />
               </div>
             </div>
+          </section>
 
-            <div>
-              <label className="block text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
-                Seleccionar Hora
-              </label>
-              <div className="grid grid-cols-4 md:grid-cols-7 gap-2 md:gap-3">
-                {timeOptions.map(time => {
-                  const isSelected = selectedTime === time;
-                  return (
-                    <button
-                      key={time}
-                      onClick={() => setSelectedTime(time)}
-                      className={`py-2 rounded-full font-bold text-xs md:text-sm transition-all select-none
-                        ${isSelected
-                          ? 'bg-[#EB4511] text-white shadow-[0_4px_14px_rgba(235,69,17,0.35)] -translate-y-0.5'
-                          : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}
-                    >
-                      {time}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>      
+        </div>
+      </section>
 
-          </div>
-        </section>
-
-        <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-8">
-           <div className="mb-6">
-            <h2 className="text-lg md:text-[19px] font-bold uppercase" style={{ color: brandColor }}>
-              Tus Datos
+      {/* 🚀 REVIEWS / SOCIAL PROOF */}
+      <section className="py-24 bg-white text-[#2d2d2d] border-y border-gray-200">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16 flex flex-col items-center">
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-4 tracking-tight flex items-center justify-center gap-1.5">
+              <ArrowUpRight className="text-[#E53B12]" size={36} strokeWidth={3} />
+              Lo que dicen nuestros clientes
             </h2>
+            <div className="flex justify-center gap-1 text-[#E53B12]">
+              {[...Array(5)].map((_, i) => <Star key={i} fill="currentColor" size={24} />)}
+            </div>
+            <p className="mt-4 text-gray-400 uppercase tracking-widest text-sm font-bold">Reseñas Verificadas</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { name: 'Martín S.', agency: 'RE/MAX', text: 'Rafael y el equipo son unos profesionales absolutos. La calidad del video con drone nos ayudó a cerrar la venta en tiempo récord.' },
+              { name: 'Carolina B.', agency: 'Sotheby\'s', text: 'Impecable atención a los detalles. Siempre llegan a tiempo, la edición es rápida y el resultado final supera las expectativas.' },
+              { name: 'Alejandro T.', agency: 'Coldwell Banker', text: 'Los tours 3D y la fotografía son de otro nivel. Mis clientes quedan fascinados con la presentación impecable de sus propiedades.' }
+            ].map((rev, i) => (
+              <div key={i} className="bg-[#EAEAEA] p-8 rounded-3xl border border-gray-200 relative hover:shadow-md transition-all">
+                <div className="text-[#E53B12] mb-6 flex gap-1">
+                   {[...Array(5)].map((_, j) => <Star key={j} fill="currentColor" size={16} />)}
+                </div>
+                <p className="text-gray-600 mb-8 italic leading-relaxed text-lg">"{rev.text}"</p>
+                <div className="font-bold text-[#2d2d2d] tracking-wide">{rev.name}</div>
+                <div className="text-gray-500 text-sm font-medium">{rev.agency}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 🚀 SITE FOOTER */}
+      <footer className="relative bg-[#0f0f0f] text-gray-400 pt-24 pb-40 md:pb-32 border-t border-white/10 overflow-hidden">
+        
+        {/* 🚀 BACKGROUND BRAND PATTERN */}
+        <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center opacity-[0.03] md:opacity-5">
+          <img 
+            src="/logo-outline.png" 
+            alt="" 
+            className="w-[200%] md:w-[120%] h-auto object-contain -rotate-6" 
+            onError={(e) => { 
+              e.target.src = "/Logos_RE!_naranja.png"; 
+              e.target.classList.add('grayscale'); 
+            }} 
+          />
+        </div>
+
+        <div className="relative z-10 max-w-6xl mx-auto px-6">
+          
+          {/* 🚀 TU PARTNER CREATIVO */}
+          <div className="text-center max-w-3xl mx-auto mb-20 md:mb-24">
+            <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight uppercase">Tu Partner Creativo</h2>
+            <p className="text-base md:text-lg leading-relaxed font-medium text-gray-300">
+              RE! se posiciona como un socio creativo especializado para la industria inmobiliaria, cerrando la brecha entre la documentación arquitectónica de alta gama y las tendencias dinámicas de las redes sociales.
+            </p>
+          </div>
+
+          {/* LINKS & INFO */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8 border-t border-white/10 pt-16">
+            <div className="md:col-span-2">
+              <h3 className="text-3xl font-extrabold text-white mb-4 tracking-widest">RE!</h3>
+              <p className="max-w-sm font-medium leading-relaxed">Elevando el estándar visual del mercado inmobiliario. Fotografía, video y soluciones digitales inmersivas.</p>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Servicios</h4>
+              <ul className="space-y-3 text-sm font-medium">
+                <li>Fotografía Interior</li>
+                <li>Video Cinemático</li>
+                <li>Tomas Aéreas (Drone)</li>
+                <li>Tours Virtuales 3D</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Contacto</h4>
+              <ul className="space-y-3 text-sm font-medium">
+                <li>hola@somosreok.com</li>
+                <li>Buenos Aires, Argentina</li>
+              </ul>
+            </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <User size={18} className="text-gray-400" />
-              </div>
-              <input 
-                type="text" 
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="Nombre y Apellido"
-                className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors font-medium"
-              />
-            </div>
-            
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <Building size={18} className="text-gray-400" />
-              </div>
-              <input 
-                type="text" 
-                name="company"
-                value={formData.company}
-                onChange={handleInputChange}
-                placeholder="Empresa o Inmobiliaria"
-                className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-colors font-medium"
-              />
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <Mail size={18} className="text-gray-400" />
-              </div>
-              <input 
-                type="email" 
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="Correo Electrónico"
-                className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-all font-medium"
-              />
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <Phone size={18} className="text-gray-400" />
-              </div>
-              <input 
-                type="tel" 
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                placeholder="Teléfono (WhatsApp)"
-                className="w-full bg-[#F4F4F5] border-none text-gray-800 py-3.5 pl-11 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-all font-medium"
-              />
+          <div className="mt-16 pt-8 border-t border-white/10 text-sm text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-6">
+            <p className="font-medium">© 2026 RE! Producciones. Todos los derechos reservados.</p>
+            <div className="flex justify-center gap-6 font-bold tracking-widest text-xs uppercase">
+              <a href="#" className="hover:text-[#E53B12] transition-colors">Instagram</a>
+              <a href="#" className="hover:text-[#E53B12] transition-colors">YouTube</a>
             </div>
           </div>
-        </section>
-      </main>
+        </div>
+      </footer>
 
-        <footer className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-50">
-          <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-            
-            <div className="flex flex-col">
-               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
-                 Precio Estimado
+      {/* 🚀 STICKY CALCULATOR BAR (Appears only when total > 0) */}
+      <div 
+        className={`fixed bottom-0 left-0 w-full border-t border-gray-100 shadow-[0_-4px_30px_rgba(0,0,0,0.08)] z-50 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+          ${isLowEndDevice ? 'bg-white' : 'bg-white/95 backdrop-blur-md'}
+          ${total > 0 ? 'translate-y-0' : 'translate-y-full'}`}
+      >
+        <div className="max-w-5xl mx-auto px-6 py-4 md:py-5 flex items-center justify-between gap-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+          
+          <div className="flex flex-col">
+             <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+               Total Estimado
+             </span>
+             <div className="flex items-baseline gap-2">
+               <span className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: brandColor }}>
+                 {formatCurrency(total)}
                </span>
-               <div className="flex items-baseline gap-2">
-                 <span className="text-2xl md:text-3xl font-extrabold" style={{ color: brandColor }}>
-                   {formatCurrency(total)}
+               {discountApplied > 0 && (
+                 <span className="text-sm font-bold text-gray-400 line-through hidden sm:inline-block">
+                   {formatCurrency(total + discountApplied)}
                  </span>
-                 {discountApplied > 0 && (
-                   <span className="text-sm font-semibold text-gray-400 line-through">
-                     {formatCurrency(total + discountApplied)}
-                   </span>
-                 )}
-               </div>
-            </div>
+               )}
+             </div>
+          </div>
 
+          <button 
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className={`px-6 py-3.5 md:px-10 md:py-4 rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all duration-300 flex items-center justify-center gap-2
+              ${isSubmitting 
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
+                : 'bg-[#E53B12] text-white shadow-[0_4px_20px_rgba(235,69,17,0.35)] hover:bg-[#c42e0d] hover:shadow-[0_6px_25px_rgba(235,69,17,0.4)] hover:-translate-y-1'
+              }`}
+          >
+            {isSubmitting ? (
+              <><MiniLogo /> Procesando...</>
+            ) : (
+              <>Reservar <ArrowRight size={18} className="hidden sm:inline-block" /></>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* 🚀 MODAL DE ÉXITO */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] max-w-[380px] w-full px-8 py-12 text-center relative animate-in zoom-in-95 duration-300">
+            
+            <div className="mb-6 mt-2 relative">
+              <div className="absolute inset-0 bg-green-100 rounded-full scale-150 animate-pulse opacity-50"></div>
+              <Check size={80} className="text-[#4bbf73] mx-auto relative z-10" strokeWidth={3} />
+            </div>
+            
+            <h3 className="text-2xl font-extrabold text-[#1a1a1a] mb-4 tracking-tight">¡Solicitud Enviada!</h3>
+            <p className="text-gray-500 text-[15px] leading-relaxed mb-10 font-medium">
+              Hemos recibido tu solicitud de reserva con éxito.<br/>Nuestro equipo te contactará a la brevedad para confirmar la disponibilidad.
+            </p>
+            
             <button 
-              onClick={handleSubmit}
-              disabled={total === 0 || isSubmitting}
-              className={`px-8 py-3.5 md:px-10 md:py-4 rounded-full font-bold uppercase tracking-wider text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2
-                ${total === 0 
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                  : 'text-white shadow-md hover:opacity-90 hover:shadow-[0_4px_14px_rgba(235,69,17,0.4)] hover:-translate-y-0.5'
-                }`}
-              style={{ backgroundColor: total === 0 ? undefined : brandColor }}
+              onClick={() => {
+                setShowModal(false);
+                setFormData({ address: '', instructions: '', name: '', company: '', email: '', phone: '' });
+                setSelectedServices([]);
+                setMultiplier(1.0);
+                setIsAddressValid(false);
+                setSelectedDateObj(dateOptions[0]); 
+                setSelectedTime(null);                  
+                if(dateScrollRef.current) dateScrollRef.current.scrollTo({ left: 0 });
+              }}
+              className="w-full text-white font-bold py-4 px-6 rounded-full transition-all hover:-translate-y-1 hover:shadow-lg uppercase text-sm tracking-widest"
+              style={{ backgroundColor: '#4bbf73' }}
             >
-              {isSubmitting ? (
-                <><MiniLogo /> Procesando...</>
-              ) : (
-                'Solicitar Reserva'
-              )}
+              Listo
             </button>
           </div>
-        </footer>
+        </div>
+      )}
 
-        {showModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] max-w-[340px] w-full px-8 py-10 text-center relative animate-in zoom-in-95 duration-200">
-              
-              <div className="mb-4 mt-2">
-                <Check size={80} className="text-[#4bbf73] mx-auto" strokeWidth={3} />
-              </div>
-              
-              <h3 className="text-[22px] font-extrabold text-[#1a1a1a] mb-4">¡Solicitud Enviada!</h3>
-              <p className="text-[#6b7280] text-[15px] leading-relaxed mb-8 px-2 font-medium">
-                Hemos recibido tu solicitud de reserva.<br/>Nuestro equipo te contactará pronto para confirmar.
-              </p>
-              
-              <button 
-                onClick={() => {
-                  setShowModal(false);
-                  setFormData({ address: '', instructions: '', name: '', company: '', email: '', phone: '' });
-                  setSelectedServices([]);
-                  setMultiplier(1.0);
-                  setIsAddressValid(false);
-                  setSelectedDateObj(dateOptions[0]); 
-                  setSelectedTime(null);                  
-                  if(dateScrollRef.current) dateScrollRef.current.scrollTo({ left: 0 });
-                }}
-                className="w-full text-white font-bold py-3.5 px-6 rounded-full transition-transform hover:-translate-y-0.5 active:translate-y-0 uppercase text-sm tracking-wide"
-                style={{ backgroundColor: '#4bbf73' }}
-              >
-                NUEVA RESERVA
-              </button>
-            </div>
-          </div>
-        )}
+      {/* 🚀 LIGHTBOX MODAL PARA FOTOS */}
+      {lightboxImg && (
+        <div 
+          className={`fixed inset-0 z-[200] flex items-center justify-center overflow-hidden animate-in fade-in duration-300 touch-none
+            ${isLowEndDevice ? 'bg-[#1a1a1a]/98' : 'bg-[#1a1a1a]/90 backdrop-blur-2xl'}
+          `}
+          onClick={(e) => { 
+            if (e.target.tagName !== 'IMG') {
+              setLightboxImg(null); setScale(1); setPosition({x:0, y:0}); 
+            }
+          }}
+        >
+          <button 
+            className="fixed top-4 right-4 md:top-8 md:right-8 text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full backdrop-blur-md z-[210] transition-colors"
+            onClick={(e) => { e.stopPropagation(); setLightboxImg(null); setScale(1); setPosition({x:0, y:0}); }}
+          >
+            <X size={24} />
+          </button>
+          
+          <img 
+            ref={imgRef}
+            src={lightboxImg} 
+            alt="Pantalla Completa" 
+            draggable="false"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              if (scale === 1) {
+                setScale(2.5);
+              } else if (dragDistance < 5) {
+                setScale(1);
+                setPosition({x:0, y:0});
+              }
+            }}
+            style={{ 
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, 
+              cursor: isDragging ? 'grabbing' : 'grab'
+            }}
+            className={`w-full h-auto select-none transform-gpu origin-center ${(!isDragging && initialTouchDist === 0) ? 'transition-transform duration-300 ease-out' : ''}`} 
+          />
+        </div>
+      )}
 
-        {/* 🚀 AI VOICE BOOKING BUTTON MOVED HERE (Outside the modal!) */}
-        <QuickBook />
+      {/* 🚀 QUICK BOOK AI VOICE BUTTON */}
+      <QuickBook />
 
     </div>
   );

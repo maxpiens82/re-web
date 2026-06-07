@@ -1,5 +1,48 @@
 @import "tailwindcss";
 
+/* 🚀 TAILWIND V4 CONFIGURATION */
+@theme {
+  --font-sans: 'AkzidenzGrotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- AKZIDENZ GROTESK EXTENDED --- */
+
+/* Light asignado a Normal (300 y 400) para un look más fino */
+@font-face {
+  font-family: 'AkzidenzGrotesk';
+  src: url('/font/AkzidenzGrotesk-LightExtended.otf') format('opentype');
+  font-weight: 300 400;
+  font-style: normal;
+}
+
+/* Regular asignado a Medium (500) */
+@font-face {
+  font-family: 'AkzidenzGrotesk';
+  src: url('/font/AkzidenzGrotesk-Extended.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+/* Medium asignado a Bold (600 y 700) para afinar los botones y subtítulos */
+@font-face {
+  font-family: 'AkzidenzGrotesk';
+  src: url('/font/AkzidenzGrotesk-MediumExtended.otf') format('opentype');
+  font-weight: 600 700;
+  font-style: normal;
+}
+
+/* Bold asignado a ExtraBold y Black (800 y 900) solo para títulos gigantes */
+@font-face {
+  font-family: 'AkzidenzGrotesk';
+  src: url('/font/AkzidenzGrotesk-BoldExtended.otf') format('opentype');
+  font-weight: 800 900;
+  font-style: normal;
+}
+
 /* 1. Slide-up fade for the white cards */
 @keyframes slideUpFade {
   0% { opacity: 0; transform: translateY(20px); }
