@@ -910,6 +910,25 @@ export default function Home() {
             </div>
           </section>
 
+          {/* 5. BOTÓN DE CONFIRMACIÓN ESTÁTICO (Siempre visible al final del formulario) */}
+          <div className="pt-4 pb-2 md:pt-6 md:pb-4 flex justify-center">
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className={`w-full md:w-auto min-w-[300px] px-8 py-4 rounded-full font-bold uppercase tracking-widest text-sm transition-all duration-300 flex items-center justify-center gap-3
+                ${isSubmitting
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                  : 'bg-[#E53B12] text-white shadow-[0_4px_20px_rgba(235,69,17,0.35)] hover:bg-[#c42e0d] hover:shadow-[0_6px_25px_rgba(235,69,17,0.4)] hover:-translate-y-1'
+                }`}
+            >
+              {isSubmitting ? (
+                <><MiniLogo /> Procesando...</>
+              ) : (
+                <>Solicitar Reserva <ArrowRight size={20} /></>
+              )}
+            </button>
+          </div>
+
         </div>
       </section>
 
