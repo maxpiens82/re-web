@@ -993,9 +993,22 @@ export default function Home() {
               <ul className="space-y-3 text-sm font-medium">
                 <li><a href="mailto:hola@somosreok.com" className="hover:text-[#E53B12] transition-colors">hola@somosreok.com</a></li>
                 <li>Buenos Aires, Argentina</li>
-                <li><a href="https://wa.me/5491168876507" target="_blank" rel="noopener noreferrer" className="hover:text-[#E53B12] transition-colors">WhatsApp Directo</a></li>
+                <li><a href="https://wa.me/5491138903333" target="_blank" rel="noopener noreferrer" className="hover:text-[#E53B12] transition-colors">WhatsApp Directo</a></li>
               </ul>
             </div>
+            
+            {/* NUEVO: QR Code (Oculto en móviles, visible en Desktop) */}
+            <div className="hidden lg:flex flex-col items-start xl:items-center">
+               <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Escanéame</h4>
+               <div className="bg-white p-2 rounded-xl shadow-lg border border-white/10 hover:scale-105 transition-transform">
+                 {/* Aquí lee la imagen que guardaste en el Paso 1 */}
+                 <img src="/qr-re.jpg" alt="QR RE! Contacto" className="w-28 h-28 object-cover rounded-lg" />
+               </div>
+               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-3 text-center">
+                 Llevá nuestra info <br/> en tu celular
+               </p>
+            </div>
+
           </div>
 
           <div className="mt-16 pt-8 border-t border-white/10 text-sm text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-6">
