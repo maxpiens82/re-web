@@ -110,25 +110,6 @@ export default function Home() {
     };
   }, []);
 
-  // Keyboard Escape listener to exit full-screen lightbox
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setLightboxImg(null);
-        setScale(1);
-        setPosition({ x: 0, y: 0 });
-      }
-    };
-
-    if (lightboxImg) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [lightboxImg]);
-
   // DETECTOR DE HARDWARE: Estrategia estricta para Android
   useEffect(() => {
     if (typeof navigator !== 'undefined') {
@@ -343,7 +324,18 @@ export default function Home() {
   // GOOGLE MAPS AUTOCOMPLETE INITIALIZATION
   // ==========================================
   useEffect(() => {
-    const initAutocomplete = () => {
+    if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=es`;
+      script.async = true;
+      script.defer = true;
+      script.onload = initAutocomplete;
+      document.head.appendChild(script);
+    } else {
+      initAutocomplete();
+    }
+
+    function initAutocomplete() {
       if (window.google && addressInputRef.current) {
         autocompleteRef.current = new window.google.maps.places.Autocomplete(addressInputRef.current, {
           types: ['address'],
@@ -360,17 +352,6 @@ export default function Home() {
           }
         });
       }
-    };
-
-    if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=es`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initAutocomplete;
-      document.head.appendChild(script);
-    } else {
-      initAutocomplete();
     }
   }, []);
 
