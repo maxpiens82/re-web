@@ -652,17 +652,19 @@ export default function Home() {
               {
                 title: 'Tour Virtual 360',
                 loc: 'Carlos A. López 4700',
-                iframe: 'https://kuula.co/share/collection/7MkBg?logo=1&info=0&fs=1&vr=1&initload=1&autoplay=1&thumbs=0&inst=es'
+                // vr=0 desactiva el giroscopio automático en celulares
+                iframe: 'https://kuula.co/share/collection/7MkBg?logo=1&info=0&fs=1&vr=0&initload=1&autoplay=1&thumbs=0&inst=es'
               },
               {
                 title: 'Diseño de Interiores',
                 loc: 'La Isla, Nordelta',
                 img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0021_2992_1992.jpg'
               },
-              {
-                title: 'Documentación Arquitectónica',
-                loc: 'La Isla, Nordelta',
-                img: 'https://re-portfolio-foto.b-cdn.net/Fotos_HDR_La_Isla_Nordelta_0023_2994_1994.jpg'
+              { 
+                title: 'Planos Comerciales 2D', 
+                loc: 'Av. La Plata 331', 
+                img: 'https://re-portfolio-foto.b-cdn.net/PLANO_%20Av%20La%20Plata%20331.png',
+                isPlan: true // Agregamos este tag para cambiar cómo se renderiza la imagen
               },
               {
                 title: 'Tomas Aéreas & Sunset',
@@ -673,8 +675,8 @@ export default function Home() {
               <div
                 key={i}
                 onClick={() => { if (!item.iframe) setLightboxImg(item.img); }}
-                /* Añadimos 'group' para controlar las animaciones internas al pasar el mouse */
-                className={`group relative rounded-2xl overflow-hidden shadow-sm h-72 bg-black transition-all duration-500 ease-out hover:shadow-2xl md:hover:scale-[1.05] md:hover:z-10
+                /* El fondo blanco (bg-white) hace que el PNG transparente del plano se vea perfecto */
+                className={`group relative rounded-2xl overflow-hidden shadow-sm h-72 ${item.isPlan ? 'bg-white' : 'bg-black'} transition-all duration-500 ease-out hover:shadow-2xl md:hover:scale-[1.05] md:hover:z-10
                   ${!item.iframe ? 'cursor-pointer' : ''}`}
               >
                 {item.iframe ? (
@@ -682,12 +684,13 @@ export default function Home() {
                     <iframe
                       src={item.iframe}
                       className="w-full h-full border-none relative z-10"
-                      allow="autoplay; fullscreen; picture-in-picture; xr-spatial-tracking; gyroscope; accelerometer"
+                      allow="autoplay; fullscreen; picture-in-picture"
                       loading="lazy"
                     ></iframe>
                   </div>
                 ) : (
-                  <img src={item.img} alt={item.title} className="w-full h-full object-cover absolute inset-0 z-0" />
+                  /* Usamos object-contain para planos y object-cover para fotos */
+                  <img src={item.img} alt={item.title} className={`w-full h-full absolute inset-0 z-0 ${item.isPlan ? 'object-contain p-4' : 'object-cover'}`} />
                 )}
 
                 {/* Ahora el degradado está en TODAS las tarjetas, pero desaparece suavemente al pasar el mouse (group-hover:opacity-0) */}
@@ -949,15 +952,10 @@ export default function Home() {
       <section className="py-16 md:py-24 bg-white text-[#2d2d2d] border-y border-gray-200">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-12 md:mb-16 flex flex-col items-center">
-            {/* Fix: En móviles la flecha va arriba centrada, en PC va al lado */}
-            <h2 className="text-[26px] md:text-4xl font-extrabold mb-4 tracking-tight flex flex-col md:flex-row items-center justify-center gap-2 md:gap-1.5 leading-tight">
-              <ArrowUpRight className="text-[#E53B12] w-8 h-8 md:w-9 md:h-9" strokeWidth={3} />
-              <span className="text-center">Lo que dicen nuestros clientes</span>
+            <h2 className="text-[26px] md:text-4xl font-extrabold tracking-tight text-center leading-tight mb-2">
+              Lo que dicen nuestros clientes
             </h2>
-            <div className="flex justify-center gap-1 text-[#E53B12]">
-              {[...Array(5)].map((_, i) => <Star key={i} fill="currentColor" className="w-5 h-5 md:w-6 md:h-6" />)}
-            </div>
-            <p className="mt-3 md:mt-4 text-gray-400 uppercase tracking-widest text-[10px] md:text-sm font-bold">Reseñas Verificadas</p>
+            <p className="text-gray-400 uppercase tracking-widest text-[10px] md:text-xs font-bold mt-2">Reseñas Verificadas</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
@@ -966,14 +964,14 @@ export default function Home() {
               { name: 'Laura Casarubia', agency: 'RE/MAX Premium', text: 'Los elijo por confianza en su trabajo y por el respeto al visitar a los clientes en sus hogares. La fotografía es nuestra carta de presentación y con ellos sé que esa primera impresión siempre será excelente.' },
               { name: 'Agustín Vidal', agency: 'RE/MAX', text: 'Son sumamente profesionales y cumplen rigurosamente con los tiempos de entrega pactados. Su rápida respuesta nos permite, a su vez, brindar una atención mucho más ágil a nuestros propios clientes.' }
             ].map((rev, i) => (
-              <div key={i} className="bg-[#EAEAEA] p-6 md:p-8 rounded-3xl border border-gray-200 relative hover:shadow-md transition-all">
-                <div className="text-[#E53B12] mb-4 md:mb-6 flex gap-1">
-                   {[...Array(5)].map((_, j) => <Star key={j} fill="currentColor" size={14} className="md:w-4 md:h-4" />)}
+              <div key={i} className="bg-[#EAEAEA] p-6 md:p-8 rounded-3xl border border-gray-200 relative hover:shadow-md transition-all flex flex-col">
+                {/* Comillas gruesas sans-serif en lugar del font-serif roto */}
+                <div className="text-[#E53B12] text-5xl font-black mb-1 leading-none">"</div>
+                <p className="text-gray-600 mb-6 md:mb-8 italic leading-relaxed text-[15px] md:text-lg flex-1">{rev.text}</p>
+                <div>
+                  <div className="font-bold text-[#2d2d2d] tracking-wide text-sm md:text-base">{rev.name}</div>
+                  <div className="text-gray-500 text-xs md:text-sm font-medium">{rev.agency}</div>
                 </div>
-                {/* Fix: Redujimos el texto de lg a 15px en móviles */}
-                <p className="text-gray-600 mb-6 md:mb-8 italic leading-relaxed text-[15px] md:text-lg">"{rev.text}"</p>
-                <div className="font-bold text-[#2d2d2d] tracking-wide text-sm md:text-base">{rev.name}</div>
-                <div className="text-gray-500 text-xs md:text-sm font-medium">{rev.agency}</div>
               </div>
             ))}
           </div>
@@ -981,7 +979,7 @@ export default function Home() {
       </section>
 
       {/* 🚀 SITE FOOTER */}
-      <footer className="relative bg-[#0f0f0f] text-gray-400 pt-24 pb-40 md:pb-32 border-t border-white/10 overflow-hidden">
+      <footer className="relative bg-[#0f0f0f] text-gray-400 pt-16 pb-32 md:pb-28 border-t border-white/10 overflow-hidden">
 
         {/* 🚀 BACKGROUND BRAND PATTERN */}
         <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center opacity-[0.03] md:opacity-5">
@@ -999,59 +997,61 @@ export default function Home() {
         <div className="relative z-10 max-w-6xl mx-auto px-6">
 
           {/* 🚀 TU PARTNER CREATIVO */}
-          <div className="text-center max-w-3xl mx-auto mb-20 md:mb-24">
-            <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tight uppercase">Tu Partner Creativo</h2>
-            <p className="text-base md:text-lg leading-relaxed font-medium text-gray-300">
+          <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
+            <h2 className="text-2xl md:text-4xl font-black text-white mb-4 tracking-tight uppercase">Tu Partner Creativo</h2>
+            <p className="text-sm md:text-base leading-relaxed font-medium text-gray-300">
               RE! se posiciona como un socio creativo especializado para la industria inmobiliaria, cerrando la brecha entre la documentación arquitectónica de alta gama y las tendencias dinámicas de las redes sociales.
             </p>
           </div>
 
           {/* LINKS & INFO */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8 border-t border-white/10 pt-16">
-            <div className="md:col-span-2">
-              <h3 className="text-3xl font-extrabold text-white mb-4 tracking-widest">RE!</h3>
-              <p className="max-w-sm font-medium leading-relaxed">Elevando el estándar visual del mercado inmobiliario. Fotografía, video y soluciones digitales inmersivas.</p>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-4 border-t border-white/10 pt-10">
+            
+            <div className="md:col-span-5">
+              <h3 className="text-2xl font-extrabold text-white mb-3 tracking-widest">RE!</h3>
+              <p className="max-w-xs text-xs md:text-sm font-medium leading-relaxed text-gray-400">
+                Elevando el estándar visual del mercado inmobiliario. Fotografía, video y soluciones inmersivas.
+              </p>
             </div>
-            <div>
-              <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Servicios</h4>
-              <ul className="space-y-3 text-sm font-medium">
+            
+            <div className="md:col-span-3">
+              <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-xs">Servicios</h4>
+              <ul className="space-y-2 text-xs md:text-sm font-medium">
                 <li>Fotografía Interior</li>
                 <li>Video Cinemático</li>
                 <li>Tomas Aéreas (Drone)</li>
                 <li>Tours Virtuales 3D</li>
               </ul>
             </div>
-            <div>
-              <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Contacto</h4>
-              <ul className="space-y-3 text-sm font-medium">
+            
+            <div className="md:col-span-3">
+              <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-xs">Contacto</h4>
+              <ul className="space-y-2 text-xs md:text-sm font-medium">
                 <li><a href="mailto:hola@somosreok.com" className="hover:text-[#E53B12] transition-colors">hola@somosreok.com</a></li>
                 <li>Buenos Aires, Argentina</li>
                 <li><a href="https://wa.me/5491138903333" target="_blank" rel="noopener noreferrer" className="hover:text-[#E53B12] transition-colors">WhatsApp Directo</a></li>
               </ul>
             </div>
             
-            {/* NUEVO: QR Code (Oculto en móviles, visible en Desktop) */}
-            <div className="hidden lg:flex flex-col items-start xl:items-center">
-               <h4 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Escanéame</h4>
+            <div className="md:col-span-1 hidden lg:flex flex-col items-end">
                <div className="bg-white p-2 rounded-xl shadow-lg border border-white/10 hover:scale-105 transition-transform">
-                 {/* Aquí lee la imagen que guardaste en el Paso 1 */}
-                 <img src="/qr-re.jpg" alt="QR RE! Contacto" className="w-28 h-28 object-cover rounded-lg" />
+                 <img src="/qr-re.jpg" alt="QR RE! Contacto" className="w-20 h-20 object-cover rounded-lg" />
                </div>
-               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-3 text-center">
-                 Llevá nuestra info <br/> en tu celular
+               <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-2 text-center w-24">
+                 Escanéame
                </p>
             </div>
 
           </div>
 
-          <div className="mt-16 pt-8 border-t border-white/10 text-sm text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="font-medium">© 2026 RE! Producciones. Todos los derechos reservados.</p>
-            <div className="flex justify-center gap-8 items-center">
-              <a href="https://www.instagram.com/somos.re.ok/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-[#E53B12] transition-colors font-bold tracking-widest text-xs uppercase text-white/60">
-                <InstagramIcon size={16} /> Instagram
+          <div className="mt-10 pt-6 border-t border-white/10 text-xs text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="font-medium text-gray-500">© 2026 RE! Producciones. Todos los derechos reservados.</p>
+            <div className="flex justify-center gap-6 items-center">
+              <a href="https://www.instagram.com/somos.re.ok/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-[#E53B12] transition-colors font-bold tracking-widest text-[10px] uppercase text-white/60">
+                <InstagramIcon size={14} /> Instagram
               </a>
-              <a href="https://www.youtube.com/@somosreok" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-[#E53B12] transition-colors font-bold tracking-widest text-xs uppercase text-white/60">
-                <YoutubeIcon size={16} /> YouTube
+              <a href="https://www.youtube.com/@somosreok" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-[#E53B12] transition-colors font-bold tracking-widest text-[10px] uppercase text-white/60">
+                <YoutubeIcon size={14} /> YouTube
               </a>
             </div>
           </div>
