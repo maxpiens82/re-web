@@ -169,6 +169,23 @@ export default function Home() {
     }
   }, [isDragging, initialTouchDist, scale, position.x, position.y]);
 
+  // Tecla ESC para cerrar la foto en pantalla completa
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setLightboxImg(null);
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+      }
+    };
+
+    if (lightboxImg) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxImg]);
+
   // Mouse y 1 Dedo (Pan/Arrastrar)
   const handlePointerDown = (e) => {
     if (e.isPrimary) {
