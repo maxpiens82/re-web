@@ -949,9 +949,9 @@ export default function Home() {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {[
-              { name: 'Santiago y el equipo', agency: 'RE/MAX', text: 'Son unos profesionales absolutos. La calidad del video con drone nos ayudó a cerrar la venta en tiempo récord.' },
-              { name: 'Carolina B.', agency: 'Sotheby\'s', text: 'Impecable atención a los detalles. Siempre llegan a tiempo, la edición es rápida y el resultado final supera las expectativas.' },
-              { name: 'Alejandro T.', agency: 'Coldwell Banker', text: 'Los tours 3D y la fotografía son de otro nivel. Mis clientes quedan fascinados con la presentación impecable de sus propiedades.' }
+              { name: 'Susana González', agency: 'Real Aires', text: 'Noté un antes y un después en la manera en que se perciben las propiedades que comercializo. El profesionalismo, la mirada estética y el compromiso del equipo hacen la diferencia en cada sesión.' },
+              { name: 'Laura Casarubia', agency: 'RE/MAX Premium', text: 'Los elijo por confianza en su trabajo y por el respeto al visitar a los clientes en sus hogares. La fotografía es nuestra carta de presentación y con ellos sé que esa primera impresión siempre será excelente.' },
+              { name: 'Agustín Vidal', agency: 'RE/MAX', text: 'Son sumamente profesionales y cumplen rigurosamente con los tiempos de entrega pactados. Su rápida respuesta nos permite, a su vez, brindar una atención mucho más ágil a nuestros propios clientes.' }
             ].map((rev, i) => (
               <div key={i} className="bg-[#EAEAEA] p-6 md:p-8 rounded-3xl border border-gray-200 relative hover:shadow-md transition-all">
                 <div className="text-[#E53B12] mb-4 md:mb-6 flex gap-1">

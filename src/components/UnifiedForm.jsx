@@ -1202,17 +1202,21 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
           </div>
         </div>
         
-        <div className="flex flex-row gap-2 w-full md:w-auto justify-end">
+        <div className="flex flex-row gap-2.5 w-full md:w-auto justify-end">
           {isNewBooking ? (
             <>
               <button 
                 onClick={handleSendQuote} 
                 disabled={isSubmitting || isSendingQuote || total === 0} 
-                className="flex-1 md:flex-none px-3 py-3 md:px-6 md:py-3.5 bg-white border-2 border-[#EB4511] text-[#EB4511] font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm flex items-center justify-center gap-2 hover:bg-orange-50 transition-colors disabled:opacity-50"
+                className="flex-1 md:flex-none px-2 md:px-6 py-3.5 bg-[#FFF5F2] text-[#E53B12] font-extrabold rounded-xl md:rounded-full text-[10px] md:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-[#FFEAE3] transition-colors disabled:opacity-50"
               >
-                {isSendingQuote ? <><Loader2 size={16} className="animate-spin" /> Enviando...</> : <><Mail size={16} /> Enviar Presupuesto</>}
+                {isSendingQuote ? <><Loader2 size={14} className="animate-spin" /> Enviando</> : <><Mail size={14} /> Presupuesto</>}
               </button>
-              <button onClick={() => handleFormSubmit('create_booking')} disabled={isSubmitting} className="flex-1 md:flex-none px-4 py-3 md:px-8 md:py-3.5 bg-[#EB4511] text-white font-bold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wide shadow-sm flex items-center justify-center disabled:opacity-50">
+              <button 
+                onClick={() => handleFormSubmit('create_booking')} 
+                disabled={isSubmitting} 
+                className="flex-1 md:flex-none px-4 md:px-8 py-3.5 bg-[#E53B12] text-white font-extrabold rounded-xl md:rounded-full text-xs md:text-sm uppercase tracking-wider shadow-[0_4px_15px_rgba(229,59,18,0.3)] flex items-center justify-center disabled:opacity-50 hover:bg-[#c42e0d] transition-all hover:-translate-y-0.5"
+              >
                 {isSubmitting ? <><MiniLogo /> Procesando</> : 'Cargar Reserva'}
               </button>
             </>

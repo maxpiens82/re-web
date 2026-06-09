@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Stager from './pages/Stager';
 import Login from './pages/Login';
 import Portal from './pages/Portal';
+import Links from './pages/Links';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/staging" element={<Stager />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/links" element={<Links />} />
 
           {/* Protected Routes (Staff Only - Hidden from public navigation) */}
           <Route 
