@@ -110,6 +110,25 @@ export default function Home() {
     };
   }, []);
 
+  // Keyboard Escape listener to exit full-screen lightbox
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setLightboxImg(null);
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+      }
+    };
+
+    if (lightboxImg) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [lightboxImg]);
+
   // DETECTOR DE HARDWARE: Estrategia estricta para Android
   useEffect(() => {
     if (typeof navigator !== 'undefined') {
