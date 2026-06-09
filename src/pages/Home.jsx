@@ -82,6 +82,33 @@ export default function Home() {
   const [isAddressValid, setIsAddressValid] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isLowEndDevice, setIsLowEndDevice] = useState(false);
+  const [activeCard, setActiveCard] = useState(null);
+
+  // IntersectionObserver to detect when cards pass through the vertical center on mobile
+  useEffect(() => {
+    const observerOptions = {
+      root: null,
+      rootMargin: '-35% 0px -35% 0px', // targets the vertical center 30% area of viewport
+      threshold: 0.5 // triggers when at least half of the card is visible inside the active zone
+    };
+
+    const observerCallback = (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const index = parseInt(entry.target.getAttribute('data-index'), 10);
+          setActiveCard(index);
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+    const cards = document.querySelectorAll('.portfolio-card');
+    cards.forEach((card) => observer.observe(card));
+
+    return () => {
+      cards.forEach((card) => observer.unobserve(card));
+    };
+  }, []);
 
   // DETECTOR DE HARDWARE: Estrategia estricta para Android
   useEffect(() => {
@@ -596,44 +623,41 @@ export default function Home() {
       </section>
 
       {/* 🚀 TRUSTED BY */}
-      {/* Cortamos drásticamente el padding superior e inferior de la sección (de py-8 a py-3) */}
-      <section className="py-2 md:py-3 bg-[#EAEAEA] border-b border-gray-300">
+      <section className="py-2.5 md:py-3 bg-[#EAEAEA] border-b border-gray-300">
         <div className="max-w-6xl mx-auto px-4 md:px-6 text-center flex flex-col items-center justify-center">
-          {/* Cortamos drásticamente el espacio debajo del texto (de mb-8 a mb-2) */}
-          <p className="text-[9px] md:text-[20px] font-bold text-gray-500 uppercase tracking-widest mb-2 md:mb-2">Confían en nuestro equipo</p>
+          <p className="text-[10px] md:text-[20px] font-bold text-gray-500 uppercase tracking-widest mb-2 md:mb-2">Confían en nuestro equipo</p>
           
-          {/* Usamos items-center y calibramos manualmente el translate-y para lograr alineación óptica */}
-          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-20 transition-all duration-500">
+          <div className="flex flex-nowrap justify-center items-center gap-x-4 md:gap-20 transition-all duration-500">
             
             <img src="/remax web.png" alt="RE/MAX" 
-                 className="h-[30px] md:h-[44px] w-auto object-contain mix-blend-multiply translate-y-[2px]" />
+                 className="h-[14px] md:h-[44px] w-auto object-contain mix-blend-multiply translate-y-[0.5px] md:translate-y-[2px]" />
                  
             <img src="/pasantes web.png" alt="Pasantes Propiedades" 
-                 className="h-[55px] md:h-[120px] w-auto object-contain mix-blend-multiply md:translate-y-[8px]" />
+                 className="h-[24px] md:h-[120px] w-auto object-contain mix-blend-multiply md:translate-y-[8px]" />
                  
             <img src="/real aires web.png" alt="Real Aires Bienes Raices" 
-                 className="h-[65px] md:h-[80px] w-auto object-contain mix-blend-multiply translate-y-[-4px] md:translate-y-[-10px]" />
+                 className="h-[28px] md:h-[80px] w-auto object-contain mix-blend-multiply translate-y-[-1px] md:translate-y-[-10px]" />
                  
             <img src="/braulio web.png" alt="Braulio Inmuebles" 
-                 className="h-[35px] md:h-[50px] w-auto object-contain mix-blend-multiply" />
+                 className="h-[15px] md:h-[50px] w-auto object-contain mix-blend-multiply" />
                  
           </div>
         </div>
       </section>
 
       {/* 🚀 PORTFOLIO */}
-      <section id="portfolio" className="py-24 bg-white">
+      <section id="portfolio" className="pt-8 pb-16 md:py-24 bg-white">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-12 gap-3 md:gap-4">
             <div>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-[#2d2d2d] mb-2 tracking-tight flex items-center gap-1.5">
-                <ArrowUpRight className="text-[#E53B12]" size={36} strokeWidth={3} />
+              <h2 className="text-2xl md:text-4xl font-extrabold text-[#2d2d2d] mb-1.5 md:mb-2 tracking-tight flex items-center gap-1.5">
+                <ArrowUpRight className="text-[#E53B12] w-6 h-6 md:w-9 md:h-9" strokeWidth={3} />
                 Nuestro Trabajo
               </h2>
-              <p className="text-gray-500 font-medium text-lg ml-0 md:ml-10">Imágenes que cierran ventas por sí solas.</p>
+              <p className="text-gray-500 font-medium text-sm md:text-lg ml-0 md:ml-10">Imágenes que cierran ventas por sí solas.</p>
             </div>
-            <button onClick={() => document.getElementById('calculadora').scrollIntoView({ behavior: 'smooth' })} className="text-[#E53B12] font-bold uppercase tracking-widest text-sm hover:underline flex items-center gap-1">
-              Agendar Sesión <ArrowRight size={16} />
+            <button onClick={() => document.getElementById('calculadora').scrollIntoView({ behavior: 'smooth' })} className="text-[#E53B12] font-bold uppercase tracking-widest text-xs md:text-sm hover:underline flex items-center gap-1 mt-1 md:mt-0">
+              Agendar Sesión <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </button>
           </div>
 
@@ -674,10 +698,13 @@ export default function Home() {
             ].map((item, i) => (
               <div
                 key={i}
+                data-index={i}
                 onClick={() => { if (!item.iframe) setLightboxImg(item.img); }}
                 /* El fondo blanco (bg-white) hace que el PNG transparente del plano se vea perfecto */
-                className={`group relative rounded-2xl overflow-hidden shadow-sm h-72 ${item.isPlan ? 'bg-white' : 'bg-black'} transition-all duration-500 ease-out hover:shadow-2xl md:hover:scale-[1.05] md:hover:z-10
-                  ${!item.iframe ? 'cursor-pointer' : ''}`}
+                className={`group relative rounded-2xl overflow-hidden shadow-sm h-64 md:h-72 ${item.isPlan ? 'bg-white' : 'bg-black'} transition-all duration-500 ease-out
+                  ${activeCard === i ? 'scale-[1.04] z-10 shadow-xl' : 'scale-100 z-0'}
+                  md:scale-100 md:z-0 md:hover:scale-[1.05] md:hover:z-10 hover:shadow-2xl
+                  ${!item.iframe ? 'cursor-pointer' : ''} portfolio-card`}
               >
                 {item.iframe ? (
                   <div className="absolute inset-0 z-0 pointer-events-auto">
@@ -693,8 +720,12 @@ export default function Home() {
                   <img src={item.img} alt={item.title} className={`w-full h-full absolute inset-0 z-0 ${item.isPlan ? 'object-contain p-4' : 'object-cover'}`} />
                 )}
 
-                {/* Ahora el degradado está en TODAS las tarjetas, pero desaparece suavemente al pasar el mouse (group-hover:opacity-0) */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a]/95 via-[#1a1a1a]/30 to-transparent flex flex-col justify-end p-6 pointer-events-none z-10 transition-opacity duration-300 opacity-100 group-hover:opacity-0">
+                {/* En celular se oculta el degradado si la tarjeta pasa por el centro. En desktop se mantiene el efecto hover clásico */}
+                <div 
+                  className={`absolute inset-0 bg-gradient-to-t from-[#1a1a1a]/95 via-[#1a1a1a]/30 to-transparent flex flex-col justify-end p-6 pointer-events-none z-10 transition-opacity duration-300
+                    ${activeCard === i ? 'opacity-0' : 'opacity-100'} 
+                    md:opacity-100 md:group-hover:opacity-0`}
+                >
                   <h3 className="text-white font-bold text-xl drop-shadow-md">{item.title}</h3>
                   <p className="text-white/80 text-sm font-medium drop-shadow-md flex items-center gap-1 mt-1">
                     <MapPin size={12} /> {item.loc}
@@ -707,13 +738,13 @@ export default function Home() {
       </section>
 
       {/* 🚀 CALCULATOR SECTION */}
-      <section id="calculadora" className="py-24 bg-[#EAEAEA] relative">
-        <div className="max-w-4xl mx-auto px-6 mb-12 text-center flex flex-col items-center">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-[#2d2d2d] mb-4 tracking-tight flex items-center justify-center gap-1.5">
-            <ArrowUpRight className="text-[#E53B12]" size={36} strokeWidth={3} />
+      <section id="calculadora" className="pt-8 pb-4 md:py-24 bg-[#EAEAEA] relative">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 mb-6 md:mb-12 text-center flex flex-col items-center">
+          <h2 className="text-[21px] sm:text-2xl md:text-4xl font-extrabold text-[#2d2d2d] mb-2 md:mb-4 tracking-tight flex items-center justify-center gap-1">
+            <ArrowUpRight className="text-[#E53B12] w-5 h-5 md:w-9 md:h-9" strokeWidth={3} />
             Cotizá al instante.
           </h2>
-          <p className="text-gray-500 font-medium text-lg max-w-2xl mx-auto">
+          <p className="text-gray-500 font-medium text-xs md:text-lg max-w-2xl mx-auto px-2 md:px-0">
             Seleccioná los servicios, elegí tu fecha ideal y solicitá tu reserva online. Sin intermediarios ni demoras.
           </p>
         </div>
@@ -721,7 +752,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto px-3 md:px-4 space-y-4 md:space-y-6">
 
           {/* 1. SERVICIOS */}
-          <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+          <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
             <div className="mb-4 md:mb-6">
               <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>
                 Servicios
@@ -760,7 +791,7 @@ export default function Home() {
           </section>
 
           {/* 2. LOCACIÓN */}
-          <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+          <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
             <div className="mb-4 md:mb-6">
               <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>
                 Locación
@@ -824,7 +855,7 @@ export default function Home() {
           </section>
 
           {/* 3. FECHA Y HORA */}
-          <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+          <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
             <div className="mb-4 md:mb-6">
               <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>
                 Fecha y Hora
@@ -888,7 +919,7 @@ export default function Home() {
           </section>
 
           {/* 4. TUS DATOS */}
-          <section className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
+          <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
             <div className="mb-4 md:mb-6">
               <h2 className="text-base md:text-lg font-bold uppercase" style={{ color: brandColor }}>
                 Tus Datos
@@ -927,7 +958,7 @@ export default function Home() {
           </section>
 
           {/* 5. BOTÓN DE CONFIRMACIÓN ESTÁTICO (Siempre visible al final del formulario) */}
-          <div className="pt-4 pb-2 md:pt-6 md:pb-4 flex justify-center">
+          <div className="pt-2 pb-0 md:pt-6 md:pb-4 flex justify-center">
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
@@ -949,13 +980,13 @@ export default function Home() {
       </section>
 
       {/* 🚀 REVIEWS / SOCIAL PROOF */}
-      <section className="py-16 md:py-24 bg-white text-[#2d2d2d] border-y border-gray-200">
+      <section className="py-10 md:py-24 bg-white text-[#2d2d2d] border-y border-gray-200">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-12 md:mb-16 flex flex-col items-center">
-            <h2 className="text-[26px] md:text-4xl font-extrabold tracking-tight text-center leading-tight mb-2">
+          <div className="text-center mb-6 md:mb-16 flex flex-col items-center">
+            <h2 className="text-[21px] md:text-4xl font-extrabold tracking-tight text-center leading-tight mb-1">
               Lo que dicen nuestros clientes
             </h2>
-            <p className="text-gray-400 uppercase tracking-widest text-[10px] md:text-xs font-bold mt-2">Reseñas Verificadas</p>
+            <p className="text-gray-400 uppercase tracking-widest text-[9px] md:text-xs font-bold mt-1">Reseñas Verificadas</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
@@ -979,7 +1010,7 @@ export default function Home() {
       </section>
 
       {/* 🚀 SITE FOOTER */}
-      <footer className="relative bg-[#0f0f0f] text-gray-400 pt-16 pb-32 md:pb-28 border-t border-white/10 overflow-hidden">
+      <footer className="relative bg-[#0f0f0f] text-gray-400 pt-10 pb-24 md:pt-16 md:pb-28 border-t border-white/10 overflow-hidden">
 
         {/* 🚀 BACKGROUND BRAND PATTERN */}
         <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center opacity-[0.03] md:opacity-5">
@@ -997,26 +1028,26 @@ export default function Home() {
         <div className="relative z-10 max-w-6xl mx-auto px-6">
 
           {/* 🚀 TU PARTNER CREATIVO */}
-          <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
-            <h2 className="text-2xl md:text-4xl font-black text-white mb-4 tracking-tight uppercase">Tu Partner Creativo</h2>
-            <p className="text-sm md:text-base leading-relaxed font-medium text-gray-300">
+          <div className="text-center max-w-3xl mx-auto mb-8 md:mb-16">
+            <h2 className="text-xl md:text-4xl font-black text-white mb-2 md:mb-4 tracking-tight uppercase">Tu Partner Creativo</h2>
+            <p className="text-xs md:text-base leading-relaxed font-medium text-gray-300">
               RE! se posiciona como un socio creativo especializado para la industria inmobiliaria, cerrando la brecha entre la documentación arquitectónica de alta gama y las tendencias dinámicas de las redes sociales.
             </p>
           </div>
 
           {/* LINKS & INFO */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-4 border-t border-white/10 pt-10">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-y-6 md:gap-4 border-t border-white/10 pt-6 md:pt-10">
             
             <div className="md:col-span-5">
-              <h3 className="text-2xl font-extrabold text-white mb-3 tracking-widest">RE!</h3>
+              <h3 className="text-xl md:text-2xl font-extrabold text-white mb-1.5 md:mb-3 tracking-widest">RE!</h3>
               <p className="max-w-xs text-xs md:text-sm font-medium leading-relaxed text-gray-400">
                 Elevando el estándar visual del mercado inmobiliario. Fotografía, video y soluciones inmersivas.
               </p>
             </div>
             
             <div className="md:col-span-3">
-              <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-xs">Servicios</h4>
-              <ul className="space-y-2 text-xs md:text-sm font-medium">
+              <h4 className="text-white font-bold mb-2 md:mb-4 uppercase tracking-wider text-xs">Servicios</h4>
+              <ul className="space-y-1.5 text-xs md:text-sm font-medium">
                 <li>Fotografía Interior</li>
                 <li>Video Cinemático</li>
                 <li>Tomas Aéreas (Drone)</li>
@@ -1025,15 +1056,15 @@ export default function Home() {
             </div>
             
             <div className="md:col-span-3">
-              <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-xs">Contacto</h4>
-              <ul className="space-y-2 text-xs md:text-sm font-medium">
+              <h4 className="text-white font-bold mb-2 md:mb-4 uppercase tracking-wider text-xs">Contacto</h4>
+              <ul className="space-y-1.5 text-xs md:text-sm font-medium">
                 <li><a href="mailto:hola@somosreok.com" className="hover:text-[#E53B12] transition-colors">hola@somosreok.com</a></li>
                 <li>Buenos Aires, Argentina</li>
                 <li><a href="https://wa.me/5491138903333" target="_blank" rel="noopener noreferrer" className="hover:text-[#E53B12] transition-colors">WhatsApp Directo</a></li>
               </ul>
             </div>
             
-            <div className="md:col-span-1 hidden lg:flex flex-col items-end">
+            <div className="md:col-span-1 hidden md:flex flex-col items-end">
                <div className="bg-white p-2 rounded-xl shadow-lg border border-white/10 hover:scale-105 transition-transform">
                  <img src="/qr-re.jpg" alt="QR RE! Contacto" className="w-20 h-20 object-cover rounded-lg" />
                </div>
@@ -1044,7 +1075,7 @@ export default function Home() {
 
           </div>
 
-          <div className="mt-10 pt-6 border-t border-white/10 text-xs text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="mt-6 pt-4 md:mt-10 md:pt-6 border-t border-white/10 text-xs text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="font-medium text-gray-500">© 2026 RE! Producciones. Todos los derechos reservados.</p>
             <div className="flex justify-center gap-6 items-center">
               <a href="https://www.instagram.com/somos.re.ok/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-[#E53B12] transition-colors font-bold tracking-widest text-[10px] uppercase text-white/60">
