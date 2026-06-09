@@ -596,14 +596,27 @@ export default function Home() {
       </section>
 
       {/* 🚀 TRUSTED BY */}
-      <section className="py-4 md:py-6 bg-[#EAEAEA] border-b border-gray-300">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 text-center">
-          <p className="text-[9px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Confían en nuestro equipo</p>
-          <div className="flex flex-wrap justify-center items-center gap-6 md:gap-12 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-            <div className="font-black text-sm md:text-xl tracking-tighter text-gray-800">Braulio Inmuebles</div>
-            <div className="font-black text-sm md:text-xl tracking-tighter text-gray-800">RE/MAX</div>
-            <div className="font-black text-sm md:text-xl tracking-tighter text-gray-800">Real Aires</div>
-            <div className="font-black text-sm md:text-xl tracking-tighter text-gray-800">Pasantes</div>
+      {/* Cortamos drásticamente el padding superior e inferior de la sección (de py-8 a py-3) */}
+      <section className="py-2 md:py-3 bg-[#EAEAEA] border-b border-gray-300">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 text-center flex flex-col items-center justify-center">
+          {/* Cortamos drásticamente el espacio debajo del texto (de mb-8 a mb-2) */}
+          <p className="text-[9px] md:text-[20px] font-bold text-gray-500 uppercase tracking-widest mb-2 md:mb-2">Confían en nuestro equipo</p>
+          
+          {/* Usamos items-center y calibramos manualmente el translate-y para lograr alineación óptica */}
+          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-20 transition-all duration-500">
+            
+            <img src="/remax web.png" alt="RE/MAX" 
+                 className="h-[30px] md:h-[44px] w-auto object-contain mix-blend-multiply translate-y-[2px]" />
+                 
+            <img src="/pasantes web.png" alt="Pasantes Propiedades" 
+                 className="h-[55px] md:h-[120px] w-auto object-contain mix-blend-multiply md:translate-y-[8px]" />
+                 
+            <img src="/real aires web.png" alt="Real Aires Bienes Raices" 
+                 className="h-[65px] md:h-[80px] w-auto object-contain mix-blend-multiply translate-y-[-4px] md:translate-y-[-10px]" />
+                 
+            <img src="/braulio web.png" alt="Braulio Inmuebles" 
+                 className="h-[35px] md:h-[50px] w-auto object-contain mix-blend-multiply" />
+                 
           </div>
         </div>
       </section>
