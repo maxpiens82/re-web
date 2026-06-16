@@ -308,11 +308,9 @@ export default function Home() {
             isFixed: s.isFixed
           }));
 
-          const mappedMultipliers = data.prices.multipliers.map((m, index) => {
-            let label = `Hasta ${m.sheetValue}m²`;
-            if (index > 0) label = `${parseInt(data.prices.multipliers[index - 1].sheetValue) + 1} a ${m.sheetValue}m²`;
-            if (index === data.prices.multipliers.length - 1) label = `Más de ${data.prices.multipliers[index - 1].sheetValue}m²`;
-            return { id: `m${m.sheetValue}`, label, value: m.value, sheetValue: m.sheetValue };
+          const mappedMultipliers = data.prices.multipliers.map(m => {
+            const labelStr = String(m.sheetValue).includes('m') ? m.sheetValue : `${m.sheetValue}m²`;
+            return { id: `m${m.sheetValue}`, label: labelStr, value: m.value, sheetValue: m.sheetValue };
           });
 
           const freshDb = { 
@@ -781,17 +779,18 @@ export default function Home() {
 
       {/* 🚀 CALCULATOR SECTION */}
       <section id="calculadora" className="pt-8 pb-4 md:py-24 bg-[#EAEAEA] relative">
-        <div className="max-w-4xl mx-auto px-4 md:px-6 mb-6 md:mb-12 text-center flex flex-col items-center">
-          <h2 className="text-[21px] sm:text-2xl md:text-4xl font-extrabold text-[#2d2d2d] mb-2 md:mb-4 tracking-tight flex items-center justify-center gap-1">
+
+        <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-6 mb-6 md:mb-12 text-center flex flex-col items-center">
+          <h2 className="text-[21px] sm:text-2xl md:text-4xl font-extrabold text-[#2d2d2d] mb-2 md:mb-4 tracking-tight flex items-center justify-center gap-1 drop-shadow-sm">
             <ArrowUpRight className="text-[#E53B12] w-5 h-5 md:w-9 md:h-9" strokeWidth={3} />
             Cotizá al instante.
           </h2>
-          <p className="text-gray-500 font-medium text-xs md:text-lg max-w-2xl mx-auto px-2 md:px-0">
+          <p className="text-gray-600 font-medium text-xs md:text-lg max-w-2xl mx-auto px-2 md:px-0 drop-shadow-sm">
             Seleccioná los servicios, elegí tu fecha ideal y solicitá tu reserva online. Sin intermediarios ni demoras.
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto px-3 md:px-4 space-y-4 md:space-y-6">
+        <div className="relative z-10 max-w-4xl mx-auto px-3 md:px-4 space-y-4 md:space-y-6">
 
           {/* 1. SERVICIOS */}
           <section className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-100">
@@ -804,16 +803,18 @@ export default function Home() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-3">
               {db.services.map((srv) => {
                 const isSelected = selectedServices.includes(srv.id);
+                const Icon = srv.icon;
                 return (
                   <button
                     key={srv.id}
                     onClick={() => toggleService(srv.id)}
-                    className={`relative w-full md:w-[100px] h-[36px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all duration-200 select-none flex items-center justify-center shrink-0
+                    className={`relative w-full md:w-auto md:px-5 h-[40px] md:h-[44px] rounded-full font-bold text-[11px] md:text-sm tracking-wide transition-all duration-200 select-none flex items-center justify-center gap-2 shrink-0
                       ${isSelected
                         ? 'bg-[#E53B12] text-white shadow-[0_6px_16px_rgba(235,69,17,0.35)] -translate-y-0.5'
                         : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'
                       }`}
                   >
+                    {Icon && <Icon size={16} strokeWidth={2.5} />}
                     {srv.id}
                   </button>
                 );

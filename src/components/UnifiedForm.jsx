@@ -154,11 +154,9 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
           setConfig(initData.config || {});
           
           const mappedServices = initData.prices.services.map(s => ({ id: s.id, label: s.id, price: s.price, isFixed: s.isFixed }));
-          const mappedMultipliers = initData.prices.multipliers.map((m, idx) => {
-            let label = `Hasta ${m.sheetValue}m²`;
-            if (idx > 0) label = `${parseInt(initData.prices.multipliers[idx - 1].sheetValue) + 1} a ${m.sheetValue}m²`;
-            if (idx === initData.prices.multipliers.length - 1) label = `Más de ${initData.prices.multipliers[idx - 1].sheetValue}m²`;
-            return { id: `m${m.sheetValue}`, label, value: m.value, sheetValue: m.sheetValue };
+          const mappedMultipliers = initData.prices.multipliers.map(m => {
+            let labelStr = String(m.sheetValue).includes('m') ? m.sheetValue : `${m.sheetValue}m²`;
+            return { id: `m${m.sheetValue}`, label: `Hasta ${labelStr}`, value: m.value, sheetValue: m.sheetValue };
           });
           setDb({ services: mappedServices, multipliers: mappedMultipliers, discountThreshold: 3, discountAmount: 5000 });
           
