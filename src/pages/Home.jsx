@@ -314,7 +314,13 @@ export default function Home() {
             return { id: `m${m.sheetValue}`, label, value: m.value, sheetValue: m.sheetValue };
           });
 
-          const freshDb = { services: mappedServices, multipliers: mappedMultipliers, discountThreshold: 3, discountAmount: 5000 };
+          const freshDb = { 
+            services: mappedServices, 
+            multipliers: mappedMultipliers, 
+            discountThreshold: data.prices.constants?.discountThreshold || 3, 
+            discountPct: data.prices.constants?.discountPct || 0.035,
+            discountAmount: 5000 // Legacy fallback
+          };
 
           // Save pure JSON to memory for their next visit
           localStorage.setItem('re_prices_cache', JSON.stringify(freshDb));
@@ -414,16 +420,23 @@ export default function Home() {
       baseMult += 30000; // Tarifa base por unidad
     }
 
+    let basePreExtras = (baseMult * multiplier) + baseFixed;
     let discount = 0;
+
     if (serviceCount > db.discountThreshold) {
-      discount = (serviceCount - db.discountThreshold) * db.discountAmount;
+      if (isNewEra) {
+        discount = basePreExtras * ((serviceCount - db.discountThreshold) * (db.discountPct || 0.035));
+      } else {
+        // Old Era ALWAYS uses 3 and $5000 strictly for backward compatibility
+        discount = (serviceCount - 3) * 5000 * multiplier;
+      }
     }
 
-    const calculatedTotal = ((baseMult - discount) * multiplier) + baseFixed;
+    const calculatedTotal = basePreExtras - discount;
 
     return {
       total: calculatedTotal,
-      discountApplied: discount > 0 ? discount * multiplier : 0,
+      discountApplied: discount,
       baseCount: serviceCount
     };
   }, [selectedServices, multiplier, db, pricingData, selectedDateObj]);
@@ -556,9 +569,11 @@ export default function Home() {
             className="h-10 md:h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           />
+          {/* AI STAGER HIDDEN UNTIL READY
           {isPortalEnabled && (
             <Link to="/staging" className="hover:text-[#E53B12] transition-colors hidden md:block text-gray-300 text-sm">AI Stager</Link>
           )}
+          */}
         </div>
         <div className="flex items-center gap-4 md:gap-6">
           <a href="https://www.instagram.com/somos.re.ok/" target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-[#E53B12] transition-colors">

@@ -324,7 +324,13 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
       const multValue = sizeMults[unit.metrosCuadrados] || 1;
       
       // --- Client Unit Total ---
-      let unitSubtotal = (unitBaseMult * multValue) + unitBaseFixed;
+      let unitBasePreExtras = (unitBaseMult * multValue) + unitBaseFixed;
+      let unitSubtotal = unitBasePreExtras;
+      
+      // Keep track of the pre-extras total for the discount formula
+      if (!window.grandBasePreExtras) window.grandBasePreExtras = 0;
+      window.grandBasePreExtras += unitBasePreExtras;
+
       if (unit.selectedServices.includes('EXTRAS')) {
         unitSubtotal += (Number(unit.costoExtras) || 0);
       }
@@ -364,9 +370,17 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess }) {
     }
 
     let discount = 0;
-    if (globalServiceCount > db.discountThreshold) {
-      discount = (globalServiceCount - db.discountThreshold) * db.discountAmount;
+    if (globalServiceCount > (db.discountThreshold || 3)) {
+      if (isNewEra) {
+        discount = (window.grandBasePreExtras || 0) * ((globalServiceCount - (db.discountThreshold || 3)) * (db.discountPct || 0.035));
+      } else {
+        // Old Era ALWAYS uses 3 and $5000 strictly for backward compatibility
+        discount = (globalServiceCount - 3) * 5000;
+      }
     }
+    
+    // Clear out the temporary window variable
+    window.grandBasePreExtras = 0;
 
     grandTotal -= discount;
     if (grandTotal < 0) grandTotal = 0;
