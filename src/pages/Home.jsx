@@ -83,6 +83,7 @@ export default function Home() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isLowEndDevice, setIsLowEndDevice] = useState(false);
   const [activeCard, setActiveCard] = useState(null);
+  const [pricePulse, setPricePulse] = useState(false);
 
   // IntersectionObserver to detect when cards pass through the vertical center on mobile
   useEffect(() => {
@@ -440,6 +441,15 @@ export default function Home() {
       baseCount: serviceCount
     };
   }, [selectedServices, multiplier, db, pricingData, selectedDateObj]);
+
+  // Trigger elegant pulse animation when total changes
+  useEffect(() => {
+    if (total > 0) {
+      setPricePulse(true);
+      const timer = setTimeout(() => setPricePulse(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [total]);
 
   // --- HANDLERS ---
   const toggleService = (id) => {
@@ -1134,7 +1144,12 @@ export default function Home() {
               Total Estimado
             </span>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ color: brandColor }}>
+              <span 
+                className={`text-2xl md:text-3xl font-extrabold tracking-tight transition-all duration-300 ease-out inline-block origin-left
+                  ${pricePulse ? 'scale-110 brightness-125 drop-shadow-[0_0_12px_rgba(229,59,18,0.6)]' : 'scale-100'}
+                `} 
+                style={{ color: brandColor }}
+              >
                 {formatCurrency(total)}
               </span>
               {discountApplied > 0 && (
