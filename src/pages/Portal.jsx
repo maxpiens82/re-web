@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User } from 'lucide-react';
+import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User, Bot } from 'lucide-react';
 import UnifiedForm from '../components/UnifiedForm';
 import LoadingLogo from '../components/LoadingLogo';
+import AiAssistant from '../components/AiAssistant';
 
 // Make sure this is your actual GAS URL!
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
@@ -157,11 +158,29 @@ export default function Portal() {
           )}
         </div>
 
-        {/* 🚀 THE MOBILE "NUEVA RESERVA" STICKY BUTTON */}
-        <div className="p-4 bg-white border-t border-gray-100 shrink-0 md:hidden pb-safe">
+        {/* 🚀 AI ASSISTANT DESKTOP BUTTON */}
+        <div className="px-3 pb-3 bg-gray-50/50 hidden md:block">
+          <button 
+            onClick={() => handleJobClick('AI')} 
+            className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors shadow-sm flex items-center justify-center gap-2
+              ${selectedJobId === 'AI' ? 'bg-[#2B6CB0] text-white shadow-md' : 'bg-white border border-gray-200 text-[#2B6CB0] hover:bg-gray-50'}`}
+          >
+            <Bot size={18} /> Igor
+          </button>
+        </div>
+
+        {/* 🚀 MOBILE STICKY BUTTONS */}
+        <div className="p-4 bg-white border-t border-gray-100 shrink-0 md:hidden pb-safe flex gap-2">
+          <button 
+            onClick={() => handleJobClick('AI')} 
+            className={`p-3.5 rounded-xl transition-colors shadow-lg flex items-center justify-center shrink-0
+              ${selectedJobId === 'AI' ? 'bg-[#2B6CB0] text-white' : 'bg-gray-100 text-[#2B6CB0]'}`}
+          >
+            <Bot size={20} />
+          </button>
           <button 
             onClick={() => handleJobClick('NEW')} 
-            className="w-full bg-[#EB4511] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-sm hover:bg-[#c42e0d] transition-colors shadow-lg flex items-center justify-center gap-2"
+            className="flex-1 bg-[#EB4511] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-sm hover:bg-[#c42e0d] transition-colors shadow-lg flex items-center justify-center gap-2"
           >
             <Plus size={18} /> Nueva Reserva
           </button>
@@ -185,12 +204,14 @@ export default function Portal() {
                <p className="text-sm">O presiona el botón para crear una nueva.</p>
                
                <button 
-  onClick={() => setSelectedJobId('NEW')} 
-  className="mt-6 bg-[#EB4511] text-white px-6 py-3 rounded-full font-bold uppercase tracking-wider text-sm hover:bg-[#c42e0d] transition-colors shadow-lg inline-flex items-center gap-2"
->
-  <Plus size={18} /> Nueva Reserva
-</button>
+                onClick={() => setSelectedJobId('NEW')} 
+                className="mt-6 bg-[#EB4511] text-white px-6 py-3 rounded-full font-bold uppercase tracking-wider text-sm hover:bg-[#c42e0d] transition-colors shadow-lg inline-flex items-center gap-2"
+              >
+                <Plus size={18} /> Nueva Reserva
+              </button>
              </div>
+           ) : selectedJobId === 'AI' ? (
+             <AiAssistant />
            ) : (
              <UnifiedForm 
                jobId={selectedJobId} 
