@@ -16,6 +16,16 @@ export default function Portal() {
   const [confirmedJobs, setConfirmedJobs] = useState([]);
   const[selectedJobId, setSelectedJobId] = useState(null);
 
+  // 🛡️ IGOR VIP PASS: Only allow Max and San
+  const safeEmail = (currentUser?.email || '').toLowerCase();
+  const safeName = (currentUser?.name || currentUser?.displayName || '').toLowerCase();
+  const canAccessIgor = 
+    safeEmail === 'maxpiens82@gmail.com' || 
+    safeEmail === 'hola@somosreok.com' || 
+    safeName.includes('max') || 
+    safeName.includes('san') || 
+    safeName === 'admin';
+
   // Extract fetch logic so we can call it on demand
   const fetchPortalData = async () => {
     setLoading(true);
@@ -158,29 +168,33 @@ export default function Portal() {
           )}
         </div>
 
-        {/* 🚀 AI ASSISTANT DESKTOP BUTTON */}
-        <div className="px-3 pb-3 bg-gray-50/50 hidden md:block">
-          <button 
-            onClick={() => handleJobClick('AI')} 
-            className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors shadow-sm flex items-center justify-center gap-2
-              ${selectedJobId === 'AI' ? 'bg-[#2B6CB0] text-white shadow-md' : 'bg-white border border-gray-200 text-[#2B6CB0] hover:bg-gray-50'}`}
-          >
-            <Bot size={18} /> Igor
-          </button>
-        </div>
+        {/* 🚀 AI ASSISTANT DESKTOP BUTTON (VIP ONLY) */}
+        {canAccessIgor && (
+          <div className="px-3 pb-3 bg-gray-50/50 hidden md:block">
+            <button 
+              onClick={() => handleJobClick('AI')} 
+              className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-sm transition-colors shadow-sm flex items-center justify-center gap-2
+                ${selectedJobId === 'AI' ? 'bg-[#2B6CB0] text-white shadow-md' : 'bg-white border border-gray-200 text-[#2B6CB0] hover:bg-gray-50'}`}
+            >
+              <Bot size={18} /> Igor
+            </button>
+          </div>
+        )}
 
         {/* 🚀 MOBILE STICKY BUTTONS */}
         <div className="p-4 bg-white border-t border-gray-100 shrink-0 md:hidden pb-safe flex gap-2">
-          <button 
-            onClick={() => handleJobClick('AI')} 
-            className={`p-3.5 rounded-xl transition-colors shadow-lg flex items-center justify-center shrink-0
-              ${selectedJobId === 'AI' ? 'bg-[#2B6CB0] text-white' : 'bg-gray-100 text-[#2B6CB0]'}`}
-          >
-            <Bot size={20} />
-          </button>
+          {canAccessIgor && (
+            <button 
+              onClick={() => handleJobClick('AI')} 
+              className={`p-3.5 rounded-xl transition-colors shadow-lg flex items-center justify-center shrink-0
+                ${selectedJobId === 'AI' ? 'bg-[#2B6CB0] text-white' : 'bg-gray-100 text-[#2B6CB0]'}`}
+            >
+              <Bot size={20} />
+            </button>
+          )}
           <button 
             onClick={() => handleJobClick('NEW')} 
-            className="flex-1 bg-[#EB4511] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-sm hover:bg-[#c42e0d] transition-colors shadow-lg flex items-center justify-center gap-2"
+            className={`${canAccessIgor ? 'flex-1' : 'w-full'} bg-[#EB4511] text-white py-3.5 rounded-xl font-bold uppercase tracking-wider text-sm hover:bg-[#c42e0d] transition-colors shadow-lg flex items-center justify-center gap-2`}
           >
             <Plus size={18} /> Nueva Reserva
           </button>
@@ -210,7 +224,7 @@ export default function Portal() {
                 <Plus size={18} /> Nueva Reserva
               </button>
              </div>
-           ) : selectedJobId === 'AI' ? (
+           ) : selectedJobId === 'AI' && canAccessIgor ? (
              <AiAssistant />
            ) : (
              <UnifiedForm 
