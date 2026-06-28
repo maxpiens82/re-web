@@ -9,6 +9,9 @@ import Login from './pages/Login';
 import Portal from './pages/Portal';
 import Links from './pages/Links';
 
+// 🚀 IMPORTAMOS EL NUEVO PORTAL DE CLIENTES
+import ClientPortal from './components/ClientPortal'; 
+
 export default function App() {
   return (
     <AuthProvider>
@@ -19,6 +22,9 @@ export default function App() {
           <Route path="/staging" element={<Stager />} />
           <Route path="/login" element={<Login />} />
           <Route path="/links" element={<Links />} />
+
+          {/* 🚀 AÑADIMOS LA RUTA OFICIAL PARA LOS CLIENTES */}
+          <Route path="/clientes" element={<ClientPortal />} />
 
           {/* Protected Routes (Staff Only - Hidden from public navigation) */}
           <Route 

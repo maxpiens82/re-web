@@ -309,8 +309,8 @@ export default function Home() {
           }));
 
           const mappedMultipliers = data.prices.multipliers.map(m => {
-            const labelStr = String(m.sheetValue).includes('m') ? m.sheetValue : `${m.sheetValue}m²`;
-            return { id: `m${m.sheetValue}`, label: labelStr, value: m.value, sheetValue: m.sheetValue };
+            let labelStr = String(m.sheetValue).includes('m') ? m.sheetValue : `${m.sheetValue}m²`;
+            return { id: `m${m.sheetValue}`, label: `Hasta ${labelStr}`, value: m.value, sheetValue: m.sheetValue };
           });
 
           const freshDb = { 
@@ -566,22 +566,12 @@ export default function Home() {
   return (
     <div className="min-h-screen text-[#2d2d2d] font-sans bg-[#EAEAEA]">
 
-      {/* 🚀 NAV BAR */}
-      <nav className={`fixed top-0 left-0 w-full z-50 text-white px-4 py-1 md:px-6 md:py-2 flex justify-between items-center font-bold tracking-wide shadow-sm border-b border-white/5 transition-colors
-        ${isLowEndDevice ? 'bg-[#1a1a1a]/95' : 'bg-[#1a1a1a]/80 backdrop-blur-md'}
-      `}>
+       {/* 🚀 GLOBAL NAV BAR */}
+      <nav className="fixed top-0 left-0 w-full z-[100] text-white px-4 py-2 md:px-6 md:py-3 flex justify-between items-center font-bold tracking-wide shadow-sm border-b border-white/5 bg-[#1a1a1a]/95 backdrop-blur-md">
         <div className="flex items-center gap-4 md:gap-6">
-          <img
-            src="/Logos_RE!_naranja.png"
-            alt="RE! Logo"
-            className="h-10 md:h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          />
-          {/* AI STAGER HIDDEN UNTIL READY
-          {isPortalEnabled && (
-            <Link to="/staging" className="hover:text-[#E53B12] transition-colors hidden md:block text-gray-300 text-sm">AI Stager</Link>
-          )}
-          */}
+          <Link to="/">
+            <img src="/Logos_RE!_naranja.png" alt="RE! Logo" className="h-8 md:h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
         </div>
         <div className="flex items-center gap-4 md:gap-6">
           <a href="https://www.instagram.com/somos.re.ok/" target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-[#E53B12] transition-colors">
@@ -589,6 +579,16 @@ export default function Home() {
           </a>
           <button onClick={() => document.getElementById('portfolio').scrollIntoView({ behavior: 'smooth' })} className="hidden md:block hover:text-[#E53B12] text-gray-300 transition-colors uppercase text-xs tracking-widest">Portfolio</button>
           <button onClick={() => document.getElementById('calculadora').scrollIntoView({ behavior: 'smooth' })} className="hidden md:block hover:text-[#E53B12] text-gray-300 transition-colors uppercase text-xs tracking-widest">Servicios</button>
+          
+          <Link to="/clientes" className="hover:text-[#E53B12] text-white transition-colors uppercase text-xs tracking-widest font-bold hidden sm:block">
+            Clientes
+          </Link>
+
+          {/* 🚀 MOBILE ONLY: CLIENTES BUTTON */}
+          <Link to="/clientes" className="sm:hidden border border-[#E53B12] text-[#E53B12] px-4 py-1.5 rounded-full hover:bg-[#E53B12]/10 transition-all shadow-sm text-[10px] uppercase tracking-wider font-bold">
+            Clientes
+          </Link>
+
           {isPortalEnabled ? (
             <Link to="/portal" className="bg-white/10 border border-white/20 text-white px-4 py-1.5 md:px-5 md:py-2 rounded-full hover:bg-white/20 transition-all shadow-sm text-[10px] md:text-xs uppercase tracking-wider font-bold">
               Staff
