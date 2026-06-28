@@ -112,7 +112,10 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
   
   const myStandby = standbyEdits.filter(j => j.editor === userName);
   const myReady = readyEdits.filter(j => j.editor === userName);
-  const isPureEditor = !allReservas.some(j => j.isMine);
+  
+  // 🛡️ SHIELD: Only hide the Agenda if the user's role is strictly 'editor' in the database.
+  // A Producer with an empty schedule should still see the Agenda tabs!
+  const isPureEditor = userRole === 'editor';
 
   // 2. EXTRAER BILLETERA PERSONAL
   let myOwed = wallet.owed || 0;
