@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import { Analytics } from '@vercel/analytics/react'; // <--- IMPORTAMOS ANALYTICS
 
 import Home from './pages/Home';
 import Stager from './pages/Stager';
@@ -37,6 +38,9 @@ export default function App() {
           />
         </Routes>
       </Router>
+      
+      {/* 🚀 COMPONENTE SILENCIOSO QUE REGISTRA EL TRÁFICO */}
+      <Analytics />
     </AuthProvider>
   );
 }
