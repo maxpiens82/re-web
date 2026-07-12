@@ -155,7 +155,11 @@ const PhotoFolderCard = ({ folder, onClick, coverId, copyToClipboard }) => {
             <Copy size={12} /> Link
           </button>
           <button 
-            onClick={(e) => { e.stopPropagation(); window.open(`${folderUrl}?authuser=0`, '_blank'); }} 
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              // 🚀 TRIGGER DRIVE ZIP ENGINE: Appending export=download forces the "Zipping" UI
+              window.open(`https://drive.google.com/drive/folders/${folder.id}?export=download`, '_blank'); 
+            }} 
             className="flex-[1.5] bg-[#EB4511] hover:bg-[#c42e0d] text-white py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/20"
           >
             <Download size={12} /> Descargar
