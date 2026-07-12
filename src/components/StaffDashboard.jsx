@@ -8,6 +8,7 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
   const { currentUser, userRole } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); // 🚀 NEW: Error state
   const [processingId, setProcessingId] = useState(null);
 
   const [activeCol, setActiveCol] = useState(0);
@@ -54,9 +55,13 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
       const res = await response.json();
       if (res.success) {
         setData(res);
+        setError(null);
+      } else {
+        setError(res.error || "Error desconocido del servidor");
       }
     } catch (e) {
       console.error("Error fetching dashboard:", e);
+      setError(e.message || "Fallo de conexión con el servidor");
     } finally {
       setLoading(false);
     }
@@ -93,10 +98,23 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
     }
   };
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-[#2B6CB0]">
         <Loader2 className="animate-spin w-8 h-8" />
+      </div>
+    );
+  }
+
+  // 🚀 DISPLAY THE ERROR ONSCREEN IF IT FAILS
+  if (error || !data) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center text-[#E53B12] p-6 text-center bg-[#F0F2F5]">
+        <div className="text-5xl mb-4 leading-none">⚠️</div>
+        <h2 className="font-bold text-lg mb-2">Error cargando el Dashboard</h2>
+        <code className="text-xs bg-red-50 p-4 rounded-xl border border-red-200 max-w-lg w-full overflow-auto whitespace-pre-wrap shadow-sm text-left">
+          {error || "No se recibieron datos del servidor."}
+        </code>
       </div>
     );
   }
