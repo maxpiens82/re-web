@@ -365,10 +365,10 @@ export default function Cobranzas() {
               <div>
                 <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Monto Recibido</label>
                 <div className="flex gap-2">
-                  <input type="text" value={payMonto} onChange={e => setPayMonto(formatInputMoney(e.target.value))} className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold outline-none focus:border-[#38a169]" placeholder="$0" />
-                  <select value={payMoneda} onChange={handleCurrencyChange} className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold outline-none cursor-pointer">
-                    <option value="ARS">ARS ($)</option>
-                    <option value="USD">USD (US$)</option>
+                  <input type="text" value={payMonto} onChange={e => setPayMonto(formatInputMoney(e.target.value))} className="w-2/3 bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold outline-none focus:border-[#38a169]" placeholder="$0" />
+                  <select value={payMoneda} onChange={handleCurrencyChange} className="w-1/3 bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs sm:text-sm font-bold outline-none cursor-pointer">
+                    <option value="ARS">ARS</option>
+                    <option value="USD">USD</option>
                   </select>
                 </div>
               </div>

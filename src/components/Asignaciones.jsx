@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { RefreshCw, AlertTriangle, Upload, CheckCircle2, User, Building, Send, Archive, Check, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { RefreshCw, AlertTriangle, Upload, CheckCircle2, User, Building, Send, Archive, Loader2 } from 'lucide-react';
 
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
 
@@ -7,8 +7,36 @@ export default function Asignaciones() {
   const [data, setData] = useState({ editors: [], pendingJobs: [], queueErrors: [], readyDeliveries: [] });
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [assignments, setAssignments] = useState({}); // { [jobIndex]: { email, name } }
-  const [processingId, setProcessingId] = useState(null); // Track specific button loading states
+  const [assignments, setAssignments] = useState({}); 
+  const [processingId, setProcessingId] = useState(null); 
+
+  // CAROUSEL LOGIC
+  const [activeCol, setActiveCol] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const carouselRef = useRef(null);
+
+  const handleScroll = () => {
+    if (!carouselRef.current) return;
+    const { scrollLeft, clientWidth } = carouselRef.current;
+    const progress = scrollLeft / clientWidth;
+    setScrollProgress(progress);
+    const colIndex = Math.round(progress);
+    if (colIndex !== activeCol) setActiveCol(colIndex);
+  };
+
+  const getTabStyle = (index) => {
+    const distance = Math.abs(scrollProgress - index);
+    const intensity = Math.max(0, 1 - distance);
+    return {
+      transform: `scale(${1 + 0.15 * intensity})`,
+      opacity: 0.5 + 0.5 * intensity
+    };
+  };
+
+  const scrollToCol = (index) => {
+    if (!carouselRef.current) return;
+    carouselRef.current.scrollTo({ left: index * carouselRef.current.clientWidth, behavior: 'smooth' });
+  };
 
   const fetchAssignments = async () => {
     try {
@@ -20,7 +48,7 @@ export default function Asignaciones() {
       const res = await response.json();
       if (res.success) {
         setData(res.data);
-        setAssignments({}); // Clear assignments on fresh load
+        setAssignments({}); 
       }
     } catch (e) {
       console.error("Error fetching assignments:", e);
@@ -34,11 +62,6 @@ export default function Asignaciones() {
     fetchAssignments();
   }, []);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    fetchAssignments();
-  };
-
   const handleAssign = (jobIndex, editorEmail, editorName) => {
     setAssignments(prev => {
       const next = { ...prev };
@@ -51,7 +74,6 @@ export default function Asignaciones() {
   const executeAction = async (action, payload, confirmationText) => {
     if (confirmationText && !window.confirm(confirmationText)) return;
     
-    // Set a generic processing ID if we don't have a specific one
     const localProcessId = payload.eventId ? `${payload.eventId}_${payload.servicio || payload.ticketId || 'arch'}` : 'generic';
     setProcessingId(localProcessId);
 
@@ -159,28 +181,43 @@ export default function Asignaciones() {
   const selectionCount = Object.keys(assignments).length;
 
   return (
-    <div className="h-full bg-[#F0F2F5] font-sans text-gray-800 overflow-y-auto w-full pb-24">
-      
+    <div className="h-full bg-[#F0F2F5] font-sans text-gray-800 overflow-y-auto w-full pb-24 flex flex-col">
+      <style>{`
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+
       {/* HEADER */}
-      <div className="bg-white border-b shadow-sm sticky top-0 z-20">
-        <div className="px-4 py-3 flex justify-between items-center">
-          <div>
-            <h1 className="text-base font-extrabold text-[#2B6CB0] tracking-widest uppercase leading-none">
-              Control de Tráfico
-            </h1>
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-1">Panel de Asignaciones</p>
-          </div>
-          <button onClick={handleRefresh} disabled={isRefreshing} className="bg-white border border-[#90CDF4] text-[#2B6CB0] hover:bg-blue-50 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 text-[10px] font-bold transition-colors shadow-sm disabled:opacity-50">
-            <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''}/> Refrescar
-          </button>
+      <div className="bg-white border-b shadow-sm px-4 md:px-8 py-3 md:py-4 flex justify-between items-center sticky top-0 z-20 shrink-0">
+        <h1 className="text-base md:text-xl font-extrabold text-[#2B6CB0] tracking-widest uppercase leading-none truncate">
+          Asignaciones
+        </h1>
+        <button 
+          onClick={() => { window.location.hash = ''; }} 
+          className="text-gray-500 hover:bg-gray-100 font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl border border-gray-200 transition-colors text-xs md:text-sm shrink-0 shadow-sm"
+        >
+          ✕ Cerrar
+        </button>
+      </div>
+
+      {/* MOBILE CAROUSEL TABS */}
+      <div className="lg:hidden flex justify-around items-center border-b border-gray-200 mb-2 px-1 sticky top-0 bg-[#F0F2F5] z-10 pt-2 pb-2 gap-2 shrink-0">
+        <div onClick={() => scrollToCol(0)} style={getTabStyle(0)} className="cursor-pointer transition-all duration-300 flex items-center justify-center gap-0.5 origin-bottom">
+          <div className={`font-black uppercase tracking-widest transition-colors ${activeCol === 0 ? 'text-[12px] text-gray-800' : 'text-[10px] text-gray-500'}`}>Asignar</div>
+          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold transition-colors ${activeCol === 0 ? 'bg-gray-800 text-white shadow-sm' : 'bg-gray-200 text-gray-500'}`}>{data.pendingJobs.length}</span>
+        </div>
+        
+        <div onClick={() => scrollToCol(1)} style={getTabStyle(1)} className="cursor-pointer transition-all duration-300 flex items-center justify-center gap-0.5 origin-bottom">
+          <div className={`font-black uppercase tracking-widest transition-colors ${activeCol === 1 ? 'text-[12px] text-emerald-600' : 'text-[10px] text-gray-500'}`}>Listos</div>
+          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold transition-colors ${activeCol === 1 ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'bg-gray-200 text-gray-500'}`}>{data.readyDeliveries.length}</span>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-3 space-y-5 mt-2">
-
-        {/* 1. QUEUE ERRORS */}
+      <div className="max-w-[1400px] w-full mx-auto p-3 flex flex-col flex-1">
+        
+        {/* 1. QUEUE ERRORS (Shows spanning both columns if active) */}
         {data.queueErrors.length > 0 && (
-          <div className="bg-[#FFF5F5] border border-[#FED7D7] rounded-lg p-3 shadow-sm animate-in fade-in">
+          <div className="bg-[#FFF5F5] border border-[#FED7D7] rounded-lg p-3 shadow-sm animate-in fade-in shrink-0 mb-3">
             <h3 className="text-[#E53B12] text-[11px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <AlertTriangle size={14}/> Tareas de Background Fallidas
             </h3>
@@ -201,52 +238,65 @@ export default function Asignaciones() {
           </div>
         )}
 
-        {/* 2. PENDING EDITS */}
-        <div>
-          <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">
-            Ediciones Pendientes ({data.pendingJobs.length})
-          </h2>
-          
-          {data.pendingJobs.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 italic py-4">No hay ediciones pendientes.</p>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {data.pendingJobs.map((job, index) => {
+        <div 
+          ref={carouselRef}
+          onScroll={handleScroll}
+          className="flex-1 h-full flex flex-nowrap lg:grid lg:grid-cols-2 gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory pb-4 hide-scroll items-start"
+        >
+
+          {/* COL 1: ASIGNAR PENDIENTES */}
+          <div className="w-full h-full lg:w-auto shrink-0 snap-start snap-always flex flex-col gap-2">
+            <div className="hidden lg:flex font-bold text-xs text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-2 justify-between items-center px-1">
+              <span>Ediciones Pendientes</span>
+              <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[10px]">{data.pendingJobs.length}</span>
+            </div>
+            
+            {data.pendingJobs.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 italic py-4">No hay ediciones pendientes.</p>
+            ) : (
+              data.pendingJobs.map((job, index) => {
                 const isAssigned = job.edicion !== 'Pendiente' && job.edicion !== '';
                 const urgency = getUrgencyStyles(job.daysUntilDeadline < 0 ? 'Vencido' : (job.daysUntilDeadline === 0 ? 'Hoy' : (job.daysUntilDeadline === 1 ? 'Mañana' : 'Futuro')));
-                const deadlineText = job.daysUntilDeadline < 0 ? 'Vencido' : (job.daysUntilDeadline === 0 ? 'Hoy' : (job.daysUntilDeadline === 1 ? 'Mañana' : `Faltan ${job.daysUntilDeadline}d`));
+                const deadlineText = job.daysUntilDeadline < 0 ? 'Vencido' : (job.daysUntilDeadline === 0 ? 'Hoy' : (job.daysUntilDeadline === 1 ? 'Mañana' : `${job.daysUntilDeadline}d`));
 
                 return (
-                  <div key={index} className={`bg-white rounded-lg p-3 shadow-sm border-l-[4px] transition-colors ${urgency.card}`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1 min-w-0 pr-2">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="font-bold text-sm text-gray-800 truncate">{job.direccion}</span>
-                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-widest ${urgency.badge}`}>
-                            {deadlineText}
-                          </span>
-                        </div>
-                        <div className="text-[9px] text-gray-500 flex items-center gap-1.5 truncate mt-1">
-                          <User size={10}/> <span className="font-bold">{job.cliente}</span> 
-                          <Building size={10} className="ml-1"/> <span>{job.empresa}</span>
-                          <span className="text-gray-300">|</span>
-                          <span>Cam: <b className="text-gray-700">{job.realizador}</b></span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-end shrink-0 gap-1">
-                        <span className="bg-gray-100 border border-gray-200 text-gray-700 px-1.5 py-0.5 rounded text-[10px] font-black tracking-widest uppercase">
+                  <div key={index} className={`bg-white rounded-lg p-2.5 shadow-sm border-l-[4px] transition-colors flex flex-col gap-1.5 ${urgency.card}`}>
+                    
+                    {/* Top Row: Address & Badges */}
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="font-bold text-[13px] text-gray-800 truncate flex-1 leading-tight">{job.direccion}</div>
+                      <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-widest leading-none ${urgency.badge}`}>
+                          {deadlineText}
+                        </span>
+                        <span className="bg-gray-100 border border-gray-200 text-gray-700 px-1.5 py-0.5 rounded text-[9px] font-black tracking-widest uppercase leading-none">
                           {job.servicio}
                         </span>
-                        <span className="text-[8px] text-gray-400 font-bold uppercase">{job.metros}</span>
                       </div>
                     </div>
 
-                    {/* ACTION ROW */}
-                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-1">
+                    {/* Metadata Rows: 2 Lines for clarity */}
+                    <div className="flex flex-col gap-0.5 w-full">
+                      <div className="flex justify-between items-center text-[10px] text-gray-500 w-full">
+                        <div className="flex items-center gap-1 truncate font-bold text-gray-700">
+                          <User size={10} className="shrink-0 text-gray-400"/> {job.cliente}
+                        </div>
+                        <span className="font-bold uppercase tracking-wider text-gray-400 shrink-0 ml-2 text-[9px]">{job.metros}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-[10px] text-gray-500 w-full">
+                        <div className="flex items-center gap-1 truncate">
+                          <Building size={10} className="shrink-0 text-gray-400"/> {job.empresa || 'Particular'}
+                        </div>
+                        <span className="font-bold text-gray-700 truncate shrink-0 ml-2 max-w-[40%] text-right">{job.realizador || '-'}</span>
+                      </div>
+                    </div>
+
+                    {/* ACTION ROW - Ultra Compact */}
+                    <div className="flex items-center gap-2 pt-1.5 border-t border-gray-100">
                       {!isAssigned ? (
                         <select 
-                          className="flex-1 bg-[#F4F4F5] border-none text-gray-700 text-[11px] font-bold py-2 px-2 rounded outline-none cursor-pointer focus:ring-1 focus:ring-[#2B6CB0]"
+                          className="flex-1 bg-[#F4F4F5] border-none text-gray-700 text-[11px] font-bold py-1.5 px-2 rounded outline-none cursor-pointer focus:ring-1 focus:ring-[#2B6CB0]"
                           value={assignments[index]?.email || ""}
                           onChange={(e) => {
                             const selectedOption = e.target.options[e.target.selectedIndex];
@@ -254,7 +304,6 @@ export default function Asignaciones() {
                           }}
                         >
                           <option value="">Asignar Editor...</option>
-                          {/* Combinar email y name como key para evitar colisiones si el usuario tiene múltiples roles en Valores */}
                           {data.editors.map((ed, i) => <option key={`${ed.email}_${ed.name}_${i}`} value={ed.email}>{ed.name}</option>)}
                         </select>
                       ) : (
@@ -283,22 +332,21 @@ export default function Asignaciones() {
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          )}
-        </div>
+              })
+            )}
+          </div>
 
-        {/* 3. READY DELIVERIES */}
-        <div className="mt-8">
-          <h2 className="text-[11px] font-bold text-emerald-600 uppercase tracking-widest mb-2 px-1 flex items-center gap-1.5">
-            <CheckCircle2 size={14}/> Listos para Entregar ({data.readyDeliveries.length})
-          </h2>
-          
-          {data.readyDeliveries.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 italic py-4">No hay entregas pendientes.</p>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {data.readyDeliveries.map(job => (
+          {/* COL 2: LISTOS PARA ENTREGAR */}
+          <div className="w-full h-full lg:w-auto shrink-0 snap-start snap-always flex flex-col gap-2">
+            <div className="hidden lg:flex font-bold text-xs text-emerald-600 uppercase tracking-widest border-b border-emerald-200 pb-2 flex items-center gap-1.5 px-1 justify-between">
+              <div className="flex items-center gap-1.5"><CheckCircle2 size={14}/> Listos para Entregar</div>
+              <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px]">{data.readyDeliveries.length}</span>
+            </div>
+            
+            {data.readyDeliveries.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 italic py-4">No hay entregas pendientes.</p>
+            ) : (
+              data.readyDeliveries.map(job => (
                 <div key={job.eventId} className="bg-white rounded-lg p-3 shadow-sm border border-emerald-100 flex flex-col gap-2 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0 pr-2">
@@ -342,9 +390,9 @@ export default function Asignaciones() {
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
 
       </div>

@@ -23,35 +23,37 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div className="min-h-screen bg-[#F0F2F5] flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="max-w-md w-full bg-white rounded-[24px] shadow-2xl overflow-hidden relative border border-zinc-100">
         
-        <div className="bg-[#EB4511] p-8 text-center">
-          <h1 className="text-3xl font-extrabold text-white tracking-widest uppercase">RE!</h1>
-          <p className="text-white/80 text-sm mt-2 font-medium tracking-widest uppercase">Staff Portal</p>
+        {/* DARK HEADER */}
+        <div className="bg-[#2D2D2D] p-6 flex flex-col items-center justify-center">
+          <img src="/Logos_RE!_naranja.png" alt="RE! Logo" className="h-10 w-auto object-contain mb-1" />
+          <p className="text-white/60 text-[10px] font-bold tracking-widest uppercase">Portal Interno</p>
         </div>
 
-        <div className="p-8 text-center">
-          <div className="bg-[#EB4511]/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShieldAlert size={32} className="text-[#EB4511]" />
+        {/* BODY */}
+        <div className="p-8 text-center bg-white">
+          <div className="bg-zinc-50 border border-zinc-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+            <ShieldAlert size={28} className="text-zinc-400" strokeWidth={2.5} />
           </div>
           
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Acceso Restringido</h2>
-          <p className="text-gray-500 text-sm mb-8">
-            Ingresa con tu cuenta de Google corporativa. Debes estar registrado en la hoja de Valores para acceder.
+          <h2 className="text-lg font-black text-zinc-900 tracking-tight mb-2">Acceso Restringido</h2>
+          <p className="text-zinc-500 text-xs font-medium leading-relaxed mb-8 px-2">
+            Ingresa con tu cuenta de Google corporativa. Debes estar registrado en la base de datos central para acceder.
           </p>
 
           <button 
             onClick={handleLogin}
             disabled={isLoggingIn}
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 text-gray-700 font-bold py-3 px-4 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 bg-white border border-zinc-200 text-zinc-700 font-bold py-3.5 px-4 rounded-xl hover:bg-zinc-50 hover:border-zinc-300 hover:shadow-sm transition-all disabled:opacity-50"
           >
             {isLoggingIn ? (
-               <div className="w-5 h-5 border-2 border-gray-400 border-t-[#EB4511] rounded-full animate-spin"></div>
+               <div className="w-5 h-5 border-2 border-zinc-300 border-t-[#EB4511] rounded-full animate-spin"></div>
             ) : (
               <>
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
-                Continuar con Google
+                <span className="text-sm">Continuar con Google</span>
               </>
             )}
           </button>

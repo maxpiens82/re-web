@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User, Bot, Layers, LayoutDashboard, WalletCards } from 'lucide-react';
+import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User, Bot, LayoutDashboard, ClipboardList, Banknote, Search, Building, Phone, X } from 'lucide-react';
 import UnifiedForm from '../components/UnifiedForm';
 import LoadingLogo from '../components/LoadingLogo';
 import AiAssistant from '../components/AiAssistant';
@@ -12,12 +12,23 @@ import Cobranzas from '../components/Cobranzas';
 // Make sure this is your actual GAS URL!
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
 
+const normalizeText = (text) => text ? text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, "") : "";
+
 export default function Portal() {
   const { currentUser, userRole, logout } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [pendingJobs, setPendingJobs] = useState([]);
   const [confirmedJobs, setConfirmedJobs] = useState([]);
+  
+  // CRM Admin State
+  const [clientDb, setClientDb] = useState([]);
+  const [showCrmModal, setShowCrmModal] = useState(false);
+  const [crmSearchQuery, setCrmSearchQuery] = useState('');
+  const [crmSuggestions, setCrmSuggestions] = useState([]);
+  const [selectedCrmClient, setSelectedCrmClient] = useState(null);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const crmWrapperRef = useRef(null);
   
   // Leemos el hash inicial (si el usuario recarga la página estando adentro de un trabajo)
   const initialHash = window.location.hash ? window.location.hash.substring(1) : null;
@@ -27,19 +38,31 @@ export default function Portal() {
   const fetchPortalData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(GAS_API_URL, {
+      // 1. Fetch Dashboard Data
+      const reqPortal = fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ 
           action: 'get_portal_data_v2',
           payload: { email: currentUser?.email }
         })
-      });
-      
-      const data = await response.json();
+      }).then(r => r.json());
+
+      // 2. 🚀 FAST FETCH CRM FOR THE MODAL (Only if we haven't already loaded it)
+      const reqInit = clientDb.length === 0 
+        ? fetch(GAS_API_URL + "?api=init_v2").then(r => r.json()) 
+        : Promise.resolve(null);
+
+      const [data, initData] = await Promise.all([reqPortal, reqInit]);
+
       if (data.success) {
         setPendingJobs(data.pending || []);
         setConfirmedJobs(data.confirmed || []);
+        
+        // The V2 Dashboard route now sends the CRM client list natively!
+        if (data.clients && data.clients.length > 0) {
+          setClientDb(data.clients);
+        }
       } else {
         alert("Error cargando datos: " + data.error);
       }
@@ -79,6 +102,62 @@ export default function Portal() {
       window.history.pushState('', document.title, window.location.pathname + window.location.search); // Limpia el Hash sin recargar
     }
     setSelectedJobId(eventId);
+  };
+
+  // --- CRM ADMIN LOGIC ---
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (crmWrapperRef.current && !crmWrapperRef.current.contains(e.target)) {
+        setCrmSuggestions([]);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleCrmSearch = (query) => {
+    setCrmSearchQuery(query);
+    const normalized = normalizeText(query);
+    if (normalized.length < 2) { setCrmSuggestions([]); return; }
+    
+    const terms = normalized.split(/\s+/);
+    const matches = clientDb.filter(c => {
+      const raw = `${c.nombre || ''} ${c.apellido || ''} ${c.empresa || ''} ${c.telefono || ''} ${c.email || ''}`;
+      return terms.every(t => normalizeText(raw).includes(t));
+    });
+    setCrmSuggestions(matches.slice(0, 8));
+  };
+
+  const executeImpersonation = async () => {
+    if (!selectedCrmClient || !selectedCrmClient.telefono) {
+      alert("⚠️ El cliente debe tener un teléfono registrado para acceder a su portal."); return;
+    }
+    setIsImpersonating(true);
+    try {
+      const response = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ 
+          action: 'impersonate_client', 
+          payload: { adminEmail: currentUser.email, targetPhone: selectedCrmClient.telefono } 
+        })
+      });
+      const res = await response.json();
+      if (res.success) {
+        // Save the generated session token to the browser
+        localStorage.setItem('re_client_phone', res.phone);
+        localStorage.setItem('re_client_token', res.token);
+        
+        // Redirect directly to the Netflix view!
+        window.location.href = '/clientes'; 
+      } else {
+        alert("Error: " + res.error);
+        setIsImpersonating(false);
+      }
+    } catch (e) {
+      alert("Error de red.");
+      setIsImpersonating(false);
+    }
   };
 
   // Helper component for rendering list items
@@ -159,12 +238,94 @@ export default function Portal() {
           </Link>
           <span className="hidden sm:inline text-xs text-gray-400 font-bold uppercase tracking-widest border-l border-white/20 pl-4 ml-2">Panel Interno</span>
         </div>
+        
+        {/* CENTER BUTTON (Admins Only) */}
+        {userRole === 'admin' && (
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <button 
+              onClick={() => { setShowCrmModal(true); setCrmSearchQuery(''); setSelectedCrmClient(null); }}
+              className="bg-white/10 hover:bg-white/20 border border-white/10 text-white px-4 py-1.5 md:px-6 md:py-2 rounded-full transition-all shadow-sm text-[10px] md:text-xs uppercase tracking-widest font-bold flex items-center gap-1.5"
+            >
+              <Search size={14} /> CRM
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-3 md:gap-4">
-          <button onClick={logout} className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-3 py-1.5 md:px-4 md:py-2 rounded-full hover:bg-rose-500/20 transition-all shadow-sm text-[10px] md:text-xs uppercase tracking-wider font-bold flex items-center gap-1.5">
+          <button 
+            onClick={async () => {
+              await logout();
+              window.location.href = '/';
+            }} 
+            className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-3 py-1.5 md:px-4 md:py-2 rounded-full hover:bg-rose-500/20 transition-all shadow-sm text-[10px] md:text-xs uppercase tracking-wider font-bold flex items-center gap-1.5"
+          >
             <LogOut size={14}/> Salir
           </button>
         </div>
       </nav>
+
+      {/* 🚀 CRM IMPERSONATION MODAL */}
+      {showCrmModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl relative">
+            <div className="bg-[#2D2D2D] p-5 text-white flex justify-between items-center rounded-t-[24px]">
+              <div>
+                <h3 className="font-extrabold text-sm md:text-base uppercase tracking-wide">Buscador CRM</h3>
+                <p className="text-[10px] opacity-70 font-medium">Ingresar al portal como cliente</p>
+              </div>
+              <button onClick={() => setShowCrmModal(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X size={18}/></button>
+            </div>
+            
+            <div className="p-5 md:p-6 space-y-4">
+              <div className="relative" ref={crmWrapperRef}>
+                <label className="block text-[10px] font-bold text-[#EB4511] uppercase tracking-widest mb-1.5">Buscar Cliente</label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input 
+                    type="text" 
+                    value={crmSearchQuery} 
+                    onChange={e => handleCrmSearch(e.target.value)} 
+                    placeholder="Nombre, empresa, teléfono..." 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 pl-9 text-sm font-medium outline-none focus:border-[#EB4511] transition-colors" 
+                    autoComplete="off" 
+                  />
+                </div>
+                {crmSuggestions.length > 0 && (
+                  <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden max-h-48 overflow-y-auto">
+                    {crmSuggestions.map((c, i) => (
+                      <div key={i} onClick={() => { setSelectedCrmClient(c); setCrmSearchQuery(`${c.nombre} ${c.apellido}`); setCrmSuggestions([]); }} className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors">
+                        <div className="font-bold text-gray-800 text-sm">{c.nombre} {c.apellido}</div>
+                        <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-1">
+                          <Building size={10}/> <span className="truncate">{c.empresa || 'Particular'}</span>
+                          <span className="text-gray-300">|</span> 
+                          <Phone size={10}/> <span>{c.telefono || 'Sin tel'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {selectedCrmClient && (
+                <div className="bg-[#EBF8FF] border border-[#90CDF4] rounded-xl p-4 mt-2 animate-in fade-in zoom-in-95">
+                  <div className="text-[10px] font-bold text-[#2B6CB0] uppercase tracking-widest mb-1">Cliente Seleccionado</div>
+                  <div className="font-black text-gray-800 text-lg leading-tight">{selectedCrmClient.nombre} {selectedCrmClient.apellido}</div>
+                  <div className="text-xs text-gray-600 font-medium mt-1">🏢 {selectedCrmClient.empresa || 'Particular'}</div>
+                  <div className="text-xs text-gray-600 font-medium mt-0.5">📱 {selectedCrmClient.telefono || 'Sin teléfono registrado'}</div>
+                  
+                  <button 
+                    onClick={executeImpersonation}
+                    disabled={isImpersonating}
+                    className="w-full mt-4 bg-[#2B6CB0] hover:bg-[#2C5282] text-white font-extrabold uppercase tracking-widest text-[11px] py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isImpersonating ? <><Loader2 size={16} className="animate-spin" /> Conectando...</> : 'Acceder al Portal'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* SIDEBAR: Master List (ALWAYS HIDDEN ON MOBILE NOW) */}
@@ -217,7 +378,7 @@ export default function Portal() {
           <button 
             onClick={() => handleJobClick(null)} 
             className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition-colors shadow-sm flex items-center justify-center gap-2
-              ${!selectedJobId ? 'bg-[#2B6CB0] text-white shadow-md' : 'bg-white border border-gray-200 text-[#2B6CB0] hover:bg-gray-50'}`}
+              ${!selectedJobId ? 'bg-[#EB4511] text-white shadow-md' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-[#EB4511]'}`}
           >
             <LayoutDashboard size={16} /> Mi Panel
           </button>
@@ -227,16 +388,16 @@ export default function Portal() {
               <button 
                 onClick={() => handleJobClick('ASIGNACIONES')} 
                 className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition-colors shadow-sm flex items-center justify-center gap-2
-                  ${selectedJobId === 'ASIGNACIONES' ? 'bg-[#2B6CB0] text-white shadow-md' : 'bg-white border border-gray-200 text-[#2B6CB0] hover:bg-gray-50'}`}
+                  ${selectedJobId === 'ASIGNACIONES' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-[#EB4511]'}`}
               >
-                <Layers size={16} /> Asignaciones
+                <ClipboardList size={16} /> Asignaciones
               </button>
               <button 
                 onClick={() => handleJobClick('COBRANZAS')} 
                 className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition-colors shadow-sm flex items-center justify-center gap-2
-                  ${selectedJobId === 'COBRANZAS' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-white border border-gray-200 text-[#EB4511] hover:bg-orange-50'}`}
+                  ${selectedJobId === 'COBRANZAS' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-[#EB4511]'}`}
               >
-                <WalletCards size={16} /> Cobranzas
+                <Banknote size={16} /> Cobranzas
               </button>
             </>
           )}
@@ -245,7 +406,7 @@ export default function Portal() {
             <button 
               onClick={() => handleJobClick('AI')} 
               className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition-colors shadow-sm flex items-center justify-center gap-2
-                ${selectedJobId === 'AI' ? 'bg-[#2B6CB0] text-white shadow-md' : 'bg-white border border-gray-200 text-[#2B6CB0] hover:bg-gray-50'}`}
+                ${selectedJobId === 'AI' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-[#EB4511]'}`}
             >
               <Bot size={16} /> Igor
             </button>
@@ -261,51 +422,50 @@ export default function Portal() {
         </div>
       </div>
 
-      {/* 🚀 MOBILE NAVIGATION MENU (Sticky Bottom) - Removed the Inbox & Mi Panel Buttons */}
-      <div className="fixed bottom-0 left-0 w-full z-50 p-3 bg-white border-t border-gray-100 md:hidden pb-safe flex gap-2">
-        {userRole === 'admin' && (
-          <>
-            <button 
-              onClick={() => handleJobClick('ASIGNACIONES')} 
-              className={`p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center shrink-0
-                ${selectedJobId === 'ASIGNACIONES' ? 'bg-[#2B6CB0] text-white' : 'bg-gray-100 text-[#2B6CB0]'}`}
-              title="Asignaciones"
-            >
-              <Layers size={20} />
-            </button>
-            <button 
-              onClick={() => handleJobClick('COBRANZAS')} 
-              className={`p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center shrink-0
-                ${selectedJobId === 'COBRANZAS' ? 'bg-[#EB4511] text-white' : 'bg-gray-100 text-[#EB4511]'}`}
-              title="Cobranzas"
-            >
-              <WalletCards size={20} />
-            </button>
-          </>
-        )}
+      {/* 🚀 MOBILE NAVIGATION MENU (Sticky Bottom) - Hidden when a job/tool is active */}
+      {!selectedJobId && (
+        <div className="fixed bottom-0 left-0 w-full z-50 p-3 bg-white border-t border-gray-100 md:hidden pb-safe flex gap-2">
+          {userRole === 'admin' && (
+            <>
+              <button 
+                onClick={() => handleJobClick('ASIGNACIONES')} 
+                className={`p-3 rounded-xl transition-colors flex items-center justify-center shrink-0
+                  ${selectedJobId === 'ASIGNACIONES' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:text-[#EB4511]'}`}
+                title="Asignaciones"
+              >
+                <ClipboardList size={20} />
+              </button>
+              <button 
+                onClick={() => handleJobClick('COBRANZAS')} 
+                className={`p-3 rounded-xl transition-colors flex items-center justify-center shrink-0
+                  ${selectedJobId === 'COBRANZAS' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:text-[#EB4511]'}`}
+                title="Cobranzas"
+              >
+                <Banknote size={20} />
+              </button>
+              <button 
+                onClick={() => handleJobClick('AI')} 
+                className={`p-3 rounded-xl transition-colors flex items-center justify-center shrink-0
+                  ${selectedJobId === 'AI' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:text-[#EB4511]'}`}
+                title="Igor Asistente IA"
+              >
+                <Bot size={20} />
+              </button>
+            </>
+          )}
 
-        {userRole === 'admin' && (
           <button 
-            onClick={() => handleJobClick('AI')} 
-            className={`p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center shrink-0
-              ${selectedJobId === 'AI' ? 'bg-[#2B6CB0] text-white' : 'bg-gray-100 text-[#2B6CB0]'}`}
-            title="Igor Asistente IA"
+            onClick={() => handleJobClick('NEW')} 
+            className="flex-1 bg-[#EB4511] text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-[#c42e0d] transition-colors shadow-md flex items-center justify-center gap-1.5 ml-2"
           >
-            <Bot size={20} />
+            <Plus size={18} strokeWidth={3} /> Reserva
           </button>
-        )}
-
-        <button 
-          onClick={() => handleJobClick('NEW')} 
-          className="flex-1 bg-[#EB4511] text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-[#c42e0d] transition-colors shadow-sm flex items-center justify-center gap-1"
-        >
-          <Plus size={16} /> Reserva
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* MAIN AREA: Unified Form or Staff Dashboard */}
       <div className="flex-1 bg-[#F0F2F5] relative overflow-y-auto w-full">
-        <div className={`h-full ${!selectedJobId || selectedJobId === 'AI' || selectedJobId === 'ASIGNACIONES' ? 'w-full pb-20 md:pb-0' : 'p-0 md:p-6 pb-20 md:pb-6 flex items-center justify-center'}`}>
+        <div className={`h-full w-full ${!selectedJobId ? 'pb-20 md:pb-0' : 'pb-0 md:p-6 flex items-center justify-center'}`}>
            {!selectedJobId ? (
              <StaffDashboard 
                onOpenJob={handleJobClick} 
@@ -323,6 +483,7 @@ export default function Portal() {
                jobId={selectedJobId} 
                onCancel={() => setSelectedJobId(null)} 
                onSuccess={handleSuccess}
+               globalClientDb={clientDb}
              />
            )}
         </div>

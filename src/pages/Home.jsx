@@ -316,8 +316,9 @@ export default function Home() {
           const freshDb = { 
             services: mappedServices, 
             multipliers: mappedMultipliers, 
-            discountThreshold: data.prices.constants?.discountThreshold || 3, 
-            discountPct: data.prices.constants?.discountPct || 0.035,
+            discountThreshold: data.prices.constants?.discountThreshold !== undefined ? data.prices.constants.discountThreshold : 3, 
+            discountPct: data.prices.constants?.discountPct !== undefined ? data.prices.constants.discountPct : 0.035,
+            discountDecay: data.prices.constants?.discountDecay !== undefined ? data.prices.constants.discountDecay : 1, // New Decay Factor
             discountAmount: 5000 // Legacy fallback
           };
 
@@ -424,7 +425,17 @@ export default function Home() {
 
     if (serviceCount > db.discountThreshold) {
       if (isNewEra) {
-        discount = basePreExtras * ((serviceCount - db.discountThreshold) * (db.discountPct || 0.035));
+        const steps = serviceCount - db.discountThreshold;
+        let totalPct = 0;
+        let currentPct = db.discountPct !== undefined ? db.discountPct : 0.035;
+        const dDecay = db.discountDecay !== undefined ? db.discountDecay : 1;
+        
+        for (let i = 0; i < steps; i++) {
+          totalPct += currentPct;
+          currentPct *= dDecay; // Diminishing returns!
+        }
+        
+        discount = basePreExtras * totalPct;
       } else {
         // Old Era ALWAYS uses 3 and $5000 strictly for backward compatibility
         discount = (serviceCount - 3) * 5000 * multiplier;

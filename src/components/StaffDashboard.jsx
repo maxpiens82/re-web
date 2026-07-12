@@ -105,16 +105,41 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
   const userName = data.userName;
   const isAdmin = userRole === 'admin'; 
 
-  // 1. FORZAR VISTA PERSONAL VS GLOBAL
-  // Etiquetamos las reservas propias, y las ordenamos (las Mías arriba)
-  const allReservas = reservas.map(j => ({ ...j, isMine: j.producer && j.producer.includes(userName) }));
+  // 1. FILTRADO, AGRUPACIÓN Y VISTA PERSONAL (COLUMNA PENDIENTES)
+  // - Mostrar solo 'past_pending' (vencidas sin checkout) o 'checked_out' (esperando crudos).
+  // - Ocultar trabajos futuros ('future').
+  // - Si es Productor (no admin), mostrar SOLO sus trabajos asignados.
+  const rawFilteredReservas = reservas.filter(j => {
+    const isMine = j.producer && j.producer.includes(userName);
+    const hasPermission = isAdmin || isMine;
+    const isCorrectState = j.status === 'past_pending' || j.status === 'checked_out';
+    return hasPermission && isCorrectState;
+  });
+
+  // - Unificar propiedades multi-unidad en una sola tarjeta y agrupar sus servicios.
+  const uniqueReservasMap = new Map();
+  rawFilteredReservas.forEach(j => {
+    const baseId = String(j.id).split('_')[0]; // Limpiamos sufijos como U-1234_FOTO
+    const isMine = j.producer && j.producer.includes(userName);
+    
+    if (!uniqueReservasMap.has(baseId)) {
+      // Limpiamos el texto para que la dirección principal quede impecable
+      const cleanLoc = String(j.loc).replace(/ - Multiunidad/gi, '').split(' - Unidad')[0].trim();
+      uniqueReservasMap.set(baseId, { ...j, id: baseId, loc: cleanLoc, isMine });
+    } else {
+      const existing = uniqueReservasMap.get(baseId);
+      const combinedSrv = Array.from(new Set([...existing.srv, ...j.srv]));
+      uniqueReservasMap.set(baseId, { ...existing, srv: combinedSrv });
+    }
+  });
+
+  const allReservas = Array.from(uniqueReservasMap.values());
   allReservas.sort((a, b) => (b.isMine === a.isMine ? 0 : a.isMine ? -1 : 1));
   
   const myStandby = standbyEdits.filter(j => j.editor === userName);
   const myReady = readyEdits.filter(j => j.editor === userName);
   
   // 🛡️ SHIELD: Only hide the Agenda if the user's role is strictly 'editor' in the database.
-  // A Producer with an empty schedule should still see the Agenda tabs!
   const isPureEditor = userRole === 'editor';
 
   // 2. EXTRAER BILLETERA PERSONAL
@@ -157,26 +182,14 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
     return (
       <div key={job.id + idx} className={`${bgClass} rounded-xl p-3 shadow-sm border-l-4 ${colors.border} flex items-center justify-between ${hoverClass} transition-all gap-3`}>
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="flex items-start justify-between mb-1.5 gap-2">
-            <span className="font-extrabold text-sm text-gray-800 truncate pt-1">{job.loc}</span>
-            <div className="flex items-center gap-2 shrink-0">
-              {job.date !== 'CRUDOS' && (
-                <span className={`text-[9px] font-bold ${colors.text} ${colors.bg} border ${borderColorName} px-1.5 py-0.5 rounded uppercase tracking-widest`}>
-                  {job.date}
-                </span>
-              )}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation(); 
-                  const cleanAddress = job.loc.replace(' - Multiunidad', '').trim();
-                  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddress)}`, '_blank');
-                }}
-                className="flex items-center justify-center w-8 h-8 bg-blue-50 text-[#2B6CB0] border border-blue-200 rounded-lg shadow-sm hover:bg-[#2B6CB0] hover:text-white transition-all active:scale-95 shrink-0"
-                title="Abrir en Maps"
-              >
-                <MapPin size={16} strokeWidth={2.5} />
-              </button>
-            </div>
+          <div className="flex items-center justify-between mb-1.5 gap-2">
+            <span className="font-extrabold text-sm text-gray-800 truncate">{job.loc}</span>
+            {/* Ocultamos el badge de fecha si dice CRUDOS */}
+            {job.date !== 'CRUDOS' && (
+              <span className={`text-[9px] font-bold ${colors.text} ${colors.bg} border ${borderColorName} px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0`}>
+                {job.date}
+              </span>
+            )}
           </div>
           <div className="text-[10px] text-gray-500 truncate mb-1.5 font-medium">
             <span className="font-bold text-gray-700">{job.client}</span> • {job.company}
@@ -337,7 +350,7 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
   };
 
   return (
-    <div className="h-full bg-[#F0F2F5] font-sans text-gray-800 overflow-y-auto w-full pb-20">
+    <div className="h-full bg-[#F0F2F5] font-sans text-gray-800 overflow-y-auto w-full pb-20 flex flex-col">
       
       {/* Inyectamos estilos para ocultar la barra de scroll nativa del carrusel pero mantener funcionalidad */}
       <style>{`
@@ -346,7 +359,7 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
       `}</style>
 
       {/* HEADER */}
-      <div className="bg-white border-b shadow-sm px-3 md:px-8 py-2 md:py-4 flex flex-col sm:flex-row justify-between sm:items-center sticky top-0 z-10 gap-1.5 md:gap-3">
+      <div className="bg-white border-b shadow-sm px-3 md:px-8 py-2 md:py-4 flex flex-col sm:flex-row justify-between sm:items-center sticky top-0 z-10 gap-1.5 md:gap-3 shrink-0">
         <h1 className="text-base md:text-xl font-extrabold text-[#EB4511] tracking-widest uppercase leading-none pl-1 md:pl-0">
           RE! <span className="text-gray-400 font-medium text-[10px] md:text-xs">| {userName}</span>
         </h1>
@@ -363,11 +376,11 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto p-4 md:p-6 space-y-6">
+      <div className="max-w-[1400px] w-full mx-auto p-4 md:p-6 flex flex-col flex-1">
 
         {/* DYNAMIC LAYOUT: Native CSS Swipe Carousel on Mobile -> Grid on Desktop */}
         {isPureEditor ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 flex-1">
             <div className="font-bold text-xs text-purple-600 uppercase tracking-widest border-b border-purple-200 pb-2 flex justify-between items-center px-1">
               <span>Post-Producción</span>
               <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-[10px]">{myStandby.length + myReady.length}</span>
@@ -380,7 +393,7 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
         ) : (
           <>
             {/* MOBILE CAROUSEL TABS */}
-            <div className="lg:hidden flex justify-around items-center border-b border-gray-200 mb-2 px-1 sticky top-0 bg-[#F0F2F5] z-10 pt-2 pb-2 gap-2">
+            <div className="lg:hidden shrink-0 flex justify-around items-center border-b border-gray-200 mb-2 px-1 sticky top-0 bg-[#F0F2F5] z-10 pt-2 pb-2 gap-2">
               <div onClick={() => scrollToCol(0)} style={getTabStyle(0)} className="cursor-pointer flex items-center justify-center gap-0.5 origin-bottom">
                 <div className={`font-black uppercase tracking-widest transition-colors ${activeCol === 0 ? 'text-[12px] text-green-600' : 'text-[10px] text-gray-500'}`}>Agenda</div>
                 <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold transition-colors ${activeCol === 0 ? 'bg-green-100 text-green-700 shadow-sm' : 'bg-gray-200 text-gray-500'}`}>{confirmedJobs.length + pendingJobs.length}</span>
@@ -400,11 +413,11 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
             <div 
               ref={carouselRef}
               onScroll={handleScroll}
-              className="flex flex-nowrap lg:grid lg:grid-cols-2 gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory pb-4 hide-scroll"
+              className="flex-1 w-full flex flex-nowrap lg:grid lg:grid-cols-2 gap-4 md:gap-6 overflow-x-auto snap-x snap-mandatory pb-4 hide-scroll items-start"
             >
               
               {/* COL 1: AGENDA (Mobile Only) */}
-              <div className="w-full lg:hidden shrink-0 snap-start snap-always flex flex-col gap-3 pt-2">
+              <div className="w-full h-full lg:hidden shrink-0 snap-start snap-always flex flex-col gap-3 pt-2">
                 <div className="hidden lg:flex font-bold text-xs text-green-600 uppercase tracking-widest border-b border-green-200 pb-2 justify-between items-center px-1">
                   <span>Agenda Central</span>
                   <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px]">{confirmedJobs.length}</span>
@@ -425,7 +438,7 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
               </div>
 
               {/* COL 2: PENDIENTES */}
-              <div className="w-full lg:w-auto shrink-0 snap-start snap-always flex flex-col gap-3 pt-2">
+              <div className="w-full h-full lg:w-auto shrink-0 snap-start snap-always flex flex-col gap-3 pt-2">
                 <div className="hidden lg:flex font-bold text-xs text-gray-500 uppercase tracking-widest border-b border-gray-200 pb-2 justify-between items-center px-1">
                   <span>Pendientes</span>
                   <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[10px]">{allReservas.length}</span>
@@ -436,7 +449,7 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
               </div>
 
               {/* COL 3: POST-PRODUCCION */}
-              <div className="w-full lg:w-auto shrink-0 snap-start snap-always flex flex-col gap-3 pt-2">
+              <div className="w-full h-full lg:w-auto shrink-0 snap-start snap-always flex flex-col gap-3 pt-2">
                 <div className="hidden lg:flex font-bold text-xs text-purple-600 uppercase tracking-widest border-b border-purple-200 pb-2 justify-between items-center px-1">
                   <span>Post-Producción</span>
                   <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-[10px]">{myStandby.length + myReady.length}</span>
