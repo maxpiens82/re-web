@@ -125,7 +125,7 @@ const FolderCard = ({ folder, onClick }) => (
 );
 
 // 🚀 NEW: Image-based Folder Card for the FOTOS directory
-const PhotoFolderCard = ({ folder, onClick, coverId, copyToClipboard }) => {
+const PhotoFolderCard = ({ folder, onClick, coverId, copyToClipboard, showToast }) => {
   const [imgError, setImgError] = useState(false);
   const thumbUrl = coverId ? `https://drive.google.com/thumbnail?id=${coverId}&sz=w600` : null;
   const folderUrl = `https://drive.google.com/drive/folders/${folder.id}`;
@@ -165,8 +165,13 @@ const PhotoFolderCard = ({ folder, onClick, coverId, copyToClipboard }) => {
           <button 
             onClick={(e) => { 
               e.stopPropagation(); 
-              // 🚀 TRIGGER DRIVE ZIP ENGINE: Appending export=download forces the "Zipping" UI
-              window.open(`https://drive.google.com/drive/folders/${folder.id}?export=download`, '_blank'); 
+              // 1. Show instruction (Prop fixed below)
+              if (showToast) showToast("Haz clic en el icono de descarga arriba a la derecha", "info");
+              
+              // 2. 🚀 THE "LIST-VIEW" BYPASS: This forces Google to show the bulk-action header
+              // including the 'Download' button which is often hidden in the grid view.
+              const forceDownloadView = `https://drive.google.com/drive/folders/${folder.id}?layout=list&sort=13&usp=sharing`;
+              window.open(forceDownloadView, '_blank'); 
             }} 
             className="flex-[1.5] bg-[#EB4511] hover:bg-[#c42e0d] text-white py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/20"
           >
@@ -808,7 +813,16 @@ export default function ClientPortal() {
                         // 🚀 If it's a photo folder, grab the coverId from the root property history and render the image card!
                         if (folder.name.includes('FOTOS')) {
                           const rootJob = breadcrumbs.length > 0 ? client.history.find(j => j.id === breadcrumbs[0].id) : null;
-                          return <PhotoFolderCard key={folder.id} folder={folder} coverId={rootJob?.coverId} copyToClipboard={copyToClipboard} onClick={() => openFolder(folder.id, folder.name)} />;
+                          return (
+                            <PhotoFolderCard 
+                              key={folder.id} 
+                              folder={folder} 
+                              coverId={rootJob?.coverId} 
+                              copyToClipboard={copyToClipboard} 
+                              showToast={showToast} // 🚀 Pass the function here
+                              onClick={() => openFolder(folder.id, folder.name)} 
+                            />
+                          );
                         }
                         return <FolderCard key={folder.id} folder={folder} onClick={() => openFolder(folder.id, folder.name)} />;
                       })}
