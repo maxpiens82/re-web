@@ -96,9 +96,20 @@ const AssetCard = ({ asset, onPreview, copyToClipboard }) => {
             <button 
             onClick={(e) => { 
               e.stopPropagation(); 
-              // 🚀 THE NATIVE ZIP FORCE: This specific endpoint tells Drive to ignore the UI and start the zip-and-export job immediately.
-              const directDownloadUrl = `https://drive.google.com/u/0/download?id=${folder.id}&export=download`;
-              window.open(directDownloadUrl, '_blank'); 
+              // 🚀 THE 2024 DIRECT-ZIP BYPASS: 
+              // 1. Using 'drive.usercontent.google.com' domain (bypasses UI redirects)
+              // 2. Using 'confirm=t' to skip the virus scan warning for multiple files
+              // 3. Using 'export=download' to signal a ZIP job for folders
+              const forceZipUrl = `https://drive.usercontent.google.com/download?id=${folder.id}&export=download&confirm=t`;
+              
+              // We use a hidden anchor to ensure the browser treats it as a download stream
+              const link = document.createElement('a');
+              link.href = forceZipUrl;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
             }} 
             className="flex-[1.5] bg-[#EB4511] hover:bg-[#c42e0d] text-white py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/20"
           >
