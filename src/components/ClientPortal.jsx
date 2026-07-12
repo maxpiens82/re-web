@@ -165,13 +165,16 @@ const PhotoFolderCard = ({ folder, onClick, coverId, copyToClipboard, showToast 
           <button 
             onClick={(e) => { 
               e.stopPropagation(); 
-              // 1. Show instruction (Prop fixed below)
-              if (showToast) showToast("Haz clic en el icono de descarga arriba a la derecha", "info");
+              // 1. Alert the user (The fix for the "where did it go?" feeling)
+              if (showToast) {
+                showToast("Haz clic en el nombre de la carpeta arriba y luego 'Descargar'", "info");
+              }
               
-              // 2. 🚀 THE "LIST-VIEW" BYPASS: This forces Google to show the bulk-action header
-              // including the 'Download' button which is often hidden in the grid view.
-              const forceDownloadView = `https://drive.google.com/drive/folders/${folder.id}?layout=list&sort=13&usp=sharing`;
-              window.open(forceDownloadView, '_blank'); 
+              // 2. 🚀 THE "ACTIONABLE" VIEW: 
+              // This URL lands the user directly in the sharing context where 
+              // Google is most likely to show the Download options in the header.
+              const actionUrl = `https://drive.google.com/drive/folders/${folder.id}?usp=sharing`;
+              window.open(actionUrl, '_blank'); 
             }} 
             className="flex-[1.5] bg-[#EB4511] hover:bg-[#c42e0d] text-white py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/20"
           >
@@ -819,7 +822,7 @@ export default function ClientPortal() {
                               folder={folder} 
                               coverId={rootJob?.coverId} 
                               copyToClipboard={copyToClipboard} 
-                              showToast={showToast} // 🚀 Pass the function here
+                              showToast={showToast} 
                               onClick={() => openFolder(folder.id, folder.name)} 
                             />
                           );
