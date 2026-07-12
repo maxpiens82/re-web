@@ -96,13 +96,12 @@ const AssetCard = ({ asset, onPreview, copyToClipboard }) => {
             <button 
             onClick={(e) => { 
               e.stopPropagation(); 
-              // 🚀 THE 2024 NATIVE ZIP BYPASS:
-              // The '/sz/' endpoint (Size/Zip) is the specific internal route that 
-              // triggers the zipping engine directly. We add 'confirm=t' to bypass 
-              // the "Too large to scan" warning which usually causes the viewer redirect.
-              const directZipUrl = `https://drive.google.com/u/0/sz/${folder.id}?export=download&confirm=t`;
+              // 🚀 STEP 1: Notify the user so they aren't confused by the redirect
+              showToast("Abriendo Drive: Haz clic en el botón 'Descargar' arriba a la derecha.", "info");
               
-              window.open(directZipUrl, '_blank'); 
+              // 🚀 STEP 2: Use the 'authuser=0' parameter to ensure they land in the right session
+              const folderUrl = `https://drive.google.com/drive/folders/${folder.id}?authuser=0`;
+              window.open(folderUrl, '_blank'); 
             }} 
             className="flex-[1.5] bg-[#EB4511] hover:bg-[#c42e0d] text-white py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/20"
           >
