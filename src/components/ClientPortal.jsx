@@ -94,11 +94,17 @@ const AssetCard = ({ asset, onPreview, copyToClipboard }) => {
           {/* Download Button (Orange Style - Hidden for Tours) */}
           {!isTour && (
             <button 
-              onClick={(e) => { e.stopPropagation(); window.open(asset.downloadUrl, '_blank'); }} 
-              className="flex-[1.5] bg-[#EB4511] hover:bg-[#c42e0d] text-white py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/20"
-            >
-              <Download size={12} /> Descargar
-            </button>
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              // 🚀 FORCED ZIP TRIGGER: The 'uc' endpoint with export=download 
+              // is the most direct way to bypass the UI and call the ZIP engine.
+              const zipUrl = `https://drive.google.com/uc?export=download&id=${folder.id}`;
+              window.open(zipUrl, '_blank'); 
+            }} 
+            className="flex-[1.5] bg-[#EB4511] hover:bg-[#c42e0d] text-white py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/20"
+          >
+            <Download size={12} /> Descargar
+          </button>
           )}
         </div>
       </div>
