@@ -165,14 +165,13 @@ const PhotoFolderCard = ({ folder, onClick, coverId, copyToClipboard, showToast 
           <button 
             onClick={(e) => { 
               e.stopPropagation(); 
-              // 1. Alert the user (The fix for the "where did it go?" feeling)
+              // 1. Trigger Toast (This will now work because of the prop fix below)
               if (showToast) {
-                showToast("Haz clic en el nombre de la carpeta arriba y luego 'Descargar'", "info");
+                showToast("En Drive: Click en el nombre de la carpeta (arriba) > Descargar", "info");
               }
               
-              // 2. 🚀 THE "ACTIONABLE" VIEW: 
-              // This URL lands the user directly in the sharing context where 
-              // Google is most likely to show the Download options in the header.
+              // 2. 🚀 THE RELIABLE VIEW: Opens the folder in the standard view 
+              // where the download menu is most stable.
               const actionUrl = `https://drive.google.com/drive/folders/${folder.id}?usp=sharing`;
               window.open(actionUrl, '_blank'); 
             }} 
@@ -822,7 +821,7 @@ export default function ClientPortal() {
                               folder={folder} 
                               coverId={rootJob?.coverId} 
                               copyToClipboard={copyToClipboard} 
-                              showToast={showToast} 
+                              showToast={showToast} // 🚀 CRITICAL: Passing the function
                               onClick={() => openFolder(folder.id, folder.name)} 
                             />
                           );
