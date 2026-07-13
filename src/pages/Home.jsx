@@ -699,7 +699,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🚀 PORTFOLIO */}
+      {/* 🚀 PORTFOLIO  */}
       <section id="portfolio" className="pt-8 pb-16 md:py-24 bg-white">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-12 gap-3 md:gap-4">
