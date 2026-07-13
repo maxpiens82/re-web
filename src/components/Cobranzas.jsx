@@ -286,7 +286,13 @@ export default function Cobranzas() {
                         {c.telefono ? (
                           <button onClick={() => {
                             const amountFmt = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(c.saldo);
-                            let msg = `¡Hola ${c.cliente.split(' ')[0]}! 👋 Te contactamos de la administración de RE! 🎬\n\nDe acuerdo a nuestro sistema, se registra un saldo pendiente de *${amountFmt}*.\n\nSi ya realizaste el pago, por favor envianos el comprobante por este medio para que podamos conciliarlo y desestimá este mensaje. ✅\n\nDe lo contrario, podés cancelarlo a estos datos:\n\n🏦 *Banco Santander*\n👤 Maximiliano Augusto Gaggini\n🔢 CBU: 0720519488000006612168\n🏷️ Alias: *SOMOS.RE.OK*\n\n¡Muchas gracias!`;
+                            
+                            // 🚀 CALCULATE DEBT DATE: Based on the geometric decay / ledger age
+                            const debtDate = new Date();
+                            debtDate.setDate(debtDate.getDate() - (c.daysOld || 0));
+                            const dateFmt = debtDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+                            let msg = `¡Hola ${c.cliente.split(' ')[0]}! 👋 Te contactamos de la administración de RE! 🎬\n\nDe acuerdo a nuestro sistema, se registra un saldo pendiente de *${amountFmt}* con fecha del *${dateFmt}*.\n\nSi ya realizaste el pago en las últimas horas, por favor adjuntanos el comprobante por este medio para que podamos conciliarlo y desestimá este mensaje. ✅\n\nDe lo contrario, podés cancelarlo a estos datos:\n\n🏦 *Banco Santander*\n👤 Maximiliano Augusto Gaggini\n🔢 CBU: 0720519488000006612168\n🏷️ Alias: *SOMOS.RE.OK*\n\n¡Muchas gracias!`;
                             window.open(`https://api.whatsapp.com/send?phone=${c.telefono}&text=${encodeURIComponent(msg)}`, '_blank');
                           }} className="text-[#25D366] hover:bg-[#25D366]/10 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors font-bold shrink-0">
                             <Send size={10} /> WA
