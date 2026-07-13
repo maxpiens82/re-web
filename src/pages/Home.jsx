@@ -690,7 +690,7 @@ export default function Home() {
                  className="h-[28px] md:h-[80px] w-auto object-contain mix-blend-multiply translate-y-[-1px] md:translate-y-[-10px]" />
                  
             <img src="/c21 web.png" alt="Century 21" 
-                 className="h-[14px] md:h-[96px] w-auto object-contain mix-blend-multiply translate-y-[0.5px] md:translate-y-[2px]" />
+                 className="h-[14px] md:h-[64px] w-auto object-contain mix-blend-multiply translate-y-[0.5px] md:translate-y-[2px]" />
 
             <img src="/braulio web.png" alt="Braulio Inmuebles" 
                  className="h-[15px] md:h-[50px] w-auto object-contain mix-blend-multiply" />
