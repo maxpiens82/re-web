@@ -691,6 +691,9 @@ export default function Home() {
                  
             <img src="/braulio web.png" alt="Braulio Inmuebles" 
                  className="h-[15px] md:h-[50px] w-auto object-contain mix-blend-multiply" />
+
+            <img src="/c21 web.png" alt="Century 21" 
+                 className="h-[14px] md:h-[48px] w-auto object-contain mix-blend-multiply translate-y-[0.5px] md:translate-y-[2px]" />
                  
           </div>
         </div>
