@@ -257,7 +257,9 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
     <div key={`${job.id}_${idx}`} className="bg-white rounded-xl p-3 shadow-sm border border-dashed border-gray-300 hover:border-gray-400 transition-all opacity-70 hover:opacity-100 flex items-center justify-between gap-3">
        <div className="min-w-0 flex-1 leading-tight">
         <div className="flex items-center justify-between mb-1">
-          <span className="font-bold text-xs text-gray-600 truncate pr-2">{job.loc}</span>
+          <span className="font-bold text-xs text-gray-600 truncate pr-2">
+            {job.loc} {job.m2 && <span className="text-gray-400 font-normal">({job.m2}m²)</span>}
+          </span>
           <span className="text-[10px] text-green-700 font-bold bg-green-50/80 border border-green-100 px-1.5 py-0.5 rounded shrink-0">${job.payout.toLocaleString()}</span>
         </div>
         <div className="text-[10px] text-gray-500 truncate mb-1.5 font-medium">
@@ -277,7 +279,9 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
       <div key={`${job.id}_${idx}`} className={`bg-white rounded-xl p-3 shadow-sm border-l-4 ${urgency.border} flex items-center justify-between hover:shadow-md transition-shadow gap-3`}>
          <div className="min-w-0 flex-1 leading-tight">
           <div className="flex items-center justify-between mb-1">
-            <span className="font-extrabold text-sm text-gray-800 truncate pr-2">{job.loc}</span>
+            <span className="font-extrabold text-sm text-gray-800 truncate pr-2">
+              {job.loc} {job.m2 && <span className="text-gray-400 font-normal">({job.m2}m²)</span>}
+            </span>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest ${urgency.bgBadge} ${urgency.text} border ${urgency.borderBadge} shrink-0`}>Vence: {job.deadline}</span>
           </div>
           <div className="text-[10px] text-gray-500 truncate mb-1.5 font-medium">
