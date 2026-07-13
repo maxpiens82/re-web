@@ -285,12 +285,8 @@ export default function Cobranzas() {
                         <span className="text-gray-300 shrink-0">|</span> 
                         {c.telefono ? (
                           <button onClick={() => {
-                            let msg = `¡Hola ${c.cliente}! 👋\n\nNos comunicamos de administración de RE! `;
-                            if (c.saldo > 0) {
-                              msg += `Para recordarte que tu cuenta presenta un saldo pendiente de *${new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(c.saldo)}*.\n\nPodés cancelarlo mediante transferencia a los siguientes datos:\n\n🏦 Banco: Santander\n👤 Titular: Maximiliano Augusto Gaggini\n🔢 CBU/CVU: 0720519488000006612168\n🏷️ Alias: SOMOS.RE.OK\n\n_(Por favor envianos el comprobante por este medio una vez realizada)_\n\n¡Gracias!`;
-                            } else {
-                              msg += `¿Cómo estás?`;
-                            }
+                            const amountFmt = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(c.saldo);
+                            let msg = `¡Hola ${c.cliente.split(' ')[0]}! 👋 Te contactamos de la administración de RE! 🎬\n\nDe acuerdo a nuestro sistema, se registra un saldo pendiente de *${amountFmt}*.\n\nSi ya realizaste el pago, por favor envianos el comprobante por este medio para que podamos conciliarlo y desestimá este mensaje. ✅\n\nDe lo contrario, podés cancelarlo a estos datos:\n\n🏦 *Banco Santander*\n👤 Maximiliano Augusto Gaggini\n🔢 CBU: 0720519488000006612168\n🏷️ Alias: *SOMOS.RE.OK*\n\n¡Muchas gracias!`;
                             window.open(`https://api.whatsapp.com/send?phone=${c.telefono}&text=${encodeURIComponent(msg)}`, '_blank');
                           }} className="text-[#25D366] hover:bg-[#25D366]/10 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors font-bold shrink-0">
                             <Send size={10} /> WA
