@@ -385,11 +385,30 @@ export default function Portal() {
                         const prevJob = array[index - 1];
                         const showDivider = !prevJob || prevJob.date !== job.date;
                         
+                        // Parse the date to get a nice localized day name
+                        let dayBadge = '';
+                        if (showDivider && index > 0) {
+                           try {
+                             const ms = parseDateToMs(job.date, '12:00');
+                             if (ms > 0) {
+                               const d = new Date(ms);
+                               const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' }).substring(0, 3).toUpperCase().replace('.', '');
+                               const dayNum = d.getDate();
+                               dayBadge = `${dayName} ${dayNum}`;
+                             }
+                           } catch(e) {}
+                        }
+                        
                         return (
                           <React.Fragment key={job.eventId}>
                             {showDivider && index > 0 && (
-                              <div className="flex items-center my-3">
-                                <div className="h-px bg-gray-200 flex-1"></div>
+                              <div className="flex items-center justify-center my-4 relative">
+                                <div className="absolute inset-0 flex items-center">
+                                  <div className="w-full border-t border-dashed border-blue-200"></div>
+                                </div>
+                                <div className="relative bg-gray-50 px-2 text-[9px] font-extrabold text-[#2B6CB0] uppercase tracking-widest">
+                                  {dayBadge || job.date}
+                                </div>
                               </div>
                             )}
                             <JobCard job={job} isPending={false} />
