@@ -14,6 +14,19 @@ const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
 
 const normalizeText = (text) => text ? text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, "") : "";
 
+// 🚀 Helper to parse dates back to comparable timestamps
+const parseDateToMs = (dateStr, timeStr) => {
+  try {
+    const p = String(dateStr).split('/');
+    const t = String(timeStr).split(':');
+    // Format: dd/mm/yyyy -> new Date(year, monthIndex, day, hours, minutes)
+    if (p.length === 3) {
+      return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]), parseInt(t[0] || 12), parseInt(t[1] || 0)).getTime();
+    }
+  } catch(e) {}
+  return 0;
+};
+
 export default function Portal() {
   const { currentUser, userRole, logout } = useAuth();
   
@@ -354,7 +367,7 @@ export default function Portal() {
                 </div>
               )}
 
-              {/* Confirmed Bookings */}
+              {/* Confirmed Bookings with Date Dividers */}
               <div>
                 <h2 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5 px-1">
                   <CalendarDays size={14} className="text-green-500"/> Reservas
@@ -364,7 +377,26 @@ export default function Portal() {
                   <p className="text-xs text-gray-400 italic px-1">No hay reservas confirmadas.</p>
                 ) : (
                   <div>
-                    {confirmedJobs.map(job => <JobCard key={job.eventId} job={job} isPending={false} />)}
+                    {
+                      // 1. Sort by absolute timestamp
+                      [...confirmedJobs].sort((a, b) => parseDateToMs(a.date, a.time) - parseDateToMs(b.date, b.time))
+                      .map((job, index, array) => {
+                        // 2. Check if the date string changed from the previous item
+                        const prevJob = array[index - 1];
+                        const showDivider = !prevJob || prevJob.date !== job.date;
+                        
+                        return (
+                          <React.Fragment key={job.eventId}>
+                            {showDivider && index > 0 && (
+                              <div className="flex items-center my-3">
+                                <div className="h-px bg-gray-200 flex-1"></div>
+                              </div>
+                            )}
+                            <JobCard job={job} isPending={false} />
+                          </React.Fragment>
+                        );
+                      })
+                    }
                   </div>
                 )}
               </div>
