@@ -253,25 +253,45 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
     );
   };
 
-  const renderStandbyCard = (job, idx) => (
-    <div key={`${job.id}_${idx}`} className="bg-white rounded-xl p-3 shadow-sm border border-dashed border-gray-300 hover:border-gray-400 transition-all opacity-70 hover:opacity-100 flex items-center justify-between gap-3">
-       <div className="min-w-0 flex-1 leading-tight">
-        <div className="flex items-center justify-between mb-1">
-          <span className="font-bold text-xs text-gray-600 truncate pr-2">
-            {job.loc} {job.m2 && <span className="text-gray-400 font-normal">({job.m2}m²)</span>}
-          </span>
-          <span className="text-[10px] text-green-700 font-bold bg-green-50/80 border border-green-100 px-1.5 py-0.5 rounded shrink-0">${job.payout.toLocaleString()}</span>
-        </div>
-        <div className="text-[10px] text-gray-500 truncate mb-1.5 font-medium">
-          <span className="font-bold text-gray-600">{job.client}</span> • {job.company}
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="bg-white border border-gray-100 px-1.5 py-0.5 rounded text-[9px] font-bold text-gray-600 flex items-center gap-1 w-fit"><SrvIcon type={job.srv}/> {job.srv}</span>
-          <span className="text-[9px] font-bold text-gray-400">🎥 {job.producer} {isAdmin && `• ✂️ ${job.editor}`}</span>
+  const renderStandbyCard = (job, idx) => {
+    const hasDeadline = job.deadline && job.deadline !== '-';
+    const urgency = hasDeadline ? getUrgencyColors(job.deadline) : { borderBadge: 'border-gray-200', text: 'text-gray-500', bgBadge: 'bg-gray-100' };
+
+    return (
+      <div key={`${job.id}_${idx}`} className="bg-white rounded-xl p-3 shadow-sm border-l-4 border-l-gray-300 hover:shadow-md transition-all opacity-80 hover:opacity-100 flex items-center justify-between gap-3">
+         <div className="min-w-0 flex-1 leading-tight">
+          <div className="flex items-center justify-between mb-1.5 gap-2">
+            <span className="font-extrabold text-sm text-gray-600 truncate">{job.loc}</span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="bg-gray-100 border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest flex items-center gap-1">
+                ⏳ Crudos
+              </span>
+              {hasDeadline && (
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest ${urgency.bgBadge} ${urgency.text} border ${urgency.borderBadge}`}>
+                  Vence: {job.deadline}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="text-[10px] text-gray-500 truncate mb-1.5 font-medium flex justify-between items-center gap-2">
+            <div className="truncate">
+              <span className="font-bold text-gray-600">{job.client}</span> • {job.company}
+              {isAdmin && <span className="font-bold text-purple-600 ml-1">[{job.editor}]</span>}
+            </div>
+            <span className="text-[10px] text-green-700 font-bold bg-green-50/80 border border-green-100 px-1.5 py-0.5 rounded shrink-0">
+              ${job.payout.toLocaleString('es-AR')}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="bg-gray-50 border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1 w-fit">
+              <SrvIcon type={job.srv}/> {job.srv}
+            </span>
+            <span className="text-[9px] font-bold text-gray-400">🎥 {job.producer}</span>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderReadyCard = (job, idx) => {
     const urgency = getUrgencyColors(job.deadline);
