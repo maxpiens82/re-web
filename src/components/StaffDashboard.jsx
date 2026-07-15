@@ -253,49 +253,25 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
     );
   };
 
-  const renderStandbyCard = (job, idx) => {
-    // Re-calculate the deadline based on the raw date string from the backend
-    let deadlineStr = 'Sin fecha';
-    if (job.deadline && job.deadline.includes('Grabado:')) {
-      const parts = job.deadline.replace('Grabado: ', '').split('/');
-      if (parts.length === 3) {
-        const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), 12, 0, 0);
-        const day = d.getDay();
-        let add = 2;
-        if (day === 4 || day === 5) add = 4; // Thu/Fri -> Add 4 days to skip weekend
-        else if (day === 6) add = 3;         // Sat -> Add 3 days
-        d.setDate(d.getDate() + add);
-        deadlineStr = Utilities.formatDate ? '' : d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      }
-    } else {
-      deadlineStr = job.deadline; // Fallback if already calculated
-    }
-
-    return (
-      <div key={`${job.id}_${idx}`} className="bg-white rounded-xl p-3 shadow-sm border border-dashed border-gray-300 hover:border-gray-400 transition-all opacity-70 hover:opacity-100 flex items-center justify-between gap-3">
-         <div className="min-w-0 flex-1 leading-tight">
-          <div className="flex items-center justify-between mb-1 gap-2">
-            <span className="font-bold text-xs text-gray-600 truncate flex-1">{job.loc}</span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest bg-gray-100 text-gray-500 border border-gray-200">
-                Vence: {deadlineStr}
-              </span>
-              <span className="text-[10px] text-green-700 font-bold bg-green-50/80 border border-green-100 px-1.5 py-0.5 rounded">
-                ${job.payout.toLocaleString()}
-              </span>
-            </div>
-          </div>
-          <div className="text-[10px] text-gray-500 truncate mb-1.5 font-medium">
-            <span className="font-bold text-gray-600">{job.client}</span> • {job.company}
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="bg-white border border-gray-100 px-1.5 py-0.5 rounded text-[9px] font-bold text-gray-600 flex items-center gap-1 w-fit"><SrvIcon type={job.srv}/> {job.srv}</span>
-            <span className="text-[9px] font-bold text-gray-400">🎥 {job.producer} {isAdmin && `• ✂️ ${job.editor}`}</span>
-          </div>
+  const renderStandbyCard = (job, idx) => (
+    <div key={`${job.id}_${idx}`} className="bg-white rounded-xl p-3 shadow-sm border border-dashed border-gray-300 hover:border-gray-400 transition-all opacity-70 hover:opacity-100 flex items-center justify-between gap-3">
+       <div className="min-w-0 flex-1 leading-tight">
+        <div className="flex items-center justify-between mb-1">
+          <span className="font-bold text-xs text-gray-600 truncate pr-2">
+            {job.loc} {job.m2 && <span className="text-gray-400 font-normal">({job.m2}m²)</span>}
+          </span>
+          <span className="text-[10px] text-green-700 font-bold bg-green-50/80 border border-green-100 px-1.5 py-0.5 rounded shrink-0">${job.payout.toLocaleString()}</span>
+        </div>
+        <div className="text-[10px] text-gray-500 truncate mb-1.5 font-medium">
+          <span className="font-bold text-gray-600">{job.client}</span> • {job.company}
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="bg-white border border-gray-100 px-1.5 py-0.5 rounded text-[9px] font-bold text-gray-600 flex items-center gap-1 w-fit"><SrvIcon type={job.srv}/> {job.srv}</span>
+          <span className="text-[9px] font-bold text-gray-400">🎥 {job.producer} {isAdmin && `• ✂️ ${job.editor}`}</span>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
   const renderReadyCard = (job, idx) => {
     const urgency = getUrgencyColors(job.deadline);
