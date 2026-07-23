@@ -6,6 +6,23 @@ const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
 
 export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJobs = [] }) {
   const { currentUser, userRole } = useAuth();
+
+  // 🚀 AGENDA SYNC: Deterministic ascending sort (Closer dates first)
+  // This ensures mobile Agenda and Desktop Sidebar are identical.
+  const sortedAgenda = React.useMemo(() => {
+    return [...confirmedJobs].sort((a, b) => {
+      const [da, ma, ya] = (a.date || "").split('/');
+      const [db, mb, yb] = (b.date || "").split('/');
+      
+      if (!ya || !yb) return 0;
+
+      // Padded keys (YYYYMMDDHHmm) ensure 1/7 sorts before 10/7
+      const keyA = `${ya}${ma.padStart(2, '0')}${da.padStart(2, '0')}${(a.time || '00:00').replace(':', '')}`;
+      const keyB = `${yb}${mb.padStart(2, '0')}${db.padStart(2, '0')}${(b.time || '00:00').replace(':', '')}`;
+      
+      return keyA.localeCompare(keyB);
+    });
+  }, [confirmedJobs]);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null); // 🚀 NEW: Error state
@@ -261,7 +278,9 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
       <div key={`${job.id}_${idx}`} className="bg-white rounded-xl p-3 shadow-sm border-l-4 border-l-gray-300 hover:shadow-md transition-all opacity-80 hover:opacity-100 flex items-center justify-between gap-3">
          <div className="min-w-0 flex-1 leading-tight">
           <div className="flex items-center justify-between mb-1.5 gap-2">
-            <span className="font-extrabold text-sm text-gray-600 truncate">{job.loc}</span>
+            <span className="font-extrabold text-sm text-gray-600 truncate">
+              {job.loc} {job.m2 && <span className="text-gray-400 font-normal">({job.m2}m²)</span>}
+            </span>
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="bg-gray-100 border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest flex items-center gap-1">
                 ⏳ Crudos
@@ -476,7 +495,8 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
                     
                     {(() => {
                       let lastDate = null;
-                      return confirmedJobs.map((job, idx) => {
+                      // 🛡️ Use sortedAgenda instead of confirmedJobs
+                      return sortedAgenda.map((job, idx) => {
                         // 🚀 DATE SEPARATION LOGIC
                         const showHeader = job.date !== lastDate && job.date !== 'CRUDOS';
                         lastDate = job.date;
