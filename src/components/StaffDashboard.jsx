@@ -471,9 +471,38 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
                       {pendingJobs.map((job, idx) => renderAgendaCard(job, idx, true))}
                     </div>
                   )}
-                  <div>
-                    {isAdmin && pendingJobs.length > 0 && <div className="text-[10px] font-bold text-green-600 uppercase mb-2 px-1">Reservas Confirmadas</div>}
-                    {confirmedJobs.map((job, idx) => renderAgendaCard(job, idx, false))}
+                  <div className="space-y-1">
+                    {isAdmin && pendingJobs.length > 0 && <div className="text-[10px] font-bold text-green-600 uppercase mb-4 px-1">Reservas Confirmadas</div>}
+                    
+                    {(() => {
+                      let lastDate = null;
+                      return confirmedJobs.map((job, idx) => {
+                        // 🚀 DATE SEPARATION LOGIC
+                        const showHeader = job.date !== lastDate && job.date !== 'CRUDOS';
+                        lastDate = job.date;
+
+                        let headerText = '';
+                        if (showHeader) {
+                          const [d, m, y] = job.date.split('/');
+                          const dObj = new Date(y, m - 1, d);
+                          const dayName = dObj.toLocaleDateString('es-AR', { weekday: 'short' }).toUpperCase().replace('.', '');
+                          headerText = `${dayName} ${dObj.getDate()}`;
+                        }
+
+                        return (
+                          <React.Fragment key={job.eventId + idx}>
+                            {showHeader && (
+                              <div className="flex items-center gap-3 pt-4 pb-2 px-1">
+                                <span className="text-[10px] font-black text-[#2B6CB0] tracking-widest uppercase whitespace-nowrap">{headerText}</span>
+                                <div className="h-px bg-blue-100 flex-1 border-t border-dashed border-blue-200"></div>
+                              </div>
+                            )}
+                            {renderAgendaCard(job, idx, false)}
+                          </React.Fragment>
+                        );
+                      });
+                    })()}
+
                     {confirmedJobs.length === 0 && <p className="text-xs text-gray-400 italic px-1">No hay reservas confirmadas.</p>}
                   </div>
                 </div>
