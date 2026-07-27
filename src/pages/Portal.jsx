@@ -233,7 +233,9 @@ export default function Portal() {
             >
               <MapPin size={12} />
             </button>
-            <span className="flex items-center gap-1 pointer-events-none"><Clock size={11} /> {job.date}</span>
+            <span className="flex items-center gap-1 pointer-events-none">
+              <Clock size={11} /> {job.date} - {job.time}
+            </span>
           </div>
         </div>
       </div>
