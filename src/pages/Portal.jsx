@@ -211,32 +211,38 @@ export default function Portal() {
           ${borderClass}
         `}
       >
-        <div className="flex justify-between items-start mb-2">
-          <h4 className="font-bold text-gray-800 text-[13px] leading-tight truncate flex-1 pointer-events-none">
-            {isVoice && <span className="mr-1">🎙️</span>}
-            {job.address}
-          </h4>
-          {badge}
-        </div>
-        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
-          <span className="flex items-center gap-1 truncate max-w-[50%] pointer-events-none"><User size={11} className="shrink-0"/> {job.client}</span>
-          
-          <div className="flex items-center gap-2 shrink-0">
+        <div className="flex justify-between items-start mb-2 gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <h4 className="font-bold text-gray-800 text-[13px] leading-tight truncate pointer-events-none">
+              {isVoice && <span className="mr-1">🎙️</span>}
+              {job.address}
+            </h4>
             <button 
               onClick={(e) => {
-                e.stopPropagation(); // Prevents opening the job checkout
+                e.stopPropagation(); 
                 const cleanAddress = job.address.replace(' - Multiunidad', '').trim();
                 window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddress)}`, '_blank');
               }}
-              className="flex items-center justify-center bg-gray-100 hover:bg-[#E53B12]/10 text-gray-500 hover:text-[#E53B12] p-1.5 rounded-md transition-colors"
+              className="flex items-center justify-center text-gray-400 hover:text-[#E53B12] bg-gray-50 hover:bg-orange-50 border border-gray-100 hover:border-orange-100 p-1 rounded transition-colors shrink-0"
               title="Abrir en Maps"
             >
               <MapPin size={12} />
             </button>
-            <span className="flex items-center gap-1 pointer-events-none">
-              <Clock size={11} /> {job.date} - {job.time}
-            </span>
           </div>
+          
+          <div className="flex items-center gap-1.5 shrink-0">
+            {badge}
+            <span className="text-[11px] font-bold text-gray-600 pointer-events-none">{job.time}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
+          <span className="flex items-center gap-1.5 truncate max-w-[70%] pointer-events-none">
+            <User size={11} className="shrink-0"/> {job.client}
+          </span>
+          <span className="flex items-center gap-1 shrink-0 pointer-events-none">
+            <CalendarDays size={11} /> {job.date.substring(0, 5).replace('/', '-')}
+          </span>
         </div>
       </div>
     );
