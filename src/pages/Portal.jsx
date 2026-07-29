@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User, Bot, LayoutDashboard, ClipboardList, Banknote, Search, Building, Phone, X } from 'lucide-react';
+import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User, Bot, LayoutDashboard, ClipboardList, Banknote, Search, Building, Phone, X, MessageCircle } from 'lucide-react';
 import UnifiedForm from '../components/UnifiedForm';
 import LoadingLogo from '../components/LoadingLogo';
 import AiAssistant from '../components/AiAssistant';
