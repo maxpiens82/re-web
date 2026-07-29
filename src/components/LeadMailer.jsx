@@ -646,8 +646,18 @@ export default function LeadMailer({ onClose }) {
   });
 
   const [currentBatch, setCurrentBatch] = useState([]);
-  const [template, setTemplate] = useState("¡Hola [NOMBRE]! Vi que estás en [EMPRESA]. Te escribo de RE! porque estamos renovando equipos y tenemos disponibilidad para sesiones de fotos esta semana.");
+  const [template, setTemplate] = useState(() => {
+    const saved = localStorage.getItem('re_lead_template');
+    return saved || "¡Hola [NOMBRE]! Vi que estás en [EMPRESA]. Te escribo de RE! porque estamos renovando equipos y tenemos disponibilidad para sesiones de fotos esta semana.";
+  });
   const [sessionSent, setSessionSent] = useState([]);
+  const [templateSaved, setTemplateSaved] = useState(false);
+
+  const saveTemplate = () => {
+    localStorage.setItem('re_lead_template', template);
+    setTemplateSaved(true);
+    setTimeout(() => setTemplateSaved(false), 2000);
+  };
 
   useEffect(() => {
     localStorage.setItem('re_contacted_leads', JSON.stringify(contactedIndices));
@@ -715,8 +725,16 @@ export default function LeadMailer({ onClose }) {
           </div>
 
           {/* Template Editor */}
-          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-            <label className="block text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-2">Mensaje Personalizado</label>
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 relative">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-[10px] font-bold text-indigo-600 uppercase tracking-widest">Mensaje Personalizado</label>
+              <button 
+                onClick={saveTemplate}
+                className={`text-[9px] font-black uppercase px-2 py-1 rounded transition-all ${templateSaved ? 'bg-green-500 text-white' : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}`}
+              >
+                {templateSaved ? '✓ Guardado' : 'Guardar Template'}
+              </button>
+            </div>
             <textarea 
               value={template}
               onChange={(e) => setTemplate(e.target.value)}
