@@ -8,6 +8,7 @@ import AiAssistant from '../components/AiAssistant';
 import StaffDashboard from '../components/StaffDashboard';
 import Asignaciones from '../components/Asignaciones';
 import Cobranzas from '../components/Cobranzas';
+import LeadMailer from '../components/LeadMailer';
 
 // Make sure this is your actual GAS URL!
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
@@ -37,6 +38,7 @@ export default function Portal() {
   // CRM Admin State
   const [clientDb, setClientDb] = useState([]);
   const [showCrmModal, setShowCrmModal] = useState(false);
+  const [showLeadsModal, setShowLeadsModal] = useState(false);
   const [crmSearchQuery, setCrmSearchQuery] = useState('');
   const [crmSuggestions, setCrmSuggestions] = useState([]);
   const [selectedCrmClient, setSelectedCrmClient] = useState(null);
@@ -260,9 +262,16 @@ export default function Portal() {
           <span className="hidden sm:inline text-xs text-gray-400 font-bold uppercase tracking-widest border-l border-white/20 pl-4 ml-2">Panel Interno</span>
         </div>
         
-        {/* CENTER BUTTON (Admins Only) */}
+        {/* CENTER BUTTONS (Admins Only) */}
         {userRole === 'admin' && (
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
+            <button 
+              onClick={() => setShowLeadsModal(true)}
+              className="bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-100 px-3 py-1.5 md:px-4 md:py-2 rounded-full transition-all shadow-sm text-[10px] md:text-xs uppercase tracking-widest font-bold flex items-center gap-1.5"
+            >
+              <MessageCircle size={14} /> Leads
+            </button>
+            
             <button 
               onClick={() => { setShowCrmModal(true); setCrmSearchQuery(''); setSelectedCrmClient(null); }}
               className="bg-white/10 hover:bg-white/20 border border-white/10 text-white px-4 py-1.5 md:px-6 md:py-2 rounded-full transition-all shadow-sm text-[10px] md:text-xs uppercase tracking-widest font-bold flex items-center gap-1.5"
@@ -347,6 +356,9 @@ export default function Portal() {
           </div>
         </div>
       )}
+
+      {/* 🚀 OUTREACH LEADS MODAL */}
+      {showLeadsModal && <LeadMailer onClose={() => setShowLeadsModal(false)} />}
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* SIDEBAR: Master List (ALWAYS HIDDEN ON MOBILE NOW) */}
