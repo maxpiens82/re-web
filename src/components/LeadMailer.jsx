@@ -716,10 +716,10 @@ export default function LeadMailer({ onClose }) {
         </div>
 
         <div className="p-6 overflow-y-auto space-y-6">
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+          {/* Visual Progress Bar */}
+          <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden shrink-0">
             <div 
-              className="bg-indigo-500 h-full transition-all duration-500" 
+              className="bg-indigo-500 h-full transition-all duration-700 ease-out"
               style={{ width: `${(contactedIndices.length / LEADS_DATA.length) * 100}%` }}
             />
           </div>
