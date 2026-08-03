@@ -1286,18 +1286,28 @@ export default function Home() {
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`fixed right-6 z-[60] flex items-center justify-center w-16 h-16 rounded-full shadow-[0_10px_25px_rgba(37,211,102,0.4)] transition-all duration-500 hover:scale-110 active:scale-95 bg-[#25D366] text-white p-4
-            ${total > 0 ? 'bottom-28 md:bottom-28' : 'bottom-8'}
+          className={`fixed z-[60] flex items-center justify-center rounded-full transition-all duration-500 hover:scale-110 active:scale-95 bg-[#25D366] text-white group
+            w-[68px] h-[68px] right-4
+            md:w-[80px] md:h-[80px] md:right-8
+            shadow-[0_8px_30px_rgba(37,211,102,0.5)] hover:shadow-[0_12px_40px_rgba(37,211,102,0.7)]
+            ${total > 0 ? 'bottom-28 md:bottom-32' : 'bottom-6 md:bottom-8'}
           `}
         >
-          {/* White Pulse Animation */}
-          <span className="absolute inset-0 rounded-full bg-white animate-ping opacity-20 pointer-events-none"></span>
+          {/* Green Radar Ping Animation */}
+          <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-40 pointer-events-none group-hover:animate-none"></span>
           
-          <WhatsAppIcon size={32} />
+          {/* Subtle Outer Glow Ring */}
+          <span className="absolute inset-[-8px] md:inset-[-12px] rounded-full border-2 border-[#25D366]/30 animate-pulse pointer-events-none"></span>
           
-          {/* Online Status Dot */}
-          <span className="absolute top-3 right-3 flex h-3 w-3">
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-white shadow-sm"></span>
+          {/* Scalable Icon Wrapper */}
+          <div className="w-10 h-10 md:w-12 md:h-12 relative z-10 flex items-center justify-center">
+            <WhatsAppIcon size="100%" />
+          </div>
+          
+          {/* Red "Unread" Notification Dot (Draws psychological attention) */}
+          <span className="absolute top-1 right-1 md:top-2 md:right-2 flex h-4 w-4 md:h-5 md:w-5 z-20">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 md:h-5 md:w-5 bg-red-500 border-2 border-white"></span>
           </span>
         </a>
       )}
