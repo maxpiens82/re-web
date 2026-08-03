@@ -316,10 +316,11 @@ export default function Home() {
           const freshDb = { 
             services: mappedServices, 
             multipliers: mappedMultipliers, 
+            addons: data.pricingData?.addons || [], // <--- Catch them here
             discountThreshold: data.prices.constants?.discountThreshold !== undefined ? data.prices.constants.discountThreshold : 3, 
             discountPct: data.prices.constants?.discountPct !== undefined ? data.prices.constants.discountPct : 0.035,
-            discountDecay: data.prices.constants?.discountDecay !== undefined ? data.prices.constants.discountDecay : 1, // New Decay Factor
-            discountAmount: 5000 // Legacy fallback
+            discountDecay: data.prices.constants?.discountDecay !== undefined ? data.prices.constants.discountDecay : 1, 
+            discountAmount: 5000 
           };
 
           // Save pure JSON to memory for their next visit
@@ -442,7 +443,18 @@ export default function Home() {
       }
     }
 
-    const calculatedTotal = basePreExtras - discount;
+    // --- ADDONS MATH ---
+    let addonsTotal = 0;
+    // Note: Public site only supports flat single-unit bookings for now
+    selectedServices.forEach(srvId => {
+      const addon = db.addons?.find(a => a.id === srvId);
+      if (addon) {
+        const addonMult = addon.aplicarMetros ? multiplier : 1;
+        addonsTotal += (addon.precio * addonMult);
+      }
+    });
+
+    const calculatedTotal = basePreExtras - discount + addonsTotal;
 
     return {
       total: calculatedTotal,
@@ -834,6 +846,26 @@ export default function Home() {
                 );
               })}
             </div>
+
+            {db.addons?.length > 0 && (
+              <div className="mt-6">
+                <label className="block text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Servicios Adicionales</label>
+                <div className="flex flex-wrap gap-2">
+                  {db.addons.map(addon => (
+                    <button
+                      key={addon.id}
+                      onClick={() => toggleService(addon.id)}
+                      className={`px-4 py-2 rounded-full text-xs font-bold transition-all border
+                        ${selectedServices.includes(addon.id) 
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-md' 
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-amber-300'}`}
+                    >
+                      + {addon.nombre}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {baseCount > 0 && (
               <div className={`mt-4 md:mt-6 p-3 md:p-4 rounded-xl flex items-start gap-2 md:gap-3 transition-colors ${baseCount >= 4 ? 'bg-green-50 text-green-800' : 'bg-gray-50 text-gray-500'}`}>
