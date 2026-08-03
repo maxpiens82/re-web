@@ -54,7 +54,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
   
   // 🚀 ENGINE: Dual-Track Properties (Units Array)
   const [units, setUnits] = useState([{
-    id: Date.now(), indicaciones: '', metrosCuadrados: '100', selectedServices: [], extrasService: false, extrasDescripcion: '', costoExtras: '', pagoEditorExtras: ''
+    id: Date.now(), indicaciones: '', metrosCuadrados: '100', selectedServices: [], selectedAddons: [], extrasService: false, extrasDescripcion: '', costoExtras: '', pagoEditorExtras: ''
   }]);
 
   // 🚀 ENGINE: Team Builder
@@ -167,6 +167,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
           setDb({ 
             services: mappedServices, 
             multipliers: mappedMultipliers, 
+            addons: initData.pricingData?.addons || [], // <--- Dynamic Registry
             discountThreshold: initData.prices.constants?.discountThreshold !== undefined ? initData.prices.constants.discountThreshold : 3, 
             discountPct: initData.prices.constants?.discountPct !== undefined ? initData.prices.constants.discountPct : 0.035,
             discountDecay: initData.prices.constants?.discountDecay !== undefined ? initData.prices.constants.discountDecay : 1,
@@ -201,22 +202,34 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
 
   const hydrateForm = (data, multipliers) => {
     // 🚀 Hydrate Units Array
+    // 🛡️ REHYDRATION SHIELD: Extract Addons from Observations Tag [ADDONS:[...]]
+    const addonsMatch = String(data.observaciones || '').match(/\[ADDONS:([\s\S]*?)\]/);
+    let globalAddonsMap = {};
+    if (addonsMatch) {
+      try { globalAddonsMap = JSON.parse(addonsMatch[1]); } catch(e) { console.error("Error parsing addons JSON", e); }
+    }
+
     const loadedUnits = (data.units && data.units.length > 0) ? data.units.map((u, idx) => {
       const srvs = [];
       if(u.foto) srvs.push('FOTO'); if(u.video) srvs.push('VIDEO'); if(u.reel) srvs.push('REEL');
       if(u.th) srvs.push('TH'); if(u.plano) srvs.push('PLANO'); if(u.tour) srvs.push('TOUR');
       if(u.drone) srvs.push('DRONE'); if(u.fpv) srvs.push('FPV'); if(u.extrasService) srvs.push('EXTRAS');
+      
+      // If multi-unit, addons are keyed by address in the JSON. If single, we take the whole array.
+      const unitAddons = data.units.length > 1 ? (globalAddonsMap[u.indicaciones] || []) : (Array.isArray(globalAddonsMap) ? globalAddonsMap : []);
+
       return {
         id: Date.now() + idx,
         indicaciones: u.indicaciones || '',
         metrosCuadrados: u.metrosCuadrados || '100',
         selectedServices: srvs,
+        selectedAddons: unitAddons, // <--- REHYDRATED
         extrasService: u.extrasService || false,
         extrasDescripcion: u.extrasDescripcion || '',
         costoExtras: u.costoExtras || '',
         pagoEditorExtras: u.pagoEditorExtras || ''
       };
-    }) : [{ id: Date.now(), indicaciones: data.indicaciones || '', metrosCuadrados: data.metrosCuadrados || '100', selectedServices: [], extrasService: false, extrasDescripcion: data.extrasDescripcion || '', costoExtras: data.costoExtras || '', pagoEditorExtras: data.pagoEditorExtras || '' }];
+    }) : [{ id: Date.now(), indicaciones: data.indicaciones || '', metrosCuadrados: data.metrosCuadrados || '100', selectedServices: [], selectedAddons: [], extrasService: false, extrasDescripcion: data.extrasDescripcion || '', costoExtras: data.costoExtras || '', pagoEditorExtras: data.pagoEditorExtras || '' }];
     
     setUnits(loadedUnits);
 
@@ -353,10 +366,23 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
       if (unit.selectedServices.includes('EXTRAS')) {
         unitSubtotal += (Number(unit.costoExtras) || 0);
       }
-      grandTotal += unitSubtotal;
+
+      // --- Addon Calculation ---
+      let unitAddonsSubtotal = 0;
+      let unitAddonsProdPayout = 0;
+      (unit.selectedAddons || []).forEach(addonId => {
+        const addon = db.addons.find(a => a.id === addonId);
+        if (addon) {
+          const addonMult = addon.aplicarMetros ? multValue : 1;
+          unitAddonsSubtotal += (addon.precio * addonMult);
+          unitAddonsProdPayout += (addon.pagoProd * addonMult);
+        }
+      });
+
+      grandTotal += (unitSubtotal + unitAddonsSubtotal);
 
       // --- Producer Unit Total ---
-      let unitProdPayout = (prodFeeBase * multValue) + prodFeeFixed;
+      let unitProdPayout = (prodFeeBase * multValue) + prodFeeFixed + unitAddonsProdPayout;
       if (unit.selectedServices.includes('EXTRAS')) {
         unitProdPayout += (Number(unit.pagoEditorExtras) || 0); 
       }
@@ -672,6 +698,17 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
     }));
   };
 
+  const toggleUnitAddon = (unitId, addonId) => {
+    setUnits(units.map(u => {
+      if (u.id === unitId) {
+        const currentAddons = u.selectedAddons || [];
+        const nextAddons = currentAddons.includes(addonId) ? currentAddons.filter(a => a !== addonId) : [...currentAddons, addonId];
+        return { ...u, selectedAddons: nextAddons };
+      }
+      return u;
+    }));
+  };
+
   // 🚀 TEAM BUILDER HANDLERS
   const addTeamMember = () => setTeamMembers([...teamMembers, { name: '', services: [] }]);
   const removeTeamMember = (idx) => setTeamMembers(teamMembers.filter((_, i) => i !== idx));
@@ -793,6 +830,17 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
       finalObservaciones = finalObservaciones.replace('SOLICITUD WEB - Pendiente', 'SOLICITUD WEB - Aprobada');
     }
     
+    // 🛡️ JSON PACKING: Preserve only clean text, then append Addons and Team tags
+    finalObservaciones = finalObservaciones.replace(/\[TEAM:\{[\s\S]*?\}\]/g, '').replace(/\[ADDONS:[\s\S]*?\]/g, '').trim();
+
+    const addonsPayload = units.length > 1 
+      ? units.reduce((acc, u, idx) => { acc[u.indicaciones || `Unidad ${idx+1}`] = u.selectedAddons; return acc; }, {})
+      : (units[0]?.selectedAddons || []);
+    
+    if (Object.keys(addonsPayload).length > 0 || (Array.isArray(addonsPayload) && addonsPayload.length > 0)) {
+      finalObservaciones += (finalObservaciones ? ' ' : '') + `[ADDONS:${JSON.stringify(addonsPayload)}]`;
+    }
+
     const teamObj = {};
     teamMembers.forEach(m => { if (m.name && m.services.length > 0) teamObj[m.name] = m.services; });
     if (Object.keys(teamObj).length > 0) {
@@ -1063,6 +1111,26 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
                 EXTRAS
               </button>
             </div>
+
+            {db.addons?.length > 0 && (
+              <div className="mt-4">
+                <label className="block text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Servicios Adicionales</label>
+                <div className="flex flex-wrap gap-2">
+                  {db.addons.map(addon => (
+                    <button
+                      key={addon.id}
+                      onClick={() => toggleUnitAddon(unit.id, addon.id)}
+                      className={`px-3 py-1.5 rounded-full text-[10px] md:text-xs font-bold transition-all border
+                        ${(unit.selectedAddons || []).includes(addon.id) 
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-sm' 
+                          : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                    >
+                      + {addon.nombre}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {unit.selectedServices.includes('EXTRAS') && (
               <div className="mt-3 md:mt-6 p-3 md:p-5 bg-orange-50/50 rounded-xl md:rounded-2xl border border-orange-100 animate-in fade-in duration-200">
