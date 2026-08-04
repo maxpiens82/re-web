@@ -416,6 +416,10 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
             <span className="text-gray-300 shrink-0">|</span>
             <span className="font-bold text-gray-700 truncate">{job.producer || '-'}</span>
           </div>
+          
+          <span className="flex items-center gap-1 shrink-0">
+            <CalendarDays size={11} className="text-gray-400" /> {job.date ? String(job.date).substring(0, 5).replace('/', '-') : ''}
+          </span>
         </div>
       </div>
     );
