@@ -213,9 +213,9 @@ export default function Portal() {
           ${borderClass}
         `}
       >
-        <div className="flex justify-between items-start mb-2 gap-2">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <h4 className="font-bold text-gray-800 text-[13px] leading-tight truncate pointer-events-none">
+        <div className="flex justify-between items-start mb-1.5 gap-2">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <h4 className="font-bold text-gray-800 text-[13px] leading-tight truncate pointer-events-none mt-0.5">
               {isVoice && <span className="mr-1">🎙️</span>}
               {job.address}
             </h4>
@@ -225,25 +225,30 @@ export default function Portal() {
                 const cleanAddress = job.address.replace(' - Multiunidad', '').trim();
                 window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddress)}`, '_blank');
               }}
-              className="flex items-center justify-center text-gray-400 hover:text-[#E53B12] bg-gray-50 hover:bg-orange-50 border border-gray-100 hover:border-orange-100 p-1 rounded transition-colors shrink-0"
+              className="flex items-center justify-center text-gray-400 hover:text-[#E53B12] bg-gray-50 hover:bg-orange-50 border border-gray-100 hover:border-orange-100 p-1 rounded transition-colors shrink-0 pointer-events-auto"
               title="Abrir en Maps"
             >
               <MapPin size={12} />
             </button>
           </div>
           
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
             {badge}
-            <span className="text-[11px] font-bold text-gray-600 pointer-events-none">{job.time}</span>
+            <span className="text-[10px] font-black text-gray-700 pointer-events-none bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+              {job.time}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
-          <span className="flex items-center gap-1.5 truncate max-w-[70%] pointer-events-none">
-            <User size={11} className="shrink-0"/> {job.client}
-          </span>
-          <span className="flex items-center gap-1 shrink-0 pointer-events-none">
-            <CalendarDays size={11} /> {job.date.substring(0, 5).replace('/', '-')}
+        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium pointer-events-none mt-1">
+          <div className="flex items-center gap-1.5 truncate flex-1 pr-2">
+            <User size={11} className="shrink-0 text-gray-400"/> 
+            <span className="truncate max-w-[100px] sm:max-w-[140px]">{job.client}</span>
+            <span className="text-gray-300 shrink-0">|</span>
+            <span className="font-bold text-gray-700 truncate">{job.producer || '-'}</span>
+          </div>
+          <span className="flex items-center gap-1 shrink-0">
+            <CalendarDays size={11} className="text-gray-400" /> {job.date.substring(0, 5).replace('/', '-')}
           </span>
         </div>
       </div>
