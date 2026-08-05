@@ -392,8 +392,9 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
     if (globalServiceCount > (db.discountThreshold || 3)) {
       if (isNewEra) {
         const steps = globalServiceCount - (db.discountThreshold || 3);
-        const dPct = db.discountPct !== undefined ? db.discountPct : 0.035;
-        const dDecay = db.discountDecay !== undefined ? db.discountDecay : 0.8;
+        const dPct = db.discountPct || 0.035;
+        // 🛡️ SHIELD: If backend sends 1 or undefined, force it to 0.8 to ensure decay!
+        const dDecay = (db.discountDecay && db.discountDecay !== 1) ? db.discountDecay : 0.8;
         
         // 🚀 PERFECT SYNC SHIELD: Use the exact geometric series formula from Google Sheets
         let totalPct = 0;
