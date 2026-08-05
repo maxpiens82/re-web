@@ -392,16 +392,19 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
     if (globalServiceCount > (db.discountThreshold || 3)) {
       if (isNewEra) {
         const steps = globalServiceCount - (db.discountThreshold || 3);
-        let totalPct = 0;
-        let currentPct = db.discountPct !== undefined ? db.discountPct : 0.035;
+        const dPct = db.discountPct !== undefined ? db.discountPct : 0.035;
         const dDecay = db.discountDecay !== undefined ? db.discountDecay : 1;
         
-        for (let i = 0; i < steps; i++) {
-          totalPct += currentPct;
-          currentPct *= dDecay; // Diminishing returns
+        // 🚀 PERFECT SYNC SHIELD: Use the exact geometric series formula from Google Sheets
+        let totalPct = 0;
+        if (dDecay === 1) {
+          totalPct = steps * dPct;
+        } else {
+          totalPct = dPct * (1 - Math.pow(dDecay, steps)) / (1 - dDecay);
         }
         
-        discount = (window.grandBasePreExtras || 0) * totalPct;
+        // Match the Google Sheets ROUND(..., 0) logic exactly
+        discount = Math.round((window.grandBasePreExtras || 0) * totalPct);
       } else {
         // Old Era ALWAYS uses 3 and $5000 strictly for backward compatibility
         discount = (globalServiceCount - 3) * 5000;
