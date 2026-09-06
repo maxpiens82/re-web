@@ -28,7 +28,6 @@ export function AuthProvider({ children }) {
 
         // 2. No cache found? Ask GAS for permissions (Takes 2 seconds)
         try {
-          console.log('[DEBUG] GAS_API_URL exact value:', JSON.stringify(GAS_API_URL), 'length:', GAS_API_URL ? GAS_API_URL.length : 'undefined');
           const response = await fetch(GAS_API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
