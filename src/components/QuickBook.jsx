@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Mic, Loader2, Check, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { gasPost } from '../lib/gasApi';
 
 export default function QuickBook() {
   const { currentUser } = useAuth();
@@ -129,14 +130,8 @@ export default function QuickBook() {
       }
     };
 
-    const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
-
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      });
+      const response = await gasPost(payload);
       const data = await response.json();
       
       if (data.success) {

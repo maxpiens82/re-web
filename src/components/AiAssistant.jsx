@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, Loader2, User, DatabaseBackup } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { gasPost } from '../lib/gasApi';
 
 export default function AiAssistant() {
   const { currentUser, userRole } = useAuth();
@@ -29,19 +30,15 @@ export default function AiAssistant() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(import.meta.env.VITE_GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'ai_assistant',
-          payload: { 
-            prompt: userMsg,
-            history: messages,
-            userName: currentUser?.reName || currentUser?.displayName,
-            userRole: userRole,
-            deepSearch: isDeepSearch // Pass the toggle state
-          }
-        })
+      const response = await gasPost({
+        action: 'ai_assistant',
+        payload: {
+          prompt: userMsg,
+          history: messages,
+          userName: currentUser?.reName || currentUser?.displayName,
+          userRole: userRole,
+          deepSearch: isDeepSearch // Pass the toggle state
+        }
       });
       
       const data = await response.json();

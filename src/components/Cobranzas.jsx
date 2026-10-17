@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Clock, Building, Mail, DollarSign, Scale, X, Loader2, Send } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-
-const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
+import { gasPost } from '../lib/gasApi';
 
 export default function Cobranzas() {
   const { currentUser } = useAuth();
@@ -45,11 +44,7 @@ export default function Cobranzas() {
 
   const fetchCobranzas = async () => {
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'get_cobranzas' })
-      });
+      const response = await gasPost({ action: 'get_cobranzas' });
       const res = await response.json();
       if (res.success) {
         setData(res);
@@ -129,11 +124,7 @@ export default function Cobranzas() {
     };
 
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'process_payment', payload })
-      });
+      const response = await gasPost({ action: 'process_payment', payload });
       const res = await response.json();
       if (res.success) {
         let msg = '✅ Pago registrado.';
@@ -162,11 +153,7 @@ export default function Cobranzas() {
     };
 
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'process_ajuste', payload })
-      });
+      const response = await gasPost({ action: 'process_ajuste', payload });
       const res = await response.json();
       if (res.success) {
         setActiveModal(null);
@@ -180,11 +167,7 @@ export default function Cobranzas() {
     if (!window.confirm(`¿Enviar email de prueba de ${client.cliente} a tu correo (${currentUser.email})?`)) return;
     setProcessingAction(client.telefono);
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'send_test_receipt', payload: { cliente: client.cliente, empresa: client.empresa, telefono: client.telefono, saldo: client.saldo, targetEmail: currentUser.email } })
-      });
+      const response = await gasPost({ action: 'send_test_receipt', payload: { cliente: client.cliente, empresa: client.empresa, telefono: client.telefono, saldo: client.saldo, targetEmail: currentUser.email } });
       const res = await response.json();
       if (res.success) alert("✅ Enviado correctamente.");
       else alert("Error: " + res.error);

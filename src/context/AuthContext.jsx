@@ -1,10 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, googleProvider } from '../lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { gasPost } from '../lib/gasApi';
 
 const AuthContext = createContext();
-
-const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
@@ -28,11 +27,7 @@ export function AuthProvider({ children }) {
 
         // 2. No cache found? Ask GAS for permissions (Takes 2 seconds)
         try {
-          const response = await fetch(GAS_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'staff_login', payload: { email: user.email } })
-          });
+          const response = await gasPost({ action: 'staff_login', payload: { email: user.email } });
 
           const data = await response.json();
 

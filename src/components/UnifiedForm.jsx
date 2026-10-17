@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE"; 
-const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
+const GAS_API_URL = import.meta.env.VITE_GAS_API_URL; // only for the public ?api=init_v2 GET
+import { gasPost } from '../lib/gasApi';
 
 // Generate dates from 15 days ago to 90 days ahead
 const generateDates = () => {
@@ -141,12 +142,12 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
         if (globalClientDb && globalClientDb.length > 0) {
           fetchPromises.push(Promise.resolve({ success: true, clients: globalClientDb }));
         } else {
-          fetchPromises.push(fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'get_portal_data_v2' }) }).then(r => r.json()));
+          fetchPromises.push(gasPost({ action: 'get_portal_data_v2' }).then(r => r.json()));
         }
 
         if (!isNewBooking) {
           fetchPromises.push(
-            fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'get_booking_details', payload: { eventId: jobId } }) }).then(r => r.json())
+            gasPost({ action: 'get_booking_details', payload: { eventId: jobId } }).then(r => r.json())
           );
         }
 
@@ -501,7 +502,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
       dniCuit: formData.dniCuit, condicionIva: formData.condicionIva
     };
     try {
-      const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'update_client_profile', payload }) });
+      const response = await gasPost({ action: 'update_client_profile', payload });
       const data = await response.json();
       if (data.success) {
         setFieldStates({ name: 'existing', lastName: 'existing', company: 'existing', email: 'existing', phone: 'existing', dniCuit: 'existing', condicionIva: 'existing', modalidadPago: 'existing' });
@@ -732,7 +733,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
     };
 
     try {
-      const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+      const response = await gasPost(payload);
       const data = await response.json();
       if (data.success) {
         alert("✅ Cotización enviada exitosamente a " + formData.email);
@@ -751,10 +752,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
     setShowCancelModal(false);
     setIsSubmitting(true);
     try {
-      const response = await fetch(GAS_API_URL, { 
-        method: 'POST', 
-        body: JSON.stringify({ action: 'cancel_booking', payload: { eventId: jobId } }) 
-      });
+      const response = await gasPost({ action: 'cancel_booking', payload: { eventId: jobId } });
       const data = await response.json();
       if (data.success) {
         alert("✅ Reserva cancelada y archivada exitosamente.");
@@ -840,7 +838,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
     }
 
     try {
-      const response = await fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: actionType, payload }) });
+      const response = await gasPost({ action: actionType, payload });
       const data = await response.json();
       if (data.success) { if (onSuccess) onSuccess(); else onCancel(); } 
       else alert("Error del servidor: " + data.error);
