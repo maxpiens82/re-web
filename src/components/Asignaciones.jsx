@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCw, AlertTriangle, Upload, CheckCircle2, User, Building, Send, Archive, Loader2 } from 'lucide-react';
-
-const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
+import { gasPost } from '../lib/gasApi';
 
 export default function Asignaciones() {
   const [data, setData] = useState({ editors: [], pendingJobs: [], queueErrors: [], readyDeliveries: [] });
@@ -40,11 +39,7 @@ export default function Asignaciones() {
 
   const fetchAssignments = async () => {
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'get_admin_assignments' })
-      });
+      const response = await gasPost({ action: 'get_admin_assignments' });
       const res = await response.json();
       if (res.success) {
         setData(res.data);
@@ -78,11 +73,7 @@ export default function Asignaciones() {
     setProcessingId(localProcessId);
 
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, payload })
-      });
+      const response = await gasPost({ action, payload });
       const res = await response.json();
       if (res.success) {
         fetchAssignments();
@@ -117,11 +108,7 @@ export default function Asignaciones() {
     });
 
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'process_assignments', payload: assignmentPayload })
-      });
+      const response = await gasPost({ action: 'process_assignments', payload: assignmentPayload });
       const res = await response.json();
       if (res.success) {
         alert(`¡Éxito! Se asignaron ${res.count} trabajos.`);

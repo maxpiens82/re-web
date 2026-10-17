@@ -9,6 +9,7 @@ import StaffDashboard from '../components/StaffDashboard';
 import Asignaciones from '../components/Asignaciones';
 import Cobranzas from '../components/Cobranzas';
 import LeadMailer from '../components/LeadMailer';
+import { gasPost } from '../lib/gasApi';
 
 // Make sure this is your actual GAS URL!
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
@@ -54,13 +55,9 @@ export default function Portal() {
     setLoading(true);
     try {
       // 1. Fetch Dashboard Data
-      const reqPortal = fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ 
-          action: 'get_portal_data_v2',
-          payload: { email: currentUser?.email }
-        })
+      const reqPortal = gasPost({
+        action: 'get_portal_data_v2',
+        payload: { email: currentUser?.email }
       }).then(r => r.json());
 
       // 2. 🚀 FAST FETCH CRM FOR THE MODAL (Only if we haven't already loaded it)
@@ -149,13 +146,9 @@ export default function Portal() {
     }
     setIsImpersonating(true);
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ 
-          action: 'impersonate_client', 
-          payload: { adminEmail: currentUser.email, targetPhone: selectedCrmClient.telefono } 
-        })
+      const response = await gasPost({
+        action: 'impersonate_client',
+        payload: { adminEmail: currentUser.email, targetPhone: selectedCrmClient.telefono }
       });
       const res = await response.json();
       if (res.success) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, Clapperboard, Plane, Upload, Download, CheckCircle2, FolderUp, Loader2, ClipboardEdit, User, Clock, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { gasPost } from '../lib/gasApi';
 
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
 
@@ -61,13 +62,9 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
 
   const fetchDashboard = async () => {
     try {
-      const response = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'get_staff_dashboard',
-          payload: { email: currentUser.email, role: userRole }
-        })
+      const response = await gasPost({
+        action: 'get_staff_dashboard',
+        payload: { email: currentUser.email, role: userRole }
       });
       const res = await response.json();
       if (res.success) {
