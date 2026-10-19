@@ -274,8 +274,8 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
     return (
       <div key={`${job.id}_${idx}`} className="bg-white rounded-xl p-3 shadow-sm border-l-4 border-l-gray-300 hover:shadow-md transition-all opacity-80 hover:opacity-100 flex items-center justify-between gap-3">
          <div className="min-w-0 flex-1 leading-tight">
-          <div className="flex items-center justify-between mb-1.5 gap-2">
-            <span className="font-extrabold text-sm text-gray-600 truncate">
+          <div className="flex items-start justify-between mb-1.5 gap-2">
+            <span className="font-extrabold text-sm text-gray-600 line-clamp-2 break-words min-w-0" title={job.loc}>
               {job.loc} {job.m2 && <span className="text-gray-400 font-normal">({job.m2}m²)</span>}
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -314,18 +314,17 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
     return (
       <div key={`${job.id}_${idx}`} className={`bg-white rounded-xl p-3 shadow-sm border-l-4 ${urgency.border} flex items-center justify-between hover:shadow-md transition-shadow gap-3`}>
          <div className="min-w-0 flex-1 leading-tight">
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-extrabold text-sm text-gray-800 truncate pr-2">
-              {job.loc} {job.m2 && <span className="text-gray-400 font-normal">({job.m2}m²)</span>}
-            </span>
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest ${urgency.bgBadge} ${urgency.text} border ${urgency.borderBadge} shrink-0`}>Vence: {job.deadline}</span>
+          {/* The title gets the full width and may wrap to 2 lines; the deadline badge sits with the service below */}
+          <div className="font-extrabold text-sm text-gray-800 line-clamp-2 break-words mb-1" title={job.loc}>
+            {job.loc} {job.m2 && <span className="text-gray-400 font-normal">({job.m2}m²)</span>}
           </div>
           <div className="text-[10px] text-gray-500 truncate mb-1.5 font-medium">
             <span className="font-bold text-gray-700">{job.client}</span> • {job.company}
             {isAdmin && <span className="font-bold text-purple-600 ml-1">[{job.editor}]</span>}
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center flex-wrap gap-1.5">
             <span className="bg-white border border-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1"><SrvIcon type={job.srv}/> {job.srv}</span>
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-widest ${urgency.bgBadge} ${urgency.text} border ${urgency.borderBadge} shrink-0`}>Vence: {job.deadline}</span>
           </div>
         </div>
       
@@ -454,7 +453,8 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
               <span>Post-Producción</span>
               <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-[10px]">{myStandby.length + myReady.length}</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {/* As many columns as fit, but a card is never narrower than 22rem (or the screen, on phones) */}
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] gap-4">
               {myStandby.map(renderStandbyCard)}
               {myReady.map(renderReadyCard)}
             </div>
