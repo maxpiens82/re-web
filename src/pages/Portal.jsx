@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User, Bot, LayoutDashboard, ClipboardList, Banknote, Search, Building, Phone, X, MessageCircle } from 'lucide-react';
+import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User, Bot, LayoutDashboard, ClipboardList, Banknote, Search, Building, Phone, X, MessageCircle, Clapperboard } from 'lucide-react';
 import UnifiedForm from '../components/UnifiedForm';
 import LoadingLogo from '../components/LoadingLogo';
 import AiAssistant from '../components/AiAssistant';
@@ -10,6 +10,9 @@ import Asignaciones from '../components/Asignaciones';
 import Cobranzas from '../components/Cobranzas';
 import LeadMailer from '../components/LeadMailer';
 import { gasPost } from '../lib/gasApi';
+
+// End screen: se carga solo al abrir la pestaña (motor + exportador de video).
+const EndScreenTab = lazy(() => import('../components/EndScreenTab'));
 
 // Make sure this is your actual GAS URL!
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
@@ -482,6 +485,14 @@ export default function Portal() {
           )}
 
           <button 
+            onClick={() => handleJobClick('ENDSCREEN')} 
+            className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition-colors shadow-sm flex items-center justify-center gap-2
+              ${selectedJobId === 'ENDSCREEN' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-[#EB4511]'}`}
+          >
+            <Clapperboard size={16} /> End screen
+          </button>
+
+          <button 
             onClick={() => handleJobClick('NEW')} 
             className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition-colors shadow-sm flex items-center justify-center gap-2
               ${selectedJobId === 'NEW' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-[#EB4511] text-white hover:bg-[#c42e0d]'}`}
@@ -524,6 +535,14 @@ export default function Portal() {
           )}
 
           <button 
+            onClick={() => handleJobClick('ENDSCREEN')} 
+            className="p-3 rounded-xl transition-colors flex items-center justify-center shrink-0 bg-gray-50 text-gray-400 hover:text-[#EB4511]"
+            title="End screen"
+          >
+            <Clapperboard size={20} />
+          </button>
+
+          <button 
             onClick={() => handleJobClick('NEW')} 
             className="flex-1 bg-[#EB4511] text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-[#c42e0d] transition-colors shadow-md flex items-center justify-center gap-1.5 ml-2"
           >
@@ -547,6 +566,10 @@ export default function Portal() {
              <Cobranzas />
            ) : selectedJobId === 'AI' && userRole === 'admin' ? (
              <AiAssistant />
+           ) : selectedJobId === 'ENDSCREEN' ? (
+             <Suspense fallback={<div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 size={16} className="animate-spin" /> Cargando…</div>}>
+               <EndScreenTab />
+             </Suspense>
            ) : (
              <UnifiedForm 
                jobId={selectedJobId} 
