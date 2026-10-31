@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Pause, Play, Loader2, X, ChevronDown, ChevronRight, RotateCcw, Upload, ScanLine } from 'lucide-react';
 import {
-  DEFAULTS, CONTROLS, FORMATS, TEMPLATES, FPS_OPTIONS, RE_COLORS,
+  DEFAULTS, CONTROLS, FORMATS, TEMPLATES, FPS_OPTIONS, RE_COLORS, DRIFT_MODES,
   normalizeParams, createScene, drawFrame, drawSafeZone, fileName, frameCount,
 } from './engine.js';
 import { prepareClientMark, describeMark } from './clientMark.js';
@@ -322,8 +322,20 @@ export default function EndScreen({ brands = [], loadBrandLogo, initialParams })
             </button>
             {advanced && (
               <div className="px-4 pb-4 flex flex-col gap-3">
-                {Object.keys(CONTROLS).filter(k => CONTROLS[k].advanced).map(k => <Slider key={k} k={k} value={params[k]} onChange={set} />)}
-                <button type="button" onClick={() => setParams(p => normalizeParams({ ...p, ...Object.fromEntries(Object.keys(CONTROLS).filter(k => CONTROLS[k].advanced).map(k => [k, DEFAULTS[k]])) }))}
+                {Object.keys(CONTROLS).filter(k => CONTROLS[k].advanced).map(k => (
+                  <div key={k} className="flex flex-col gap-3">
+                    {k === 'driftAngle' && (
+                      <label className="block">
+                        <Label>Movimiento de las partículas</Label>
+                        <select className={inputCls} value={params.driftMode} onChange={e => set('driftMode', e.target.value)}>
+                          {Object.entries(DRIFT_MODES).map(([m, name]) => <option key={m} value={m}>{name}</option>)}
+                        </select>
+                      </label>
+                    )}
+                    {(!CONTROLS[k].drift || CONTROLS[k].drift === params.driftMode) && <Slider k={k} value={params[k]} onChange={set} />}
+                  </div>
+                ))}
+                <button type="button" onClick={() => setParams(p => normalizeParams({ ...p, driftMode: DEFAULTS.driftMode, ...Object.fromEntries(Object.keys(CONTROLS).filter(k => CONTROLS[k].advanced).map(k => [k, DEFAULTS[k]])) }))}
                   className="self-start inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">
                   <RotateCcw size={12} /> Valores por defecto
                 </button>
@@ -353,26 +365,29 @@ export default function EndScreen({ brands = [], loadBrandLogo, initialParams })
           </div>
         </aside>
 
-        {/* ---------- Vista previa ---------- */}
-        <main className="flex-1 flex flex-col items-center gap-3 min-w-0">
-          <div className="w-full flex justify-center">
-            <canvas ref={canvasRef} width={f.W} height={f.H}
-              className="rounded-xl shadow-md bg-[#1D1E20] max-w-full"
-              style={{ maxHeight: 'calc(100vh - 140px)', aspectRatio: `${f.W} / ${f.H}` }} />
-          </div>
-          {fonts === 'error' && <div className="text-xs text-red-600 max-w-[560px] text-center">No se pudo cargar la tipografía Akzidenz Grotesk. Sin ella el video saldría con otra letra, así que no se puede exportar. Recargá la página (F5).</div>}
-          {!scene && fonts === 'loading' && <div className="text-xs text-gray-400 flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Cargando tipografía…</div>}
-          <div className="flex items-center gap-3 w-full max-w-[560px]">
-            <button type="button" onClick={togglePlay} className="text-gray-500 hover:bg-gray-100 p-2 rounded-lg border border-gray-200 bg-white" aria-label={playing ? 'Pausa' : 'Reproducir'}>
-              {playing ? <Pause size={16} /> : <Play size={16} />}
-            </button>
-            <input type="range" min={0} max={1} step={0.001} value={params.dur ? time / params.dur : 0}
-              onChange={e => scrub(Number(e.target.value))} className="flex-1 accent-[#E53B12]" />
-            <span className="text-xs tabular-nums text-gray-500 w-14 text-right">{time.toFixed(2)} s</span>
-            <button type="button" onClick={() => setShowSafe(!showSafe)} title="Zona segura de Instagram (no se exporta)"
-              className={`p-2 rounded-lg border ${showSafe ? 'border-[#E53B12] text-[#E53B12] bg-white' : 'border-gray-200 text-gray-500 bg-white hover:bg-gray-100'}`}>
-              <ScanLine size={16} />
-            </button>
+        {/* ---------- Vista previa: en pantalla grande queda fija mientras se bajan los controles,
+             y su alto deja lugar para el encabezado del portal y la línea de tiempo ---------- */}
+        <main className="flex-1 min-w-0">
+          <div className="lg:sticky lg:top-3 flex flex-col items-center gap-3">
+            <div className="w-full flex justify-center">
+              <canvas ref={canvasRef} width={f.W} height={f.H}
+                className="rounded-xl shadow-md bg-[#1D1E20] max-w-full"
+                style={{ maxHeight: 'calc(100vh - 300px)', aspectRatio: `${f.W} / ${f.H}` }} />
+            </div>
+            {fonts === 'error' && <div className="text-xs text-red-600 max-w-[560px] text-center">No se pudo cargar la tipografía Akzidenz Grotesk. Sin ella el video saldría con otra letra, así que no se puede exportar. Recargá la página (F5).</div>}
+            {!scene && fonts === 'loading' && <div className="text-xs text-gray-400 flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Cargando tipografía…</div>}
+            <div className="flex items-center gap-3 w-full max-w-[560px]">
+              <button type="button" onClick={togglePlay} className="text-gray-500 hover:bg-gray-100 p-2 rounded-lg border border-gray-200 bg-white" aria-label={playing ? 'Pausa' : 'Reproducir'}>
+                {playing ? <Pause size={16} /> : <Play size={16} />}
+              </button>
+              <input type="range" min={0} max={1} step={0.001} value={params.dur ? time / params.dur : 0}
+                onChange={e => scrub(Number(e.target.value))} className="flex-1 accent-[#E53B12]" />
+              <span className="text-xs tabular-nums text-gray-500 w-14 text-right">{time.toFixed(2)} s</span>
+              <button type="button" onClick={() => setShowSafe(!showSafe)} title="Zona segura de Instagram (no se exporta)"
+                className={`p-2 rounded-lg border ${showSafe ? 'border-[#E53B12] text-[#E53B12] bg-white' : 'border-gray-200 text-gray-500 bg-white hover:bg-gray-100'}`}>
+                <ScanLine size={16} />
+              </button>
+            </div>
           </div>
         </main>
       </div>

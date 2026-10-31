@@ -28,6 +28,10 @@ export const TEMPLATES = { re: 'RE!', cobrand: 'Producción para' };
 
 export const FPS_OPTIONS = [24, 25, 30, 60];
 
+// Cómo se mueven las partículas: en una dirección (driftAngle), o radial desde/hacia el centro del
+// resplandor (más rápido cuanto más lejos del centro, así el medio nunca se vacía).
+export const DRIFT_MODES = { direccion: 'En una dirección', afuera: 'Radial hacia afuera', adentro: 'Radial hacia adentro' };
+
 export const DEFAULTS = Object.freeze({
   template: 're',
   format: '9x16',
@@ -39,24 +43,32 @@ export const DEFAULTS = Object.freeze({
   ig: '@somos.re.ok',
   label: 'PRODUCCIÓN PARA',
   client: { name: '', instagram: '', accent: '' },
-  trkStart: 0.42,
-  trkEnd: 0.14,
+  // Movimiento: valores de Max, revisión del 31 Oct 2026 (antes 0.42 / 0.14 / 0.02 / 1.06).
+  trkStart: 0.8,
+  trkEnd: 0.4,
   breath: 0.02,
-  zoom: 1.06,
+  zoom: 1.13,
   density: 1,
   seed: 7,
   fadeIn: 0,
   fadeOut: 0,
+  // Ángulos en grados, 0° = a la derecha, 90° = hacia arriba. 30° es el ángulo del logo; 67° es
+  // el "arriba y a la derecha" de siempre.
+  glowAngle: 30,
+  driftAngle: 67,
+  driftMode: 'direccion',
 });
 
 // Rangos de los controles numéricos (la UI se arma con esto, así no se desincroniza).
 export const CONTROLS = {
   dur: { label: 'Duración', min: 3, max: 8, step: 0.5, unit: 's' },
-  trkStart: { label: 'Tracking inicial', min: 0, max: 0.8, step: 0.01, unit: 'em', advanced: true },
-  trkEnd: { label: 'Tracking final', min: 0, max: 0.4, step: 0.01, unit: 'em', advanced: true },
+  trkStart: { label: 'Tracking inicial', min: 0, max: 1.5, step: 0.01, unit: 'em', advanced: true },
+  trkEnd: { label: 'Tracking final', min: 0, max: 0.8, step: 0.01, unit: 'em', advanced: true },
   breath: { label: 'Respiración del tracking', min: 0, max: 0.06, step: 0.005, unit: 'em', advanced: true },
   zoom: { label: 'Zoom out de textos', min: 1, max: 1.15, step: 0.005, unit: '%', advanced: true },
+  glowAngle: { label: 'Ángulo del resplandor', min: 0, max: 180, step: 1, unit: '°', advanced: true },
   density: { label: 'Densidad de partículas', min: 0, max: 2, step: 0.1, unit: '×', advanced: true },
+  driftAngle: { label: 'Dirección de las partículas', min: 0, max: 359, step: 1, unit: '°', advanced: true, drift: 'direccion' },
   seed: { label: 'Semilla de partículas', min: 1, max: 99, step: 1, unit: '', advanced: true },
   fadeIn: { label: 'Entrada desde negro', min: 0, max: 1, step: 0.1, unit: 's', advanced: true },
   fadeOut: { label: 'Salida a negro', min: 0, max: 1, step: 0.1, unit: 's', advanced: true },
@@ -100,6 +112,7 @@ export function normalizeParams(input = {}) {
   if (!TEMPLATES[p.template]) p.template = DEFAULTS.template;
   if (!FORMATS[p.format]) p.format = DEFAULTS.format;
   if (!FPS_OPTIONS.includes(+p.fps)) p.fps = DEFAULTS.fps;
+  if (!DRIFT_MODES[p.driftMode]) p.driftMode = DEFAULTS.driftMode;
   p.fps = +p.fps;
   for (const [k, c] of Object.entries(CONTROLS)) {
     const v = Number(p[k]);
@@ -215,7 +228,10 @@ export function createScene(params, assets = {}, opts = {}) {
   const createCanvas = opts.createCanvas || ((w, h) => new OffscreenCanvas(w, h));
   const fonts = opts.fonts || DEFAULT_FONTS;
   const S = Math.min(p.W / 1080, 0.62 * p.H / 950, 1);
-  const cx = p.W / 2, cy = p.H / 2;
+  // El contenido se centra en la zona que Instagram deja ver, no en el cuadro: en 9:16 esa zona
+  // está 67 px más arriba (Max, 31 Oct 2026). En los otros formatos es lo mismo.
+  const safe = FORMATS[p.format].safe;
+  const cx = p.W / 2, cy = (safe.top + safe.bottom) / 2;
   const measure = createCanvas(8, 8).getContext('2d');
   const items = layoutFor(p).map(it => ({ ...it, cy: cy + it.y * 1080 * S }));
 
@@ -257,12 +273,12 @@ export function createScene(params, assets = {}, opts = {}) {
     bg: buildBackground(p, createCanvas), particles: buildParticles(p) };
 }
 
-// ---------- fondo: grafito + resplandor diagonal a 30° (el ángulo del logo) + viñeta ----------
+// ---------- fondo: grafito + resplandor diagonal a glowAngle (30° = el ángulo del logo) + viñeta ----------
 function buildBackground(p, createCanvas) {
   const c = createCanvas(p.W, p.H), g = c.getContext('2d');
   g.fillStyle = RE_COLORS.grafito; g.fillRect(0, 0, p.W, p.H);
   const [r, gg, b] = hexRgb(p.accent), cx = p.W / 2, cy = p.H * 0.47, L = Math.max(p.W, p.H);
-  g.save(); g.translate(cx, cy); g.rotate(-Math.PI / 6); g.scale(1, 0.27);
+  g.save(); g.translate(cx, cy); g.rotate(-p.glowAngle * Math.PI / 180); g.scale(1, 0.27);
   const rad = g.createRadialGradient(0, 0, 0, 0, 0, L * 0.95);
   rad.addColorStop(0, `rgba(${r},${gg},${b},0.24)`);
   rad.addColorStop(0.45, `rgba(${r},${gg},${b},0.10)`);
@@ -275,36 +291,64 @@ function buildBackground(p, createCanvas) {
 }
 
 // ---------- partículas: polvo fino concentrado en la banda + bokeh suave ----------
+// Velocidades: en modo 'direccion', ~15 px/s (polvo) y ~10 px/s (bokeh) hacia driftAngle, con algo
+// de variación propia. En modo radial, una tasa: la distancia al centro crece (afuera) o se achica
+// (adentro) ~2,5 %/s.
+const DUST_SPEED = 15, BOKEH_SPEED = 10, DUST_RATE = 0.025, BOKEH_RATE = 0.017;
+
 function buildParticles(p) {
   const rnd = mulberry32(p.seed * 9973), S = Math.min(p.W, p.H) / 1080, cx = p.W / 2, cy = p.H * 0.47;
-  const n = Math.round(2600 * p.density * (p.W * p.H) / (1080 * 1920)), dust = [];
-  const ca = Math.cos(-Math.PI / 6), sa = Math.sin(-Math.PI / 6);
+  const g = -p.glowAngle * Math.PI / 180, ca = Math.cos(g), sa = Math.sin(g);
+  const a = p.driftAngle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a);  // y de la pantalla va hacia abajo
+  // Hacia adentro, lo que hoy está en el borde termina más cerca del centro: se siembra un área más
+  // grande (con la misma densidad) para que los bordes no se vacíen.
+  const grow = p.driftMode === 'adentro' ? 1 / (1 - DUST_RATE * 1.3 * p.dur) : 1;
+  const spanX = (p.W + 120) * grow, spanY = (p.H + 120) * grow;
+  const n = Math.round(2600 * p.density * (p.W * p.H) / (1080 * 1920) * grow * grow), dust = [];
+  const velocity = (speed, along, across) => [(dx * along - dy * across) * speed * S, (dy * along + dx * across) * speed * S];
   let guard = 0;
   while (dust.length < n && guard++ < n * 20) {
-    const x = rnd() * (p.W + 120) - 60, y = rnd() * (p.H + 120) - 60;
+    const x = p.W / 2 + (rnd() - 0.5) * spanX, y = p.H / 2 + (rnd() - 0.5) * spanY;
     const u = (x - cx) * ca - (y - cy) * sa, v = (x - cx) * sa + (y - cy) * ca;
     const pr = 0.12 + 0.88 * Math.exp(-((v / (330 * S)) ** 2)) * Math.exp(-((u / (1200 * S)) ** 2));
-    if (rnd() < pr) dust.push({ x, y, s: (0.6 + rnd() * 1.6) * S, a: 0.15 + rnd() * 0.6,
-      vx: (6 + (rnd() - 0.5) * 8) * S, vy: (-14 + (rnd() - 0.5) * 10) * S, ph: rnd() * 6.283, tw: 0.6 + rnd() * 1.6, warm: rnd() < 0.35 });
+    if (rnd() < pr) {
+      const along = 1 + (rnd() - 0.5) * 0.6, across = (rnd() - 0.5) * 0.5;
+      const [vx, vy] = velocity(DUST_SPEED, along, across);
+      dust.push({ x, y, s: (0.6 + rnd() * 1.6) * S, a: 0.15 + rnd() * 0.6, vx, vy, rate: DUST_RATE * along,
+        ph: rnd() * 6.283, tw: 0.6 + rnd() * 1.6, warm: rnd() < 0.35 });
+    }
   }
   const bok = [], nb = Math.round(34 * Math.min(p.density, 1.5));
-  for (let i = 0; i < nb; i++) bok.push({ x: rnd() * p.W, y: rnd() * p.H, r: (14 + rnd() * 46) * S,
-    a: 0.03 + rnd() * 0.07, vx: (4 + (rnd() - 0.5) * 6) * S, vy: (-9 + (rnd() - 0.5) * 8) * S, ph: rnd() * 6.283 });
-  return { dust, bok };
+  for (let i = 0; i < nb; i++) {
+    const x = rnd() * p.W, y = rnd() * p.H, r = (14 + rnd() * 46) * S, al = 0.03 + rnd() * 0.07;
+    const along = 1 + (rnd() - 0.5) * 0.6, across = (rnd() - 0.5) * 0.6;
+    const [vx, vy] = velocity(BOKEH_SPEED, along, across);
+    bok.push({ x, y, r, a: al, vx, vy, rate: BOKEH_RATE * along, ph: rnd() * 6.283 });
+  }
+  return { dust, bok, cx, cy };
+}
+
+// Dónde está una partícula en t (sin el temblor propio).
+function particleAt(p, parts, k, t) {
+  if (p.driftMode === 'direccion') return [k.x + k.vx * t, k.y + k.vy * t];
+  const f = 1 + (p.driftMode === 'afuera' ? 1 : -1) * k.rate * t;
+  return [parts.cx + (k.x - parts.cx) * f, parts.cy + (k.y - parts.cy) * f];
 }
 
 function drawParticles(g, scene, t) {
-  const { p } = scene, { dust, bok } = scene.particles;
+  const { p } = scene, parts = scene.particles, { dust, bok } = parts;
   for (const k of bok) {
-    let x = (k.x + k.vx * t) % p.W; if (x < 0) x += p.W;
-    const y = ((k.y + k.vy * t) % p.H + p.H) % p.H;
+    let [x, y] = particleAt(p, parts, k, t);
+    // En una dirección, el bokeh que sale por un borde vuelve a entrar por el otro.
+    if (p.driftMode === 'direccion') { x = ((x % p.W) + p.W) % p.W; y = ((y % p.H) + p.H) % p.H; }
     const a = k.a * (0.8 + 0.2 * Math.sin(t * 1.3 + k.ph));
     const gr = g.createRadialGradient(x, y, 0, x, y, k.r);
     gr.addColorStop(0, `rgba(255,214,196,${a})`); gr.addColorStop(0.7, `rgba(255,214,196,${a * 0.8})`); gr.addColorStop(1, 'rgba(255,214,196,0)');
     g.fillStyle = gr; g.beginPath(); g.arc(x, y, k.r, 0, 6.283); g.fill();
   }
   for (const d of dust) {
-    const x = d.x + d.vx * t + 9 * Math.sin(t * 0.7 + d.ph), y = d.y + d.vy * t + 9 * Math.cos(t * 0.5 + d.ph);
+    const [px, py] = particleAt(p, parts, d, t);
+    const x = px + 9 * Math.sin(t * 0.7 + d.ph), y = py + 9 * Math.cos(t * 0.5 + d.ph);
     g.globalAlpha = d.a * (0.55 + 0.45 * Math.sin(t * d.tw * 2 + d.ph));
     g.fillStyle = d.warm ? '#FFAA8C' : '#F0F0F0';
     g.beginPath(); g.arc(x, y, d.s, 0, 6.283); g.fill();
