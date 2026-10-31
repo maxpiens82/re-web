@@ -767,6 +767,22 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
     }
   };
 
+  // 🚀 REJECT REQUEST (only needs the ID, so none of the form checks apply)
+  const handleRejectBooking = async () => {
+    if (!confirm("¿Rechazar solicitud?")) return;
+    setIsSubmitting(true);
+    try {
+      const response = await gasPost({ action: 'reject_booking', payload: { eventId: jobId } });
+      const data = await response.json();
+      if (data.success) { if (onSuccess) onSuccess(); else onCancel(); }
+      else alert("Error del servidor: " + data.error);
+    } catch (err) {
+      alert("Fallo de red al intentar rechazar.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // 🚀 FORM SUBMIT
   const handleFormSubmit = async (actionType) => {
     setIsSubmitting(true);
@@ -1273,7 +1289,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
               </>
             ) : isWebRequest ? (
               <>
-                <button onClick={() => { if(confirm("¿Rechazar solicitud?")) handleFormSubmit('reject_booking'); }} disabled={isSubmitting} className="px-6 py-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold rounded-full text-[11px] uppercase tracking-wider disabled:opacity-50 transition-colors whitespace-nowrap">Rechazar</button>
+                <button onClick={handleRejectBooking} disabled={isSubmitting} className="px-6 py-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold rounded-full text-[11px] uppercase tracking-wider disabled:opacity-50 transition-colors whitespace-nowrap">Rechazar</button>
                 <button onClick={() => handleFormSubmit('update_booking')} disabled={isSubmitting} className="px-8 py-3.5 bg-yellow-500 hover:bg-yellow-600 text-white font-extrabold rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 transition-colors whitespace-nowrap">
                   {isSubmitting ? <><MiniLogo /> Aprobando</> : 'Aprobar'}
                 </button>
@@ -1321,7 +1337,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
             </>
           ) : isWebRequest ? (
             <>
-              <button onClick={() => { if(confirm("¿Rechazar solicitud?")) handleFormSubmit('reject_booking'); }} disabled={isSubmitting} className="flex-1 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold rounded-xl text-[11px] uppercase tracking-wider disabled:opacity-50 transition-colors whitespace-nowrap">Rechazar</button>
+              <button onClick={handleRejectBooking} disabled={isSubmitting} className="flex-1 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold rounded-xl text-[11px] uppercase tracking-wider disabled:opacity-50 transition-colors whitespace-nowrap">Rechazar</button>
               <button onClick={() => handleFormSubmit('update_booking')} disabled={isSubmitting} className="flex-1 px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-extrabold rounded-xl text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 transition-colors whitespace-nowrap">
                 {isSubmitting ? <><MiniLogo /> Aprobando</> : 'Aprobar'}
               </button>
