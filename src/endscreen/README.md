@@ -65,8 +65,16 @@ Both actions are `marcas_*`, so the auth gate always verifies the login (any sta
 - **Safe zone, every frame:** each line is fitted against its widest tracking, the zoom and its
   rise while it's visible; if even then it doesn't fit, `drawText` caps that line's tracking. A
   line that doesn't fit at 50% size even without tracking marks `scene.overflow`, and the screen
-  blocks export. Known and left for Max's motion review: in 9:16 the bottom lines dip below the
-  Reels limit while they rise in (RE! ~15 px, Producción para ~2 px); settled, they're inside.
+  blocks export. The content is centred on the area Instagram shows, not on the frame (in 9:16
+  that's 67 px higher), so the bottom lines no longer dip below the Reels limit while they rise.
+- **Motion defaults** are Max's values from his review on 31 Oct 2026: tracking 0.8 → 0.4 em,
+  breath 0.02, zoom 13%, density 1, seed 7, no fades. With that wide tracking some 9:16 lines are
+  fitted smaller (top line 83%, WhatsApp 89%). Tracking sliders go up to 1.5 / 0.8 em.
+- **Glow and particles** (Max, 31 Oct 2026): `glowAngle` (degrees, 0° horizontal, 30° = the
+  logo's angle, the default) turns the glow and the band where the dust gathers. `driftMode`:
+  `direccion` (towards `driftAngle`, 0° = right, 90° = up, default 67° = the original
+  up-and-right), `afuera` / `adentro` (radial from/to the glow's centre, faster further out, so
+  the middle never empties; `adentro` seeds a larger area so the edges don't either).
 - **Last frame:** the export draws `frameCount` frames at `frameTime(i)`; the fade-out ends at
   `lastFrameTime`, so the last exported frame is fully black.
 - **Texts** are kept as typed (spaces included) and NFC-normalised; they're trimmed when laid out

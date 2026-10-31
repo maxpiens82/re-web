@@ -29,11 +29,8 @@ function fakeLogo(colors, w = 600, h = 200) {
   return c;
 }
 
-/**
- * Píxeles visibles de la capa de contenido que caen fuera de la zona segura (hasta 3).
- * ignoreBottom: no mira debajo del límite inferior (ese caso de 9:16 se mide aparte, ver KNOWN).
- */
-function outsideSafe(scene, t, canvas, wrap, { ignoreBottom = false } = {}) {
+/** Píxeles visibles de la capa de contenido que caen fuera de la zona segura (hasta 3). */
+function outsideSafe(scene, t, canvas, wrap) {
   const { W, H, format } = scene.p, s = FORMATS[format].safe;
   const g = canvas.getContext('2d');
   drawFrame(wrap ? wrap(g) : g, scene, t, { layers: 'content' });
@@ -41,7 +38,6 @@ function outsideSafe(scene, t, canvas, wrap, { ignoreBottom = false } = {}) {
   const hits = [];
   const scan = (y, x0, x1) => { for (let x = x0; x < x1 && hits.length < 3; x++) if (d[(y * W + x) * 4 + 3] >= 40) hits.push([x, y]); };
   for (let y = 0; y < H && hits.length < 3; y++) {
-    if (y > s.bottom && ignoreBottom) break;
     if (y < s.top || y > s.bottom) { scan(y, 0, W); continue; }
     const right = s.notchY != null && y > s.notchY ? s.notchRight : s.right;
     scan(y, 0, s.left); scan(y, right + 1, W);
@@ -52,28 +48,13 @@ function outsideSafe(scene, t, canvas, wrap, { ignoreBottom = false } = {}) {
 const instants = p => { const ts = []; for (let k = 0; k / 15 <= lastFrameTime(p) + 1e-9; k++) ts.push(k / 15); return ts; };
 
 /** Cada 1/15 s, de 0 al último cuadro exportado. Devuelve el primer instante con algo afuera. */
-function firstEscape(scene, wrap, o) {
+function firstEscape(scene, wrap) {
   const canvas = createCanvas(scene.p.W, scene.p.H);
   for (const t of instants(scene.p)) {
-    const hits = outsideSafe(scene, t, canvas, wrap, o);
+    const hits = outsideSafe(scene, t, canvas, wrap);
     if (hits.length) return { t, hits };
   }
   return null;
-}
-
-/** Cuántos px por debajo del límite inferior llega el contenido, en el peor instante. */
-function belowBottom(scene) {
-  const { W, H, format } = scene.p, limit = FORMATS[format].safe.bottom;
-  const canvas = createCanvas(W, H), g = canvas.getContext('2d');
-  let worst = { px: 0, t: 0 };
-  for (const t of instants(scene.p)) {
-    drawFrame(g, scene, t, { layers: 'content' });
-    const d = g.getImageData(0, limit + 1, W, H - limit - 1).data;
-    for (let i = d.length - 1; i >= 3; i -= 4) {
-      if (d[i] >= 40) { const px = Math.floor((i >> 2) / W) + 1; if (px > worst.px) worst = { px, t }; break; }
-    }
-  }
-  return worst;
 }
 
 // El mismo contexto, pero sin letterSpacing: obliga al dibujo letra por letra (navegadores viejos).
@@ -89,21 +70,13 @@ const TEXTS = {
   normales: { client: { name: 'Inmobiliaria', instagram: '@inmobiliaria' } },
   largos: {
     tag: 'CONTENIDO AUDIOVISUAL Y FOTOGRAFÍA\nPARA REAL ESTATE Y DESARROLLOS',
-    web: 'www.unawebmuchisimomaslargadelonormal.com.ar',
+    web: 'www.coldwellbankerseniority.com.ar',
     wa: 'WhatsApp +54 9 11 6887-6507 · 11 5555-5555',
     ig: '@somos.re.ok.produccionesaudiovisuales',
     label: 'PRODUCCIÓN AUDIOVISUAL PARA',
     client: { name: 'Coldwell Banker Seniority', instagram: '@coldwellbankerseniorityargentina' },
   },
 };
-
-// Conocido (REDES_BUILD.md, paso 2): en 9:16 las líneas de abajo, mientras suben al entrar, pasan
-// el límite inferior de Reels (RE!: ~17 px a t≈1,5 s; Producción para: ~3 px a t≈1,55 s). Ya
-// asentadas quedan adentro. Es diseño, no ajuste de textos: va a la revisión de movimiento de Max
-// y no se cambia sin él. Por eso en 9:16 el control general no mira el borde inferior, y ese borde
-// tiene su propio test, marcado todo, que muestra la medida.
-const KNOWN_BOTTOM = '9x16';
-const KNOWN_TODO = 'conocido: las líneas de abajo entran por debajo del límite de Reels; revisión de movimiento';
 
 function scene(template, format, texts, extra = {}) {
   const params = { template, format, ...texts, ...extra };
@@ -172,15 +145,9 @@ for (const template of Object.keys(TEMPLATES)) {
       test(`zona segura cada 1/15 s: ${name}`, () => {
         const s = scene(template, format, TEXTS[kind]);
         assert.deepEqual(s.overflow, []);
-        const bad = firstEscape(s, null, { ignoreBottom: format === KNOWN_BOTTOM });
+        const bad = firstEscape(s);
         assert.equal(bad, null, bad && `se sale en t=${bad.t.toFixed(2)} s: ${JSON.stringify(bad.hits)}`);
       });
-      if (format === KNOWN_BOTTOM) {
-        test(`borde inferior 9:16: ${template} ${kind}`, { todo: KNOWN_TODO }, () => {
-          const w = belowBottom(scene(template, format, TEXTS[kind]));
-          assert.equal(w.px, 0, `llega ${w.px} px debajo del límite en t=${w.t.toFixed(2)} s`);
-        });
-      }
     }
   }
 }
@@ -190,7 +157,7 @@ for (const template of Object.keys(TEMPLATES)) {
   for (const format of Object.keys(FORMATS)) {
     test(`zona segura letra por letra: ${template} ${format} largos`, () => {
       const s = scene(template, format, TEXTS.largos);
-      const bad = firstEscape(s, withoutLetterSpacing, { ignoreBottom: format === KNOWN_BOTTOM });
+      const bad = firstEscape(s, withoutLetterSpacing);
       assert.equal(bad, null, bad && `se sale en t=${bad.t.toFixed(2)} s: ${JSON.stringify(bad.hits)}`);
     });
   }
@@ -294,4 +261,40 @@ test('sin logo se escribe el nombre tal cual está en el campo', () => {
     { reLogo, client: prepareClientMark({ createCanvas }) }, opts);
   assert.equal(s.p.client.name, 'Juan Manuel');
   assert.equal(firstEscape(s), null);
+});
+
+test('resplandor y partículas: ángulos y modos', () => {
+  const p = normalizeParams({ glowAngle: 400, driftAngle: -5, driftMode: 'nada' });
+  assert.equal(p.glowAngle, 180); assert.equal(p.driftAngle, 0); assert.equal(p.driftMode, 'direccion');
+  assert.equal(DEFAULTS.glowAngle, 30); assert.equal(DEFAULTS.driftAngle, 67);
+  const frame = params => {
+    const s = createScene({ format: '1x1', ...params }, { reLogo }, opts);
+    const c = createCanvas(s.p.W, s.p.H); drawFrame(c.getContext('2d'), s, 3);
+    return createHash('sha1').update(c.getContext('2d').getImageData(0, 0, s.p.W, s.p.H).data).digest('hex');
+  };
+  const base = frame({});
+  for (const change of [{ glowAngle: 120 }, { driftAngle: 200 }, { driftMode: 'afuera' }, { driftMode: 'adentro' }]) {
+    assert.notEqual(frame(change), base, `cambia el cuadro: ${JSON.stringify(change)}`);
+    assert.equal(frame(change), frame(change), `determinista: ${JSON.stringify(change)}`);
+  }
+});
+
+test('partículas: la dirección es la pedida, y radial hacia afuera se aleja del centro', () => {
+  const mean = s => {
+    const d = s.particles.dust; let vx = 0, vy = 0;
+    for (const k of d) { vx += k.vx; vy += k.vy; }
+    return [vx / d.length, vy / d.length];
+  };
+  const [vx0, vy0] = mean(createScene({ driftAngle: 0 }, { reLogo }, opts));
+  assert.ok(vx0 > 10 && Math.abs(vy0) < 2, `0° = a la derecha (${vx0.toFixed(1)}, ${vy0.toFixed(1)})`);
+  const [vx90, vy90] = mean(createScene({ driftAngle: 90 }, { reLogo }, opts));
+  assert.ok(vy90 < -10 && Math.abs(vx90) < 2, `90° = hacia arriba (${vx90.toFixed(1)}, ${vy90.toFixed(1)})`);
+  // Afuera: la distancia media al centro crece con el tiempo; adentro, se achica.
+  const spread = (mode, t) => {
+    const s = createScene({ driftMode: mode, format: '1x1' }, { reLogo }, opts), { cx, cy, dust } = s.particles;
+    const f = 1 + (mode === 'afuera' ? 1 : -1) * 0.025 * t;
+    return dust.reduce((a, k) => a + Math.hypot((k.x - cx) * f, (k.y - cy) * f), 0) / dust.length;
+  };
+  assert.ok(spread('afuera', 5) > spread('afuera', 0));
+  assert.ok(spread('adentro', 5) < spread('adentro', 0));
 });
