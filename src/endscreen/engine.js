@@ -69,9 +69,9 @@ export const CONTROLS = {
   glowAngle: { label: 'Ángulo del resplandor', min: 0, max: 180, step: 1, unit: '°', advanced: true },
   density: { label: 'Densidad de partículas', min: 0, max: 2, step: 0.1, unit: '×', advanced: true },
   driftAngle: { label: 'Dirección de las partículas', min: 0, max: 359, step: 1, unit: '°', advanced: true, drift: 'direccion' },
-  seed: { label: 'Semilla de partículas', min: 1, max: 99, step: 1, unit: '', advanced: true },
-  fadeIn: { label: 'Entrada desde negro', min: 0, max: 1, step: 0.1, unit: 's', advanced: true },
-  fadeOut: { label: 'Salida a negro', min: 0, max: 1, step: 0.1, unit: 's', advanced: true },
+  seed: { label: 'Seed', min: 1, max: 99, step: 1, unit: '', advanced: true },
+  fadeIn: { label: 'Fade in', min: 0, max: 1, step: 0.1, unit: 's', advanced: true },
+  fadeOut: { label: 'Fade out', min: 0, max: 1, step: 0.1, unit: 's', advanced: true },
 };
 
 // Fuentes: mismas familias y pesos que re-web (src/index.css): 300 = Light Extended, 500 = Extended.

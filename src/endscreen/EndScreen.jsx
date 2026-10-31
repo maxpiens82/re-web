@@ -384,8 +384,8 @@ export default function EndScreen({ brands = [], loadBrandLogo, initialParams })
                 onChange={e => scrub(Number(e.target.value))} className="flex-1 accent-[#E53B12]" />
               <span className="text-xs tabular-nums text-gray-500 w-14 text-right">{time.toFixed(2)} s</span>
               <button type="button" onClick={() => setShowSafe(!showSafe)} title="Zona segura de Instagram (no se exporta)"
-                className={`p-2 rounded-lg border ${showSafe ? 'border-[#E53B12] text-[#E53B12] bg-white' : 'border-gray-200 text-gray-500 bg-white hover:bg-gray-100'}`}>
-                <ScanLine size={16} />
+                className={`inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[11px] font-bold uppercase tracking-wider whitespace-nowrap ${showSafe ? 'border-[#E53B12] text-[#E53B12] bg-white' : 'border-gray-200 text-gray-500 bg-white hover:bg-gray-100'}`}>
+                <ScanLine size={16} /> Zona segura
               </button>
             </div>
           </div>
