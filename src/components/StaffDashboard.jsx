@@ -413,6 +413,18 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
             <span className="font-bold text-gray-700 truncate">{job.producer || '-'}</span>
           </div>
         </div>
+        {/* Street folder (re-backend CalleCode.js): opens the Drive folder, in the Drive app on a phone */}
+        {!isPending && job.calleUrl && (
+          <a
+            href={job.calleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-[#E53B12] bg-orange-50 hover:bg-orange-100 border border-orange-100 px-2 py-1 rounded-md transition-colors"
+          >
+            <FolderUp size={12} /> Subir material de la calle
+          </a>
+        )}
       </div>
     );
   };
