@@ -29,7 +29,7 @@ export default function NoPublicarSwitch({ eventId }) {
   };
 
   return (
-    <label className="inline-flex items-center gap-2 text-[10px] md:text-xs font-bold text-gray-500 cursor-pointer select-none" title={state.error || ''}>
+    <label className="shrink-0 whitespace-nowrap inline-flex items-center gap-2 text-[10px] md:text-xs font-bold text-gray-500 cursor-pointer select-none" title={state.error || ''}>
       <span className={`relative inline-block w-8 h-4 rounded-full transition-colors ${state.activo ? 'bg-red-500' : 'bg-gray-300'}`}>
         <input type="checkbox" className="sr-only" checked={state.activo} disabled={state.loading} onChange={toggle} />
         <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${state.activo ? 'left-4' : 'left-0.5'}`} />
