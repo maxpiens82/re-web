@@ -241,7 +241,7 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
             <>
               <button 
                 onClick={() => window.open(job.linkCrudos, '_blank')}
-                className="w-10 h-10 flex items-center justify-center bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors border border-gray-200 shadow-sm shrink-0" 
+                className="w-10 h-8 md:h-10 flex items-center justify-center bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors border border-gray-200 shadow-sm shrink-0" 
                 title="Abrir Carpeta Crudos"
               >
                 <Upload size={18} strokeWidth={2.5}/>
@@ -249,7 +249,7 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
               <button 
                 onClick={() => handleAction('markUploaded', job.id, job.srv.join(','), job.loc)}
                 disabled={processingId === `${job.id}_${job.srv.join(',')}`}
-                className="w-10 h-10 flex items-center justify-center bg-emerald-100 text-emerald-700 hover:bg-emerald-500 hover:text-white rounded-xl transition-colors border border-emerald-200 shadow-sm shrink-0" 
+                className="w-10 h-8 md:h-10 flex items-center justify-center bg-emerald-100 text-emerald-700 hover:bg-emerald-500 hover:text-white rounded-xl transition-colors border border-emerald-200 shadow-sm shrink-0" 
                 title="Confirmar Subida"
               >
                 {processingId === `${job.id}_${job.srv.join(',')}` ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} strokeWidth={2.5}/>} 
@@ -265,8 +265,9 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
             </button>
           )}
         </div>
-        {/* Under Checkout, not beside the services: on phones that line has no room left */}
-        {job.status !== 'checked_out' && job.calleUrl && (
+        {/* Under the buttons, not beside the services: on phones that line has no room left. Kept after
+            checkout (the folder moves into CRUDOS, same link) until the producer confirms the upload */}
+        {job.calleUrl && (
           <a
             href={job.calleUrl}
             target="_blank"
