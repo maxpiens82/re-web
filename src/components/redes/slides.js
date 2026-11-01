@@ -24,7 +24,8 @@ const MARGIN = 72;          // px kept free from the edges for text (spec §7.2.
 const MIN_SCALE = 0.6;      // below this the text is "muy largo" and the approver shortens it
 const MIN_FIT = 0.4;        // templates with data-ancho-max shrink down to this, then warn
 const FILLED = ['barrio', 'servicios', 'inmobiliaria'];   // fields the draft fills; the rest keep the template's text
-const SERVICE_NAMES = { FOTO: 'Foto', VIDEO: 'Video', REEL: 'Reel', TH: 'Talking head', PLANO: 'Plano', TOUR: 'Tour 360', DRONE: 'Drone', FPV: 'Drone FPV' };
+// Short on purpose (Max, 1 Nov): Serie 2's sheet column is narrow; captions keep the full names.
+const SERVICE_NAMES = { FOTO: 'Foto', VIDEO: 'Video', REEL: 'Reel', TH: 'TH', PLANO: 'Plano', TOUR: '360', DRONE: 'Drone', FPV: 'FPV' };
 
 // "Foto · Video · Drone" from the booking's service codes.
 export const servicesText = codes => (codes || []).map(c => SERVICE_NAMES[c] || c).join(' · ');
