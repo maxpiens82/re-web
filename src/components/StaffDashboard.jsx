@@ -231,6 +231,17 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
             <span className="bg-white border border-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1 w-fit">
               <SrvIcon type={job.srv[0]}/> {job.srv.join(', ')}
             </span>
+            {job.status !== 'checked_out' && job.calleUrl && (
+              <a
+                href={job.calleUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[9px] font-bold text-[#E53B12] bg-orange-50 hover:bg-orange-100 border border-orange-100 px-1.5 py-0.5 rounded transition-colors whitespace-nowrap"
+                title="Carpeta para fotos y videos sueltos de la sesión"
+              >
+                <FolderUp size={11} /> Material de la calle
+              </a>
+            )}
           </div>
         </div>
 
