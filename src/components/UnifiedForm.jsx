@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Camera, Video, Clapperboard, Mic, Map as MapIcon, Compass, Plane, Crosshair,
   MapPin, Calendar, User, Building, Mail, Phone, CheckCircle2,
-  ChevronLeft, ChevronRight, Loader2, AlertCircle, Search, Briefcase, Plus, X
+  ChevronLeft, ChevronRight, Loader2, AlertCircle, Search, Briefcase, Plus, X, Copy, Check
 } from 'lucide-react';
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE"; 
@@ -46,6 +46,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
   const [error, setError] = useState(null);
   const { userRole } = useAuth();
   const [bookingEventId, setBookingEventId] = useState(''); // P-/U-… of a loaded booking (for Redes)
+  const [idCopied, setIdCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingClient, setIsSavingClient] = useState(false); 
   const [isSendingQuote, setIsSendingQuote] = useState(false); 
@@ -897,17 +898,25 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
       
       {/* HEADER */}
       <div className="px-4 py-3 md:px-8 md:py-5 border-b border-gray-200 flex justify-between items-center bg-white z-10 shrink-0">
-        <div className="truncate pr-4 flex-1 flex flex-col md:flex-row md:items-center gap-2">
-          <h2 className="text-base md:text-xl font-extrabold uppercase tracking-wide truncate" style={{ color: brandColor }}>
+        <div className="min-w-0 pr-4 flex-1 flex flex-col md:flex-row md:items-center gap-2">
+          <h2 className="text-base md:text-xl font-extrabold uppercase tracking-wide truncate md:shrink-0" style={{ color: brandColor }}>
             {modeTitle}
           </h2>
           {!isNewBooking && !isWebRequest && (
-            <div className="flex items-center gap-3">
-              <p className="hidden md:block text-xs text-gray-400 font-bold tracking-wider truncate">ID: {jobId}</p>
+            <div className="min-w-0 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <button
+                type="button"
+                title={`ID: ${jobId}`}
+                onClick={() => navigator.clipboard.writeText(String(jobId)).then(() => { setIdCopied(true); setTimeout(() => setIdCopied(false), 1500); })}
+                className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 text-[10px] md:text-xs font-bold px-2.5 py-1 rounded text-gray-500 hover:bg-gray-100 border border-gray-200 transition-colors shadow-sm"
+              >
+                {idCopied ? <Check size={12} className="text-green-600" /> : <Copy size={12} />}
+                {idCopied ? 'Copiado' : 'Copiar ID'}
+              </button>
               {userRole === 'admin' && /^[PU]-/.test(bookingEventId) && <NoPublicarSwitch eventId={bookingEventId} />}
               <button 
                 onClick={() => setShowCancelModal(true)} 
-                className="text-[10px] md:text-xs font-bold px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors shadow-sm"
+                className="shrink-0 whitespace-nowrap text-[10px] md:text-xs font-bold px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors shadow-sm"
               >
                 🚫 Cancelar Reserva
               </button>
