@@ -7,15 +7,17 @@ import RedesDraft from './RedesDraft';
 // "REDES/<draftId>" (así llega el link de Telegram). Las fotos se guardan mientras la pestaña está
 // abierta y se liberan al salir.
 export default function RedesTab({ route, onNavigate }) {
-  const cache = useMemo(() => createPhotoCache(), []);
+  const cache = useMemo(() => createPhotoCache('thumb'), []);
+  const fullCache = useMemo(() => createPhotoCache('full'), []);
   useEffect(() => () => cache.dispose(), [cache]);
+  useEffect(() => () => fullCache.dispose(), [fullCache]);
   const [filtro, setFiltro] = useState('pendiente');
   const draftId = draftIdFromHash(route);
 
   return (
     <div className="h-full w-full overflow-y-auto bg-[#F0F2F5]">
       {draftId ? (
-        <RedesDraft key={draftId} draftId={draftId} cache={cache} onBack={() => onNavigate(redesHash(''))} />
+        <RedesDraft key={draftId} draftId={draftId} cache={cache} fullCache={fullCache} onBack={() => onNavigate(redesHash(''))} />
       ) : (
         <RedesQueue filtro={filtro} setFiltro={setFiltro} cache={cache} onOpen={id => onNavigate(redesHash(id))} />
       )}

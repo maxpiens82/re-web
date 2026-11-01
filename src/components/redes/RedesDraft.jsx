@@ -53,7 +53,7 @@ function Photo({ p, img, selected, onClick, children, draggable, onDragStart, on
 
 const mini = 'bg-white/90 hover:bg-white text-gray-700 rounded p-1 shadow';
 
-export default function RedesDraft({ draftId, cache, onBack }) {
+export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [data, setData] = useState({ loading: true, draft: null, booking: null, error: '' });
   const [order, setOrder] = useState(null);          // { fotos, alts } local, until saved
   const [selected, setSelected] = useState(-1);
@@ -151,9 +151,9 @@ export default function RedesDraft({ draftId, cache, onBack }) {
   const makeSlides = async () => {
     const templates = await loadTemplates();
     setTplProblems(templates.filter(t => !t.ok).map(t => `${t.name}: ${t.problems.join('; ')}`));
-    await cache.load(draftId, d.fotos.map(p => p.copia));
+    await fullCache.load(draftId, d.fotos.map(p => p.copia));
     const items = await renderSlides({ tipo: d.tipo, fotos: d.fotos, barrio: d.barrio, estilo: d.estilo || 'estandar',
-      photoBlob: id => (cache.get(id) || {}).blob });
+      photoBlob: id => (fullCache.get(id) || {}).blob });
     slideUrls.current.forEach(u => URL.revokeObjectURL(u));
     slideUrls.current = items.map(it => it.url);
     setSlides({ key: slidesKey, items });
@@ -178,9 +178,9 @@ export default function RedesDraft({ draftId, cache, onBack }) {
     if (items) {
       items.forEach((it, i) => zip.file(`${String(i + 1).padStart(2, '0')}.jpg`, it.blob));
     } else {
-      await cache.load(draftId, order.fotos.map(p => p.copia));
+      await fullCache.load(draftId, order.fotos.map(p => p.copia));
       order.fotos.forEach((p, i) => {
-        const img = cache.get(p.copia);
+        const img = fullCache.get(p.copia);
         if (!img || !img.blob) throw new Error(`La foto ${i + 1} todavía no está disponible. Probá de nuevo en un rato.`);
         zip.file(`${String(i + 1).padStart(2, '0')}.jpg`, img.blob);
       });
