@@ -50,8 +50,9 @@ const b64ToBlob = (b64, mime) => {
 
 // Photo loader for one Redes tab: redes_photo in batches of up to 6 IDs, at most 2 requests in flight
 // (every request is an Apps Script execution, and production shares the 30-at-once limit). Photos are
-// kept as object URLs (and their Blobs, for the zip) until dispose().
-export function createPhotoCache() {
+// kept as object URLs (and their Blobs) until dispose(). size 'thumb' (480 px) for the grid and the
+// queue; 'full' (2048 px) only for the placas and the zip.
+export function createPhotoCache(size = 'full') {
   const urls = new Map();      // copia -> { url, blob }
   const waiting = new Map();   // copia -> Promise
   const queue = [];
@@ -62,7 +63,7 @@ export function createPhotoCache() {
     while (running < 2 && queue.length && !disposed) {
       const job = queue.shift();
       running++;
-      redesCall('redes_photo', { draftId: job.draftId, fileIds: job.ids })
+      redesCall('redes_photo', { draftId: job.draftId, fileIds: job.ids, size })
         .then(res => {
           job.ids.forEach(id => {
             const p = (res.photos || {})[id] || {};
