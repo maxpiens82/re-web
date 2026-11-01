@@ -897,33 +897,35 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
     <div className="bg-[#F0F2F5] w-full max-w-4xl mx-auto rounded-none md:rounded-3xl shadow-none md:shadow-2xl overflow-hidden flex flex-col h-full md:h-[90vh]">
       
       {/* HEADER */}
-      <div className="px-4 py-3 md:px-8 md:py-5 border-b border-gray-200 flex justify-between items-center bg-white z-10 shrink-0">
-        <div className="min-w-0 pr-4 flex-1 flex flex-col md:flex-row md:items-center gap-2">
-          <h2 className="text-base md:text-xl font-extrabold uppercase tracking-wide truncate md:shrink-0" style={{ color: brandColor }}>
+      <div className="px-4 py-2.5 md:px-6 md:py-3 border-b border-gray-200 flex items-center gap-3 bg-white z-10 shrink-0">
+        <div className="min-w-0 flex-1 flex items-center gap-2">
+          <h2 className="text-base md:text-lg font-extrabold uppercase tracking-wide truncate" style={{ color: brandColor }}>
             {modeTitle}
           </h2>
           {!isNewBooking && !isWebRequest && (
-            <div className="min-w-0 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <button
-                type="button"
-                title={`ID: ${jobId}`}
-                onClick={() => navigator.clipboard.writeText(String(jobId)).then(() => { setIdCopied(true); setTimeout(() => setIdCopied(false), 1500); })}
-                className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 text-[10px] md:text-xs font-bold px-2.5 py-1 rounded text-gray-500 hover:bg-gray-100 border border-gray-200 transition-colors shadow-sm"
-              >
-                {idCopied ? <Check size={12} className="text-green-600" /> : <Copy size={12} />}
-                {idCopied ? 'Copiado' : 'Copiar ID'}
-              </button>
-              {userRole === 'admin' && /^[PU]-/.test(bookingEventId) && <NoPublicarSwitch eventId={bookingEventId} />}
-              <button 
-                onClick={() => setShowCancelModal(true)} 
-                className="shrink-0 whitespace-nowrap text-[10px] md:text-xs font-bold px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors shadow-sm"
-              >
-                🚫 Cancelar Reserva
-              </button>
-            </div>
+            <button
+              type="button"
+              title={idCopied ? 'Copiado' : `Copiar ID: ${jobId}`}
+              aria-label="Copiar ID"
+              onClick={() => navigator.clipboard.writeText(String(jobId)).then(() => { setIdCopied(true); setTimeout(() => setIdCopied(false), 1500); })}
+              className="shrink-0 p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              {idCopied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+            </button>
           )}
         </div>
-        <button onClick={onCancel} className="text-gray-500 hover:bg-gray-100 font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl border border-gray-200 transition-colors text-xs md:text-sm shrink-0 shadow-sm">
+        {!isNewBooking && !isWebRequest && (
+          <div className="shrink-0 flex items-center gap-3">
+            {userRole === 'admin' && /^[PU]-/.test(bookingEventId) && <NoPublicarSwitch eventId={bookingEventId} />}
+            <button
+              onClick={() => setShowCancelModal(true)}
+              className="whitespace-nowrap text-[10px] md:text-xs font-bold px-2 py-1 rounded-md bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors"
+            >
+              🚫 Cancelar
+            </button>
+          </div>
+        )}
+        <button onClick={onCancel} className="shrink-0 text-gray-500 hover:bg-gray-100 font-bold px-2.5 py-1 rounded-md border border-gray-200 transition-colors text-[10px] md:text-xs">
           ✕ Cerrar
         </button>
       </div>
