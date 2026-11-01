@@ -62,6 +62,32 @@ function Card({ draft, cache, onOpen }) {
   );
 }
 
+// "Diseño al azar": new drafts get a random series and día/noche (re-backend redes_config).
+function AzarSwitch() {
+  const [on, setOn] = useState(null);       // null while loading
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    redesCall('redes_config').then(r => { if (alive) setOn(!!r.disenoAzar); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const flip = () => {
+    setBusy(true);
+    redesCall('redes_config', { disenoAzar: !on }).then(r => setOn(!!r.disenoAzar)).catch(() => {}).finally(() => setBusy(false));
+  };
+  if (on === null) return null;
+  return (
+    <label className="inline-flex items-center gap-2 text-[11px] font-bold text-gray-500 cursor-pointer select-none"
+      title="Los bocetos nuevos salen con una serie y día/noche al azar (nunca la misma que el anterior)">
+      <button type="button" role="switch" aria-checked={on} disabled={busy} onClick={flip}
+        className={`relative w-8 h-4 rounded-full transition-colors disabled:opacity-50 ${on ? 'bg-[#EB4511]' : 'bg-gray-300'}`}>
+        <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${on ? 'left-4' : 'left-0.5'}`} />
+      </button>
+      Diseño al azar
+    </label>
+  );
+}
+
 export default function RedesQueue({ filtro, setFiltro, cache, onOpen }) {
   const [state, setState] = useState({ loading: true, drafts: [], error: '' });
   const [reload, setReload] = useState(0);
@@ -87,8 +113,9 @@ export default function RedesQueue({ filtro, setFiltro, cache, onOpen }) {
             {label}
           </button>
         ))}
+        <div className="ml-auto"><AzarSwitch /></div>
         <button type="button" onClick={() => { setState(s => ({ ...s, loading: true })); setReload(n => n + 1); }}
-          className="ml-auto p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-[#EB4511]" title="Actualizar">
+          className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-[#EB4511]" title="Actualizar">
           <RefreshCw size={16} className={state.loading ? 'animate-spin' : ''} />
         </button>
       </div>
