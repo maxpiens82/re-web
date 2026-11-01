@@ -10,6 +10,8 @@ import {
 const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE"; 
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL; // only for the public ?api=init_v2 GET
 import { gasPost } from '../lib/gasApi';
+import { useAuth } from '../context/AuthContext';
+import NoPublicarSwitch from './redes/NoPublicarSwitch';
 
 // Generate dates from 15 days ago to 90 days ahead
 const generateDates = () => {
@@ -42,6 +44,8 @@ const normalizeText = (text) => text ? text.normalize("NFD").replace(/[\u0300-\u
 export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { userRole } = useAuth();
+  const [bookingEventId, setBookingEventId] = useState(''); // P-/U-… of a loaded booking (for Redes)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingClient, setIsSavingClient] = useState(false); 
   const [isSendingQuote, setIsSendingQuote] = useState(false); 
@@ -186,6 +190,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
             setSelectedDateObj(dateOptions.find(d => d.id === todayId) || dateOptions[15]);
           } else {
             hydrateForm(detailData.data, mappedMultipliers);
+            setBookingEventId(String(detailData.data?.eventId || ''));
           }
         } else {
           setError("Error cargando datos desde el servidor.");
@@ -899,6 +904,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
           {!isNewBooking && !isWebRequest && (
             <div className="flex items-center gap-3">
               <p className="hidden md:block text-xs text-gray-400 font-bold tracking-wider truncate">ID: {jobId}</p>
+              {userRole === 'admin' && /^[PU]-/.test(bookingEventId) && <NoPublicarSwitch eventId={bookingEventId} />}
               <button 
                 onClick={() => setShowCancelModal(true)} 
                 className="text-[10px] md:text-xs font-bold px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors shadow-sm"

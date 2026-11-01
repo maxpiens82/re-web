@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User, Bot, LayoutDashboard, ClipboardList, Banknote, Search, Building, Phone, X, MessageCircle, Clapperboard } from 'lucide-react';
+import { LogOut, CalendarDays, Inbox, MapPin, Clock, Loader2, Plus, User, Bot, LayoutDashboard, ClipboardList, Banknote, Search, Building, Phone, X, MessageCircle, Clapperboard, Megaphone } from 'lucide-react';
 import UnifiedForm from '../components/UnifiedForm';
 import LoadingLogo from '../components/LoadingLogo';
 import AiAssistant from '../components/AiAssistant';
@@ -13,6 +13,8 @@ import { gasPost } from '../lib/gasApi';
 
 // End screen: se carga solo al abrir la pestaña (motor + exportador de video).
 const EndScreenTab = lazy(() => import('../components/EndScreenTab'));
+// Redes (solo admins): se carga al abrir la pestaña.
+const RedesTab = lazy(() => import('../components/redes/RedesTab'));
 
 // Make sure this is your actual GAS URL!
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL;
@@ -471,6 +473,13 @@ export default function Portal() {
               >
                 <Banknote size={16} /> Cobranzas
               </button>
+              <button 
+                onClick={() => handleJobClick('REDES')} 
+                className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition-colors shadow-sm flex items-center justify-center gap-2
+                  ${selectedJobId?.startsWith('REDES') ? 'bg-[#EB4511] text-white shadow-md' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-[#EB4511]'}`}
+              >
+                <Megaphone size={16} /> Redes
+              </button>
             </>
           )}
 
@@ -524,6 +533,13 @@ export default function Portal() {
                 <Banknote size={20} />
               </button>
               <button 
+                onClick={() => handleJobClick('REDES')} 
+                className="p-3 rounded-xl transition-colors flex items-center justify-center shrink-0 bg-gray-50 text-gray-400 hover:text-[#EB4511]"
+                title="Redes"
+              >
+                <Megaphone size={20} />
+              </button>
+              <button 
                 onClick={() => handleJobClick('AI')} 
                 className={`p-3 rounded-xl transition-colors flex items-center justify-center shrink-0
                   ${selectedJobId === 'AI' ? 'bg-[#EB4511] text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:text-[#EB4511]'}`}
@@ -570,6 +586,14 @@ export default function Portal() {
              <Suspense fallback={<div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 size={16} className="animate-spin" /> Cargando…</div>}>
                <EndScreenTab />
              </Suspense>
+           ) : selectedJobId?.startsWith('REDES') ? (
+             userRole === 'admin' ? (
+               <Suspense fallback={<div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 size={16} className="animate-spin" /> Cargando…</div>}>
+                 <RedesTab route={selectedJobId} onNavigate={handleJobClick} />
+               </Suspense>
+             ) : (
+               <div className="text-sm text-gray-500">Esta sección es solo para administración.</div>
+             )
            ) : (
              <UnifiedForm 
                jobId={selectedJobId} 
