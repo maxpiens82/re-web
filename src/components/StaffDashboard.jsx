@@ -214,23 +214,24 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
     return (
       <div key={job.id + idx} className={`${bgClass} rounded-xl p-3 shadow-sm border-l-4 ${colors.border} flex items-center justify-between ${hoverClass} transition-all gap-3`}>
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="flex items-center justify-between mb-1.5 gap-2">
-            <span className="font-extrabold text-sm text-gray-800 truncate">{job.loc}</span>
-            {/* Ocultamos el badge de fecha si dice CRUDOS */}
-            {job.date !== 'CRUDOS' && (
-              <span className={`text-[9px] font-bold ${colors.text} ${colors.bg} border ${borderColorName} px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0`}>
-                {job.date}
-              </span>
-            )}
-          </div>
+          {/* Phones: the address gets the whole first line (13px), the date (dd/mm) moves to the services line,
+              and the buttons are small and stacked, so nothing is cut and the card is no taller */}
+          <div className="font-extrabold text-[13px] md:text-sm text-gray-800 truncate mb-1.5">{job.loc}</div>
           <div className="text-[10px] text-gray-500 truncate mb-1.5 font-medium">
             <span className="font-bold text-gray-700">{job.client}</span> • {job.company}
             {isAdmin && <span className="font-bold text-[#EB4511] ml-1">[{job.producer}]</span>}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="bg-white border border-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1 w-fit">
-              <SrvIcon type={job.srv[0]}/> {job.srv.join(', ')}
+            <span className="min-w-0 bg-white border border-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1 w-fit">
+              <span className="hidden md:inline-flex"><SrvIcon type={job.srv[0]}/></span> <span>{job.srv.join(', ')}</span>
             </span>
+            {/* Ocultamos el badge de fecha si dice CRUDOS */}
+            {job.date !== 'CRUDOS' && (
+              <span className={`ml-auto text-[9px] font-bold ${colors.text} ${colors.bg} border ${borderColorName} px-1.5 py-0.5 rounded uppercase md:tracking-widest shrink-0`}>
+                <span className="md:hidden">{String(job.date).slice(0, 5)}</span>
+                <span className="hidden md:inline">{job.date}</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -257,23 +258,23 @@ export default function StaffDashboard({ onOpenJob, pendingJobs = [], confirmedJ
           ) : (
             <button 
               onClick={() => onOpenJob && onOpenJob(job.id)}
-              className="h-10 px-3 flex items-center justify-center gap-1.5 bg-[#EBF8FF] text-[#2B6CB0] hover:bg-[#2B6CB0] hover:text-white rounded-xl transition-colors border border-[#90CDF4] shadow-sm text-[11px] font-bold uppercase tracking-wider shrink-0" 
+              className="w-full h-7 md:h-10 px-2 md:px-3 flex items-center justify-center gap-1 md:gap-1.5 bg-[#EBF8FF] text-[#2B6CB0] hover:bg-[#2B6CB0] hover:text-white rounded-lg md:rounded-xl transition-colors border border-[#90CDF4] shadow-sm text-[9px] md:text-[11px] font-bold uppercase md:tracking-wider shrink-0"
               title="Hacer Checkout"
             >
-              <ClipboardEdit size={16} strokeWidth={2.5} /> Checkout
+              <ClipboardEdit size={12} strokeWidth={2.5} className="shrink-0 md:w-4 md:h-4" /> Checkout
             </button>
           )}
         </div>
-        {/* Under Checkout, not beside the services: on phones that row has no room left */}
+        {/* Under Checkout, not beside the services: on phones that line has no room left */}
         {job.status !== 'checked_out' && job.calleUrl && (
           <a
             href={job.calleUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1 text-[9px] font-bold text-[#E53B12] bg-orange-50 hover:bg-orange-100 border border-orange-100 px-1.5 py-1 rounded-lg transition-colors whitespace-nowrap"
+            className="h-7 md:h-auto md:py-1 flex items-center justify-center gap-1 text-[9px] font-bold uppercase md:normal-case text-[#E53B12] bg-orange-50 hover:bg-orange-100 border border-orange-100 px-2 rounded-lg transition-colors whitespace-nowrap"
             title="Carpeta para fotos y videos sueltos de la sesión"
           >
-            <FolderUp size={11} /> Material calle
+            <FolderUp size={11} className="shrink-0" /> <span className="md:hidden">Calle</span><span className="hidden md:inline">Material de la calle</span>
           </a>
         )}
         </div>
