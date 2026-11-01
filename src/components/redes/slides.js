@@ -1,9 +1,17 @@
 // Placas (slides) for a draft, rendered in the browser from the SVG templates in Plantillas
 // (re-backend redes_templates). Spec: re-backend docs/REDES_SPEC.md §7.2.
 //
-// Fill: <image id="foto-N"> gets the photo as a data: URI; <text id="campo-barrio"> gets the barrio in
-// upper case, shrunk to fit. The fonts are EMBEDDED in each SVG: an SVG drawn to a canvas through an
-// image doesn't see the page's @font-face and silently falls back to another typeface.
+// Templates come in series, one subfolder of Plantillas each ("serie1/carrusel-portada",
+// "serie2/carrusel-portada-noche"); the draft's estilo picks one ("serie2-noche"; the old "estandar"
+// and "noche" mean Serie 1). Made with G:\My Drive\Identidad\Plantillas redes RE!\build.py.
+//
+// Fill: <image id="foto-N"> gets the photo as a data: URI; <text>/<tspan id="campo-X"> gets campos[X]
+// (barrio, servicios, inmobiliaria; web, whatsapp, marca and cierre-* keep the template's text). An
+// empty field is removed together with its label (an id-less text right above it, same x), or with
+// its whole line when it's a <tspan>. data-mayusculas = upper case; data-ancho-max = shrink font and
+// spacing until the line fits (as the templates' own rellenar.js does). The fonts are EMBEDDED in each
+// SVG: an SVG drawn to a canvas through an image doesn't see the page's @font-face and silently falls
+// back to another typeface.
 import { redesCall } from './redesApi';
 
 const XLINK = 'http://www.w3.org/1999/xlink';
@@ -14,6 +22,31 @@ const FONTS = [
 ];
 const MARGIN = 72;          // px kept free from the edges for text (spec §7.2.4)
 const MIN_SCALE = 0.6;      // below this the text is "muy largo" and the approver shortens it
+const MIN_FIT = 0.4;        // templates with data-ancho-max shrink down to this, then warn
+const FILLED = ['barrio', 'servicios', 'inmobiliaria'];   // fields the draft fills; the rest keep the template's text
+const SERVICE_NAMES = { FOTO: 'Foto', VIDEO: 'Video', REEL: 'Reel', TH: 'Talking head', PLANO: 'Plano', TOUR: 'Tour 360', DRONE: 'Drone', FPV: 'Drone FPV' };
+
+// "Foto · Video · Drone" from the booking's service codes.
+export const servicesText = codes => (codes || []).map(c => SERVICE_NAMES[c] || c).join(' · ');
+
+// estilo -> { serie, noche }. "estandar"/"noche" are Serie 1 (drafts made before the series).
+export function parseEstilo(estilo) {
+  const e = String(estilo || 'estandar');
+  if (e === 'estandar') return { serie: 'serie1', noche: false };
+  if (e === 'noche') return { serie: 'serie1', noche: true };
+  const m = e.match(/^(.+?)(-noche)?$/);
+  return { serie: m[1], noche: !!m[2] };
+}
+export const estiloOf = (serie, noche) => `${serie}${noche ? '-noche' : ''}`;
+
+// The series that have usable templates, in name order: ["serie1", "serie2", …]. Loose (pre-series)
+// files count as serie1.
+export function seriesOf(templates) {
+  const set = new Set();
+  (templates || []).filter(t => t.ok).forEach(t => set.add(t.name.includes('/') ? t.name.split('/')[0] : 'serie1'));
+  return [...set].sort();
+}
+export const serieLabel = serie => (/^serie(\d+)$/.test(serie) ? `Serie ${serie.slice(5)}` : serie.charAt(0).toUpperCase() + serie.slice(1));
 
 let templatesPromise = null;
 let fontsPromise = null;
@@ -115,6 +148,65 @@ function fitText(el, text, W) {
   return width(k) > avail ? 'Texto muy largo: acortá el barrio para esta placa.' : '';
 }
 
+// The template for one layout in this series: its -noche version when asked, else the plain one;
+// for Serie 1 also the loose files of the first upload.
+function pickTemplate(byName, plantilla, { serie, noche }) {
+  const names = [noche && `${serie}/${plantilla}-noche`, `${serie}/${plantilla}`];
+  if (serie === 'serie1') names.push(noche && `${plantilla}-noche`, plantilla);
+  for (const n of names) if (n && byName[n] && byName[n].ok) return byName[n];
+  return null;
+}
+
+// Removes an empty field: a <tspan> takes its whole line with it; a <text> takes its label, the
+// id-less text just above it in the same column.
+function dropField(el) {
+  if (el.tagName.toLowerCase() === 'tspan') { (el.closest('text') || el).remove(); return; }
+  const x = el.getAttribute('x'), anchor = el.getAttribute('text-anchor') || 'start', y = Number(el.getAttribute('y'));
+  el.ownerSVGElement.querySelectorAll('text:not([id])').forEach(t => {
+    const dy = y - Number(t.getAttribute('y'));
+    if (t.getAttribute('x') === x && (t.getAttribute('text-anchor') || 'start') === anchor && dy > 0 && dy < 80 && !t.querySelector('[id]')) t.remove();
+  });
+  el.remove();
+}
+
+// Shrinks a <text data-ancho-max> (font and spacing together) until the whole line fits. The SVG must
+// be in the page, so the browser can measure it. Returns a warning or ''.
+function fitLine(t) {
+  const max = Number(t.getAttribute('data-ancho-max'));
+  const size0 = Number(t.getAttribute('font-size')), ls0 = Number(t.getAttribute('letter-spacing') || 0);
+  let size = size0;
+  while (t.getComputedTextLength() > max && size > size0 * MIN_FIT) {
+    size *= 0.96;
+    t.setAttribute('font-size', size.toFixed(2));
+    t.setAttribute('letter-spacing', (ls0 * size / size0).toFixed(2));
+  }
+  const field = (t.id || (t.querySelector('[id^="campo-"]') || {}).id || '').slice(6);
+  if (t.getComputedTextLength() > max) return `"${field}" no entra: acortalo.`;
+  if (size < size0 * MIN_SCALE) return `"${field}" quedó chico (${Math.round(100 * size / size0)}%): conviene acortarlo.`;
+  return '';
+}
+
+// Fills a template already in the page. Returns the warnings.
+function fill(svg, { photos, campos, W }) {
+  const warnings = [];
+  svg.querySelectorAll('image[id^="foto-"]').forEach(img => {
+    const src = photos[Number(img.id.slice(5)) - 1];
+    if (src) { img.setAttribute('href', src); img.setAttributeNS(XLINK, 'xlink:href', src); }
+  });
+  const modern = !!svg.querySelector('[data-ancho-max]');
+  svg.querySelectorAll('[id^="campo-"]').forEach(el => {
+    const key = el.id.slice(6);
+    if (!FILLED.includes(key)) return;                              // fixed text (web, whatsapp…)
+    const value = String(campos[key] || '').trim();
+    if (!value) { dropField(el); return; }
+    const upper = el.hasAttribute('data-mayusculas') || (!modern && key === 'barrio');
+    if (modern || el.tagName.toLowerCase() === 'tspan') el.textContent = upper ? value.toLocaleUpperCase('es-AR') : value;
+    else { const w = fitText(el, upper ? value.toLocaleUpperCase('es-AR') : value, W); if (w) warnings.push(w); }   // first Serie 1 upload
+  });
+  svg.querySelectorAll('text[data-ancho-max]').forEach(t => { const w = fitLine(t); if (w) warnings.push(w); });
+  return warnings;
+}
+
 async function rasterize(svgText, W, H) {
   const url = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
   try {
@@ -130,12 +222,14 @@ async function rasterize(svgText, W, H) {
   }
 }
 
-// Renders every slide. photoBlob(copia) gives the photo's Blob (from the tab's photo cache).
-// Returns [{ plantilla, blob, url, warning }]; the caller revokes the URLs.
-export async function renderSlides({ tipo, fotos, barrio, estilo, cierre, photoBlob }) {
+// Renders every slide. photoBlob(copia) gives the photo's Blob (from the tab's photo cache); campos
+// = { barrio, servicios, inmobiliaria } (empty ones are hidden). Returns [{ plantilla, blob, url,
+// warning }]; the caller revokes the URLs.
+export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, photoBlob }) {
   const [templates, fonts] = await Promise.all([loadTemplates(), loadFonts()]);
   const byName = Object.fromEntries(templates.map(t => [t.name, t]));
   const css = fonts.map(f => `@font-face{font-family:'${f.family}';src:url(data:font/otf;base64,${f.base64})}`).join('');
+  const look = parseEstilo(estilo);
   const layout = defaultLayout(tipo, fotos, cierre);
   const dataUrls = {};
   for (const p of fotos) {
@@ -143,30 +237,33 @@ export async function renderSlides({ tipo, fotos, barrio, estilo, cierre, photoB
     if (!blob) throw new Error('Falta cargar alguna foto. Esperá a que aparezcan todas y probá de nuevo.');
     dataUrls[p.copia] = await blobToDataUrl(blob);
   }
-  const out = [];
-  for (const slide of layout) {
-    const wanted = estilo === 'noche' ? `${slide.plantilla}-noche` : slide.plantilla;
-    const tpl = (byName[wanted] && byName[wanted].ok) ? byName[wanted] : byName[slide.plantilla];
-    if (!tpl || !tpl.ok) throw new Error(`La plantilla ${wanted} no está en Plantillas o tiene problemas.`);
-    const doc = new DOMParser().parseFromString(tpl.svg, 'image/svg+xml');
-    const root = doc.documentElement;
-    const W = Number(root.getAttribute('width')) || 1080, H = Number(root.getAttribute('height')) || 1350;
-    slide.fotos.forEach((p, i) => {
-      const el = doc.getElementById(`foto-${i + 1}`);
-      if (!el) return;
-      el.setAttribute('href', dataUrls[p.copia]);
-      el.setAttributeNS(XLINK, 'xlink:href', dataUrls[p.copia]);
-    });
-    let warning = '';
-    const barrioEl = doc.getElementById('campo-barrio');
-    if (barrioEl) warning = fitText(barrioEl, String(barrio || '').toLocaleUpperCase('es-AR'), W);
-    const style = doc.createElementNS(SVG_NS, 'style');
-    style.textContent = css;
-    root.insertBefore(style, root.firstChild);
-    const blob = await rasterize(new XMLSerializer().serializeToString(doc), W, H);
-    out.push({ plantilla: tpl.name, blob, url: URL.createObjectURL(blob), warning });
+  // Filled in the page (hidden, but laid out) so text can be measured.
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;left:-20000px;top:0;opacity:0;pointer-events:none';
+  document.body.appendChild(box);
+  try {
+    const out = [];
+    for (const slide of layout) {
+      const tpl = pickTemplate(byName, slide.plantilla, look);
+      if (!tpl) throw new Error(`La plantilla ${look.serie}/${slide.plantilla}${look.noche ? '-noche' : ''} no está en Plantillas o tiene problemas.`);
+      const doc = new DOMParser().parseFromString(tpl.svg, 'image/svg+xml');
+      const svg = document.importNode(doc.documentElement, true);
+      box.replaceChildren(svg);
+      const W = Number(svg.getAttribute('width')) || 1080, H = Number(svg.getAttribute('height')) || 1350;
+      // A template photo the layout doesn't feed (Serie 2's closing slide) takes the carousel's last photos.
+      const own = slide.fotos.map(p => dataUrls[p.copia]);
+      const photos = Array.from(svg.querySelectorAll('image[id^="foto-"]'), (_, i) => own[i] || dataUrls[(fotos[fotos.length - 1 - i] || {}).copia]);
+      const warning = fill(svg, { photos, campos, W }).join(' ');
+      const style = document.createElementNS(SVG_NS, 'style');
+      style.textContent = css;
+      svg.insertBefore(style, svg.firstChild);
+      const blob = await rasterize(new XMLSerializer().serializeToString(svg), W, H);
+      out.push({ plantilla: tpl.name, blob, url: URL.createObjectURL(blob), warning });
+    }
+    return out;
+  } finally {
+    box.remove();
   }
-  return out;
 }
 
 export const blobToBase64 = blob => blobToDataUrl(blob).then(u => u.slice(u.indexOf(',') + 1));
