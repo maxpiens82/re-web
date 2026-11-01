@@ -8,8 +8,8 @@ import { redesCall, FALTANTES, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
 import MiniLogo from '../MiniLogo';
 import LoadingLogo from '../LoadingLogo';
-import { renderSlides, blobToBase64, loadTemplates } from './slides';
-import { closingOf, disenoFor, startSettings, toSaved, settingsKey, renderEndscreen, canMakeVideo } from './cierre';
+import { renderSlides, blobToBase64, loadTemplates, parseEstilo, estiloOf, seriesOf, serieLabel, servicesText } from './slides';
+import { closingOf, disenoFor, startSettings, toSaved, settingsKey, renderEndscreen, canMakeVideo, brandForDraft } from './cierre';
 import EndScreen from '../../endscreen/EndScreen.jsx';
 
 const ESTADO_COLOR = { pendiente: 'bg-amber-500', aprobado: 'bg-green-600', programado: 'bg-blue-600', publicado: 'bg-gray-800', descartado: 'bg-gray-400' };
@@ -84,6 +84,12 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [vprog, setVprog] = useState(null);          // { done, total } while it encodes
   const [editor, setEditor] = useState(null);        // start settings while the end screen editor is open
   const brandsRef = useRef(null);
+  const [series, setSeries] = useState([]);          // template series in Plantillas: ["serie1", "serie2"…]
+  useEffect(() => {
+    let alive = true;
+    loadTemplates().then(t => { if (alive) setSeries(seriesOf(t)); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
   const loadBrandLogo = useCallback(async (id, kind) => {
     const r = await redesCall('marcas_logo', { id, kind });
     return `data:${r.mime};base64,${r.base64}`;
@@ -190,8 +196,17 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   };
 
   // --- placas: rendered from the SAVED draft (order, barrio, estilo, closing), so they match what's stored ---
-  const slidesKey = JSON.stringify([d.tipo, d.fotos.map(p => p.crudo), d.barrio || '', d.estilo || 'estandar',
-    closing && closing.kind, closing && closing.kind === 'endscreen' ? [closing.saved, d.inmobiliaria || ''] : null]);
+  const look = parseEstilo(d.estilo);
+  const slidesKey = JSON.stringify([d.tipo, d.fotos.map(p => p.crudo), d.barrio || '', estiloOf(look.serie, look.noche), d.inmobiliaria || '',
+    closing && closing.kind, closing && closing.kind === 'endscreen' ? closing.saved : null]);
+  // What the templates' fields get: the barrio, the booked services and the agency's @ (its name when
+  // it has no Instagram; nothing for a private owner, so that line is hidden).
+  const camposFor = async () => {
+    const brand = brandForDraft(d, await ensureBrands().catch(() => []));
+    const ig = brand && String(brand.instagram || '').trim();
+    return { barrio: d.barrio || '', servicios: servicesText(b && b.servicios),
+      inmobiliaria: brand ? (ig ? (ig.startsWith('@') ? ig : '@' + ig) : brand.name) : '' };
+  };
   const slidesFresh = slides.key === slidesKey && slides.items.length > 0;
   const makeSlides = async () => {
     const cierre = closing ? closing.kind : 'plantilla';
@@ -199,7 +214,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     const templates = await loadTemplates();
     setTplProblems(templates.filter(t => !t.ok).map(t => `${t.name}: ${t.problems.join('; ')}`));
     await fullCache.load(draftId, d.fotos.map(p => p.copia));
-    const items = await renderSlides({ tipo: d.tipo, fotos: d.fotos, barrio: d.barrio, estilo: d.estilo || 'estandar', cierre,
+    const items = await renderSlides({ tipo: d.tipo, fotos: d.fotos, estilo: d.estilo, cierre, campos: await camposFor(),
       photoBlob: id => (fullCache.get(id) || {}).blob });
     slideUrls.current.forEach(u => URL.revokeObjectURL(u));
     slideUrls.current = items.map(it => it.url);       // the video's URLs live in `video`
@@ -328,6 +343,22 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           })}>
           {busy === 'placas' ? <MiniLogo className="w-4 h-4" /> : <Layers size={14} />} {slides.items.length ? 'Actualizar placas' : 'Generar placas'}
         </button>}>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-500">Diseño:</span>
+          {(series.length ? series : [look.serie]).map(se => (
+            <button key={se} type="button" disabled={!open || !!busy} className={pill(look.serie === se)}
+              onClick={() => look.serie !== se && run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo: estiloOf(se, look.noche) } }), '')}>
+              {serieLabel(se)}
+            </button>
+          ))}
+          <span className="w-px h-5 bg-gray-200 mx-1" />
+          {[[false, 'Día'], [true, 'Noche']].map(([n, l]) => (
+            <button key={l} type="button" disabled={!open || !!busy} className={pill(look.noche === n)}
+              onClick={() => look.noche !== n && run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo: estiloOf(look.serie, n) } }), '')}>
+              {l}
+            </button>
+          ))}
+        </div>
         {closing && (
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-500">Cierre:</span>
@@ -356,10 +387,10 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             </p>
           </div>
         ) : !slides.items.length ? (
-          <p className="text-xs text-gray-400">Las placas se arman con las plantillas, las fotos en este orden, el barrio y el estilo ({d.estilo === 'noche' ? 'noche' : 'estándar'}){closing && closing.kind === 'endscreen' ? ', y cierran con el video del end screen' : ''}. También se generan solas al descargar el paquete.</p>
+          <p className="text-xs text-gray-400">Las placas se arman con las plantillas ({serieLabel(look.serie)}, {look.noche ? 'noche' : 'día'}), las fotos en este orden, el barrio, los servicios y la inmobiliaria{closing && closing.kind === 'endscreen' ? ', y cierran con el video del end screen' : ''}. También se generan solas al descargar el paquete.</p>
         ) : (
           <>
-            {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">Cambiaste fotos, barrio, estilo o cierre: tocá "Actualizar placas".</p>}
+            {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">Cambiaste fotos, barrio, diseño, inmobiliaria o cierre: tocá "Actualizar placas".</p>}
             <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 ${slidesFresh ? '' : 'opacity-50'}`}>
               {slides.items.map((it, i) => (
                 <figure key={it.url} className="m-0">
@@ -451,18 +482,6 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
 
       {/* style + actions */}
       <Section title="Acciones">
-        {open && (
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs text-gray-500">Estilo de placas:</span>
-            {['estandar', 'noche'].map(e => (
-              <button key={e} type="button" disabled={!!busy}
-                onClick={() => d.estilo !== e && run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo: e } }), '')}
-                className={`px-3 py-1 rounded-full text-xs font-bold border ${(d.estilo || 'estandar') === e ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200'}`}>
-                {e === 'estandar' ? 'Estándar' : 'Noche'}
-              </button>
-            ))}
-          </div>
-        )}
         <div className="flex flex-wrap items-end gap-2">
           {d.estado === 'pendiente' && (
             <button type="button" className={btnMain} disabled={!!busy || textDirty || orderDirty}
