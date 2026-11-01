@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Loader2, Images, MapPin, Building, Clock, CalendarDays, ExternalLink } from 'lucide-react';
+import { RefreshCw, Images, MapPin, Building, Clock, CalendarDays, ExternalLink } from 'lucide-react';
 import { redesCall, FALTANTES, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
+import MiniLogo from '../MiniLogo';
+import LoadingLogo from '../LoadingLogo';
 
 const FILTROS = [
   ['pendiente', 'Pendientes'], ['aprobado', 'Aprobados'], ['programado', 'Programados'],
@@ -15,7 +17,7 @@ function Thumb({ cache, draft }) {
   return (
     <div className="w-full aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
       {p && p.url ? <img src={p.url} alt="" className="w-full h-full object-cover" />
-        : <Loader2 size={18} className={`text-gray-300 ${p ? '' : 'animate-spin'}`} />}
+        : p ? <Images size={18} className="text-gray-300" /> : <MiniLogo className="w-8 h-8 text-[#E53B12]" />}
     </div>
   );
 }
@@ -91,6 +93,7 @@ export default function RedesQueue({ filtro, setFiltro, cache, onOpen }) {
         </button>
       </div>
       {state.error && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</div>}
+      {state.loading && state.drafts.length === 0 && <LoadingLogo message="Cargando bocetos" />}
       {!state.loading && !state.error && state.drafts.length === 0 && (
         <div className="text-center text-sm text-gray-400 py-16">No hay bocetos acá.</div>
       )}

@@ -44,6 +44,13 @@
 }
 
 /* 1. Slide-up fade for the white cards */
+/* The RE! logo spinning on itself (MiniLogo, LoadingLogo). Global so MiniLogo turns even when
+   LoadingLogo isn't on the page. */
+@keyframes flip {
+  0% { transform: perspective(600px) rotateY(0deg); }
+  100% { transform: perspective(600px) rotateY(360deg); }
+}
+
 @keyframes slideUpFade {
   0% { opacity: 0; transform: translateY(20px); }
   100% { opacity: 1; transform: translateY(0); }
