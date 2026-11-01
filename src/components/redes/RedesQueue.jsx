@@ -32,10 +32,10 @@ function Card({ draft, cache, onOpen }) {
       <div className="flex items-center gap-1.5 text-xs text-gray-500 truncate">
         <Building size={13} className="shrink-0" /> {draft.inmobiliaria || 'Inmobiliaria sin identificar'}
       </div>
-      <div className="flex items-center gap-3 text-[11px] text-gray-500">
-        <span className="inline-flex items-center gap-1"><Images size={12} /> {draft.fotos.length} foto{draft.fotos.length === 1 ? '' : 's'}</span>
-        <span>{draft.tipo === 'suelta' ? 'Suelta' : 'Carrusel'}</span>
-        <span>{fmtDate(draft.creado)}</span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap"><Images size={12} /> {draft.fotos.length} foto{draft.fotos.length === 1 ? '' : 's'}</span>
+        <span className="whitespace-nowrap">{draft.tipo === 'suelta' ? 'Suelta' : 'Carrusel'}</span>
+        <span className="whitespace-nowrap">{fmtDate(draft.creado)}</span>
       </div>
       {left !== null && (
         <div className={`inline-flex items-center gap-1 text-[11px] font-bold ${left <= 3 ? 'text-red-600' : 'text-gray-500'}`}>

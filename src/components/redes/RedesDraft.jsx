@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import {
   ArrowLeft, ChevronLeft, ChevronRight, ArrowDown, ArrowUp, Check, Copy, RefreshCw, Download, Send,
-  CalendarDays, Trash2, Loader2, AlertTriangle, MapPin, Building, ExternalLink,
+  CalendarDays, Trash2, Loader2, AlertTriangle, MapPin, Building, ExternalLink, Layers,
 } from 'lucide-react';
 import { redesCall, FALTANTES, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
+import { renderSlides, blobToBase64, loadTemplates } from './slides';
 
 const ESTADO_COLOR = { pendiente: 'bg-amber-500', aprobado: 'bg-green-600', programado: 'bg-blue-600', publicado: 'bg-gray-800', descartado: 'bg-gray-400' };
 const MOTIVOS = [['revisor', 'No va'], ['fotos', 'Las fotos no sirven'], ['repetido', 'Repetido'], ['otro', 'Otro…']];
@@ -68,6 +69,10 @@ export default function RedesDraft({ draftId, cache, onBack }) {
   const [discarding, setDiscarding] = useState(false);
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState({ error: '', ok: '' });
+  const [slides, setSlides] = useState({ key: '', items: [] });   // rendered placas (object URLs)
+  const [tplProblems, setTplProblems] = useState([]);
+  const slideUrls = useRef([]);
+  useEffect(() => () => slideUrls.current.forEach(u => URL.revokeObjectURL(u)), []);
 
   const apply = d => {
     setData(s => ({ ...s, loading: false, draft: d }));
@@ -140,14 +145,46 @@ export default function RedesDraft({ draftId, cache, onBack }) {
     setSelected(-1);
   };
 
+  // --- placas: rendered from the SAVED draft (order, barrio, estilo), so they match what's stored ---
+  const slidesKey = JSON.stringify([d.tipo, d.fotos.map(p => p.crudo), d.barrio || '', d.estilo || 'estandar']);
+  const slidesFresh = slides.key === slidesKey && slides.items.length > 0;
+  const makeSlides = async () => {
+    const templates = await loadTemplates();
+    setTplProblems(templates.filter(t => !t.ok).map(t => `${t.name}: ${t.problems.join('; ')}`));
+    await cache.load(draftId, d.fotos.map(p => p.copia));
+    const items = await renderSlides({ tipo: d.tipo, fotos: d.fotos, barrio: d.barrio, estilo: d.estilo || 'estandar',
+      photoBlob: id => (cache.get(id) || {}).blob });
+    slideUrls.current.forEach(u => URL.revokeObjectURL(u));
+    slideUrls.current = items.map(it => it.url);
+    setSlides({ key: slidesKey, items });
+    return items;
+  };
+  // Each placa goes to Composites/<draftId>/ in Drive (one call per slide; it's the backup copy).
+  const saveSlides = async items => {
+    let last = null;
+    for (let i = 0; i < items.length; i++) {
+      last = await redesCall('redes_composite_save', { draftId, slide: i + 1, total: items.length, base64: await blobToBase64(items[i].blob) });
+    }
+    return last;
+  };
+
   const download = () => run('zip', async () => {
-    await cache.load(draftId, order.fotos.map(p => p.copia));
     const zip = new JSZip();
-    order.fotos.forEach((p, i) => {
-      const img = cache.get(p.copia);
-      if (!img || !img.blob) throw new Error(`La foto ${i + 1} todavía no está disponible. Probá de nuevo en un rato.`);
-      zip.file(`${String(i + 1).padStart(2, '0')}.jpg`, img.blob);
-    });
+    let items = slidesFresh ? slides.items : null, note = '';
+    if (!items) {
+      try { items = await makeSlides(); }
+      catch (e) { note = ` Sin placas (${e.message}): van las fotos.`; }
+    }
+    if (items) {
+      items.forEach((it, i) => zip.file(`${String(i + 1).padStart(2, '0')}.jpg`, it.blob));
+    } else {
+      await cache.load(draftId, order.fotos.map(p => p.copia));
+      order.fotos.forEach((p, i) => {
+        const img = cache.get(p.copia);
+        if (!img || !img.blob) throw new Error(`La foto ${i + 1} todavía no está disponible. Probá de nuevo en un rato.`);
+        zip.file(`${String(i + 1).padStart(2, '0')}.jpg`, img.blob);
+      });
+    }
     zip.file('copy.txt', text || d.copyFinal || '');
     const blob = await zip.generateAsync({ type: 'blob' });
     const a = document.createElement('a');
@@ -155,8 +192,10 @@ export default function RedesDraft({ draftId, cache, onBack }) {
     a.download = `RE_${slug(d.barrio)}_${todayIso()}.zip`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-    return null;
-  }, 'Paquete descargado.');
+    // The placas also go to Drive (backup), unless the draft is already closed.
+    if (items && open) return { ...(await saveSlides(items)), note };
+    return { note };
+  }, r => 'Paquete descargado.' + ((r && r.note) || '') + (r && r.fileId ? ' Placas guardadas en Drive.' : ''));
 
   const loadBrands = () => {
     if (brands) return;
@@ -226,6 +265,39 @@ export default function RedesDraft({ draftId, cache, onBack }) {
                 <Photo key={p.crudo} p={p} img={getImg(p.copia)} onClick={() => open && takeAlt(j)}>
                   {open && <button type="button" className={mini} title={selected >= 0 ? 'Cambiar por la elegida' : 'Agregar al carrusel'} onClick={() => takeAlt(j)}><ArrowUp size={12} /></button>}
                 </Photo>
+              ))}
+            </div>
+          </>
+        )}
+      </Section>
+
+      {/* placas */}
+      <Section title="Placas"
+        right={<button type="button" className={btnGhost} disabled={!!busy || orderDirty || !order.fotos.length}
+          title={orderDirty ? 'Guardá el orden primero' : ''}
+          onClick={() => run('placas', makeSlides, items => {
+            const w = (items || []).filter(it => it.warning).length;
+            return w ? `Placas listas, pero ${w} con texto muy largo.` : 'Placas listas.';
+          })}>
+          {busy === 'placas' ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />} {slides.items.length ? 'Actualizar placas' : 'Generar placas'}
+        </button>}>
+        {tplProblems.length > 0 && (
+          <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Plantillas con problemas (no se usan): {tplProblems.join(' · ')}
+          </div>
+        )}
+        {!slides.items.length ? (
+          <p className="text-xs text-gray-400">Las placas se arman con las plantillas, las fotos en este orden, el barrio y el estilo ({d.estilo === 'noche' ? 'noche' : 'estándar'}). También se generan solas al descargar el paquete.</p>
+        ) : (
+          <>
+            {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">Cambiaste fotos, barrio o estilo: tocá "Actualizar placas".</p>}
+            <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 ${slidesFresh ? '' : 'opacity-50'}`}>
+              {slides.items.map((it, i) => (
+                <figure key={it.url} className="m-0">
+                  <img src={it.url} alt="" className="w-full rounded-lg border border-gray-200" />
+                  <figcaption className="text-[10px] text-gray-500 mt-1">{String(i + 1).padStart(2, '0')} · {it.plantilla}</figcaption>
+                  {it.warning && <div className="text-[10px] font-bold text-red-600">{it.warning}</div>}
+                </figure>
               ))}
             </div>
           </>
@@ -375,7 +447,7 @@ export default function RedesDraft({ draftId, cache, onBack }) {
             <button type="button" className={btnGhost} onClick={() => setDiscarding(false)}>Cancelar</button>
           </div>
         )}
-        <p className="mt-3 text-[11px] text-gray-400">El paquete trae las fotos en orden (01.jpg, 02.jpg…) y copy.txt. Publicar: descargalo, subilo desde el celular y volvé a marcarlo como publicado.</p>
+        <p className="mt-3 text-[11px] text-gray-400">El paquete trae las placas en orden (01.jpg, 02.jpg…) y copy.txt; si las plantillas fallan, las fotos. Publicar: descargalo, subilo desde el celular y volvé a marcarlo como publicado.</p>
       </Section>
     </div>
   );
