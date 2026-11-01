@@ -1,9 +1,9 @@
 import React from 'react';
 
-export default function MiniLogo() {
+export default function MiniLogo({ className = 'w-5 h-5 mr-2' }) {
   return (
     // w-5 h-5 makes it exactly the size of a standard button icon
-    <div className="w-5 h-5 inline-block align-middle mr-2 animate-[flip_1.5s_cubic-bezier(0.45,0,0.55,1)_infinite] [transform-style:preserve-3d]">
+    <div className={`${className} inline-block align-middle shrink-0 animate-[flip_1.5s_cubic-bezier(0.45,0,0.55,1)_infinite] [transform-style:preserve-3d]`}>
       <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
        width="100%" height="100%" viewBox="0 0 2251.000000 2251.000000"
        preserveAspectRatio="xMidYMid meet">

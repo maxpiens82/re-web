@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import MiniLogo from '../MiniLogo';
 import { redesCall } from './redesApi';
 
 // "No publicar en redes" para una reserva confirmada (P- / U-). Solo lo ve administración (las acciones
@@ -34,7 +34,7 @@ export default function NoPublicarSwitch({ eventId }) {
         <input type="checkbox" className="sr-only" checked={state.activo} disabled={state.loading} onChange={toggle} />
         <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${state.activo ? 'left-4' : 'left-0.5'}`} />
       </span>
-      {state.loading ? <Loader2 size={12} className="animate-spin" /> : null}
+      {state.loading ? <MiniLogo className="w-3.5 h-3.5 text-[#E53B12]" /> : null}
       <span className={state.error ? 'text-red-600' : ''}>No publicar en redes</span>
     </label>
   );

@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import {
   ArrowLeft, ChevronLeft, ChevronRight, ArrowDown, ArrowUp, Check, Copy, RefreshCw, Download, Send,
-  CalendarDays, Trash2, Loader2, AlertTriangle, MapPin, Building, ExternalLink, Layers,
+  CalendarDays, Trash2, AlertTriangle, MapPin, Building, ExternalLink, Layers,
 } from 'lucide-react';
 import { redesCall, FALTANTES, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
+import MiniLogo from '../MiniLogo';
+import LoadingLogo from '../LoadingLogo';
 import { renderSlides, blobToBase64, loadTemplates } from './slides';
 
 const ESTADO_COLOR = { pendiente: 'bg-amber-500', aprobado: 'bg-green-600', programado: 'bg-blue-600', publicado: 'bg-gray-800', descartado: 'bg-gray-400' };
@@ -39,7 +41,7 @@ function Photo({ p, img, selected, onClick, children, draggable, onDragStart, on
       <button type="button" onClick={onClick} className="block w-full aspect-square">
         {img && img.url ? <img src={img.url} alt="" className="w-full h-full object-cover" draggable={false} />
           : <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 p-1 text-center">
-            {img ? (img.pending ? 'Drive todavía no hizo la miniatura' : (img.error || 'Sin vista previa')) : <Loader2 size={16} className="animate-spin" />}
+            {img ? (img.pending ? 'Drive todavía no hizo la miniatura' : (img.error || 'Sin vista previa')) : <MiniLogo className="w-8 h-8 text-[#E53B12]" />}
           </div>}
       </button>
       <div className="absolute top-1 left-1 flex gap-1">
@@ -109,7 +111,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     } finally { setBusy(''); }
   };
 
-  if (data.loading) return <div className="p-10 flex justify-center text-gray-400"><Loader2 className="animate-spin" /></div>;
+  if (data.loading) return <LoadingLogo message="Cargando boceto" />;
   if (data.error || !data.draft) return (
     <div className="max-w-3xl mx-auto p-4">
       <button type="button" onClick={onBack} className={btnGhost}><ArrowLeft size={14} /> Volver</button>
@@ -238,7 +240,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             <button type="button" className={btnGhost} onClick={() => { setOrder({ fotos: d.fotos, alts: d.alternativas }); setSelected(-1); }}>Deshacer</button>
             <button type="button" className={btnMain} disabled={!!busy}
               onClick={() => run('orden', () => redesCall('redes_update', { draftId, cambios: { fotos: order.fotos.map(p => p.crudo), alternativas: order.alts.map(p => p.crudo) } }), 'Orden guardado.')}>
-              {busy === 'orden' ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Guardar orden
+              {busy === 'orden' ? <MiniLogo className="w-4 h-4" /> : <Check size={14} />} Guardar orden
             </button>
           </div>
         )}>
@@ -279,14 +281,19 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             const w = (items || []).filter(it => it.warning).length;
             return w ? `Placas listas, pero ${w} con texto muy largo.` : 'Placas listas.';
           })}>
-          {busy === 'placas' ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />} {slides.items.length ? 'Actualizar placas' : 'Generar placas'}
+          {busy === 'placas' ? <MiniLogo className="w-4 h-4" /> : <Layers size={14} />} {slides.items.length ? 'Actualizar placas' : 'Generar placas'}
         </button>}>
         {tplProblems.length > 0 && (
           <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
             Plantillas con problemas (no se usan): {tplProblems.join(' · ')}
           </div>
         )}
-        {!slides.items.length ? (
+        {busy === 'placas' || (busy === 'zip' && !slidesFresh) ? (
+          <div className="py-10 flex flex-col items-center gap-3 text-[#E53B12]">
+            <MiniLogo className="w-12 h-12" />
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500 animate-pulse">Armando placas…</p>
+          </div>
+        ) : !slides.items.length ? (
           <p className="text-xs text-gray-400">Las placas se arman con las plantillas, las fotos en este orden, el barrio y el estilo ({d.estilo === 'noche' ? 'noche' : 'estándar'}). También se generan solas al descargar el paquete.</p>
         ) : (
           <>
@@ -354,7 +361,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           {open && <button type="button" className={btnGhost} disabled={!!busy}
             onClick={() => (!textDirty && text === (d.copyIA || '') || window.confirm('Regenerar reemplaza el texto actual. ¿Seguimos?')) &&
               run('regen', () => redesCall('redes_regenerate_copy', { draftId }), r => (r && r.problems && r.problems.length ? 'Texto nuevo, pero no pasó: ' + r.problems.join('; ') : 'Texto nuevo.'))}>
-            {busy === 'regen' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Regenerar
+            {busy === 'regen' ? <MiniLogo className="w-4 h-4" /> : <RefreshCw size={14} />} Regenerar
           </button>}
         </div>}>
         <div className="grid md:grid-cols-2 gap-3">
@@ -397,7 +404,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             <button type="button" className={btnMain} disabled={!!busy || textDirty || orderDirty}
               title={textDirty || orderDirty ? 'Guardá los cambios primero' : ''}
               onClick={() => run('aprobar', () => redesCall('redes_approve', { draftId }), r => (r && r.correccion ? 'Aprobado. Tu corrección del texto queda como ejemplo para Gemini.' : 'Aprobado.'))}>
-              {busy === 'aprobar' ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Aprobar
+              {busy === 'aprobar' ? <MiniLogo className="w-4 h-4" /> : <Check size={14} />} Aprobar
             </button>
           )}
           {['aprobado', 'programado'].includes(d.estado) && (
@@ -412,7 +419,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             </div>
           )}
           <button type="button" className={btnGhost} disabled={!!busy || !order.fotos.length} onClick={download}>
-            {busy === 'zip' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Descargar paquete
+            {busy === 'zip' ? <MiniLogo className="w-4 h-4" /> : <Download size={14} />} Descargar paquete
           </button>
           {['aprobado', 'programado'].includes(d.estado) && (
             <div className="flex items-end gap-2">
