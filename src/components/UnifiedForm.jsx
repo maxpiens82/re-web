@@ -894,7 +894,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
   );
 
   return (
-    <div className="bg-[#F0F2F5] w-full max-w-4xl mx-auto rounded-none md:rounded-3xl shadow-none md:shadow-2xl overflow-hidden flex flex-col h-full md:h-[90vh]">
+    <div className="bg-[#F0F2F5] w-full max-w-4xl mx-auto rounded-none md:rounded-2xl shadow-none md:shadow-2xl overflow-hidden flex flex-col h-full md:h-[90vh]">
       
       {/* HEADER */}
       <div className="px-4 py-2.5 md:px-6 md:py-3 border-b border-gray-200 flex items-center gap-3 bg-white z-10 shrink-0">
@@ -931,22 +931,22 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
       </div>
 
       {/* SCROLLABLE BODY */}
-      <div className="flex-1 overflow-y-auto p-2.5 md:p-8 space-y-3 md:space-y-6 pb-4 md:pb-6">
+      <div className="flex-1 overflow-y-auto p-2 md:p-5 space-y-2.5 md:space-y-4 pb-3 md:pb-5">
         
         {/* 1. CLIENTE & CRM */}
-        <section className="bg-white rounded-[20px] md:rounded-3xl p-3.5 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-3 md:mb-6 flex justify-between items-center">
-            <h2 className="text-sm md:text-lg font-bold uppercase" style={{ color: brandColor }}>Cliente & Contacto</h2>
+        <section className="bg-white rounded-2xl p-3 md:p-5 shadow-sm border border-gray-100">
+          <div className="mb-2.5 md:mb-4 flex justify-between items-center">
+            <h2 className="text-sm md:text-base font-bold uppercase" style={{ color: brandColor }}>Cliente & Contacto</h2>
             <button type="button" disabled={isSavingClient} onClick={handleUpdateClient} className={`text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-md transition-colors shadow-sm ${isSavingClient ? 'bg-green-100 text-green-700 cursor-wait' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'}`}>
               {isSavingClient ? '⏳...' : '💾 Guardar'}
             </button>
           </div>
 
-          <div className="mb-3 md:mb-6 relative" ref={clientWrapperRef}>
+          <div className="mb-2.5 md:mb-4 relative" ref={clientWrapperRef}>
             <label className="block text-[10px] md:text-xs font-bold text-[#2B6CB0] uppercase tracking-widest mb-1.5 flex items-center gap-1">
               <Search size={12} className="md:w-3.5 md:h-3.5" /> Buscar Cliente Existente
             </label>
-            <input type="text" value={clientSearchQuery} onChange={(e) => handleClientSearch(e.target.value)} onFocus={() => handleClientSearch(clientSearchQuery)} placeholder="Nombre, empresa, email o tel..." className="w-full bg-white border border-gray-200 py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-all shadow-sm text-[13px] md:text-sm" autoComplete="off" />
+            <input type="text" value={clientSearchQuery} onChange={(e) => handleClientSearch(e.target.value)} onFocus={() => handleClientSearch(clientSearchQuery)} placeholder="Nombre, empresa, email o tel..." className="w-full bg-white border border-gray-200 py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none focus:ring-2 focus:ring-[#EB4511]/20 transition-all shadow-sm text-[13px] md:text-sm" autoComplete="off" />
             {clientSuggestions.length > 0 && (
               <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-100 rounded-lg md:rounded-xl shadow-xl z-50 overflow-hidden max-h-48 overflow-y-auto">
                 {clientSuggestions.map((c, i) => (
@@ -961,32 +961,32 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-3.5">
             
             <div className="flex flex-col">
-              <div className="flex justify-between items-center mb-1 md:mb-2">
+              <div className="flex justify-between items-center mb-1 md:mb-1.5">
                 <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest m-0">Nombre</label>
                 {renderSwapButton('name', 'nombre')}
               </div>
-              <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('name')} />
+              <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('name')} />
             </div>
 
             <div className="flex flex-col">
-              <div className="flex justify-between items-center mb-1 md:mb-2">
+              <div className="flex justify-between items-center mb-1 md:mb-1.5">
                 <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest m-0">Apellido</label>
                 {renderSwapButton('lastName', 'apellido')}
               </div>
-              <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('lastName')} />
+              <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('lastName')} />
             </div>
             
-            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-12 gap-3 md:gap-5">
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-12 gap-2.5 md:gap-3.5">
               <div className="sm:col-span-6 flex flex-col" ref={companyWrapperRef}>
-                <div className="flex justify-between items-center mb-1 md:mb-2">
+                <div className="flex justify-between items-center mb-1 md:mb-1.5">
                   <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest m-0">Empresa</label>
                   {renderSwapButton('company', 'empresa')}
                 </div>
                 <div className="relative">
-                  <input type="text" name="company" value={formData.company} onChange={(e) => { handleInputChange(e); handleCompanySearch(e.target.value); }} onFocus={() => handleCompanySearch(formData.company)} placeholder="Escribir..." className="w-full py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('company')} autoComplete="off" />
+                  <input type="text" name="company" value={formData.company} onChange={(e) => { handleInputChange(e); handleCompanySearch(e.target.value); }} onFocus={() => handleCompanySearch(formData.company)} placeholder="Escribir..." className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('company')} autoComplete="off" />
                   {companySuggestions.length > 0 && (
                     <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg md:rounded-xl shadow-lg z-40 max-h-40 overflow-y-auto">
                       {companySuggestions.map((c, i) => (
@@ -998,19 +998,19 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
               </div>
 
               <div className="sm:col-span-3 flex flex-col">
-                <div className="flex justify-between items-center mb-1 md:mb-2 gap-2">
+                <div className="flex justify-between items-center mb-1 md:mb-1.5 gap-2">
                   <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest m-0 truncate">CUIT</label>
                   {renderSwapButton('dniCuit', 'dniCuit')}
                 </div>
-                <input type="text" name="dniCuit" inputMode="numeric" value={formData.dniCuit} onChange={handleInputChange} placeholder="XX-XX.XXX.XXX-X" className="w-full py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('dniCuit')} />
+                <input type="text" name="dniCuit" inputMode="numeric" value={formData.dniCuit} onChange={handleInputChange} placeholder="XX-XX.XXX.XXX-X" className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('dniCuit')} />
               </div>
 
               <div className="sm:col-span-3 flex flex-col">
-                <div className="flex justify-between items-center mb-1 md:mb-2 gap-2">
+                <div className="flex justify-between items-center mb-1 md:mb-1.5 gap-2">
                   <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest m-0 truncate">IVA</label>
                   {renderSwapButton('condicionIva', 'condicionIva')}
                 </div>
-                <select name="condicionIva" value={formData.condicionIva} onChange={handleInputChange} className="w-full py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-[13px] md:text-sm cursor-pointer" style={getFieldStyle('condicionIva')}>
+                <select name="condicionIva" value={formData.condicionIva} onChange={handleInputChange} className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none transition-all text-[13px] md:text-sm cursor-pointer" style={getFieldStyle('condicionIva')}>
                   <option value="">Seleccionar...</option>
                   <option value="Consumidor Final">Consumidor Final</option>
                   <option value="Responsable Inscripto">Resp. Inscripto</option>
@@ -1021,22 +1021,22 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
             </div>
 
             <div className="flex flex-col">
-              <div className="flex justify-between items-center mb-1 md:mb-2">
+              <div className="flex justify-between items-center mb-1 md:mb-1.5">
                 <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest m-0">Teléfono (ID)</label>
                 {/* Botón de Swap removido: El teléfono es la llave maestra */}
               </div>
-              <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('phone')} />
+              <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('phone')} />
             </div>
 
             <div className="flex flex-col">
-              <div className="flex justify-between items-center mb-1 md:mb-2">
+              <div className="flex justify-between items-center mb-1 md:mb-1.5">
                 <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest m-0">Email</label>
                 {renderSwapButton('email', 'email')}
               </div>
-              <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('email')} />
+              <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('email')} />
             </div>
 
-            <div className="sm:col-span-2 mt-1 p-2.5 md:p-4 bg-gray-50 rounded-xl md:rounded-2xl border transition-all" style={getFieldStyle('modalidadPago')}>
+            <div className="sm:col-span-2 mt-0.5 p-2.5 md:p-3 bg-gray-50 rounded-lg md:rounded-xl border transition-all" style={getFieldStyle('modalidadPago')}>
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-[10px] md:text-xs font-bold uppercase tracking-widest m-0" style={{ color: getFieldStyle('modalidadPago').color }}>Modalidad de Pago</label>
                 {renderSwapButton('modalidadPago', 'modalidadPago')}
@@ -1050,71 +1050,71 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
         </section>
 
         {/* 2. LOCACIÓN BASE */}
-        <section className="bg-white rounded-[20px] md:rounded-3xl p-3.5 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-3 md:mb-6"><h2 className="text-sm md:text-lg font-bold uppercase" style={{ color: brandColor }}>Locación Base</h2></div>
+        <section className="bg-white rounded-2xl p-3 md:p-5 shadow-sm border border-gray-100">
+          <div className="mb-2.5 md:mb-4"><h2 className="text-sm md:text-base font-bold uppercase" style={{ color: brandColor }}>Locación Base</h2></div>
           <div>
-            <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Dirección Edificio/Complejo {!isAddressValid && formData.address && <span className="text-red-500 ml-1 normal-case">(Sugerida Maps)</span>}</label>
+            <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-1.5">Dirección Edificio/Complejo {!isAddressValid && formData.address && <span className="text-red-500 ml-1 normal-case">(Sugerida Maps)</span>}</label>
             <div className="relative">
               <MapPin size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isAddressValid ? 'text-green-500' : 'text-gray-400'}`} />
-              <input type="text" ref={addressInputRef} name="address" value={formData.address} onChange={handleInputChange} className={`w-full bg-[#F4F4F5] py-2 pl-8 pr-3 md:py-3.5 md:pl-10 md:pr-4 rounded-lg md:rounded-xl font-medium outline-none text-[13px] md:text-sm ${isAddressValid ? 'ring-1 ring-[#4bbf73]' : ''}`} />
+              <input type="text" ref={addressInputRef} name="address" value={formData.address} onChange={handleInputChange} className={`w-full bg-[#F4F4F5] py-2 pl-8 pr-3 md:py-2.5 md:pl-9 md:pr-3.5 rounded-lg font-medium outline-none text-[13px] md:text-sm ${isAddressValid ? 'ring-1 ring-[#4bbf73]' : ''}`} />
             </div>
           </div>
         </section>
 
         {/* 3. UNITS ENGINE */}
         {units.map((unit, index) => (
-          <section key={unit.id} className="bg-white rounded-[20px] md:rounded-3xl p-3.5 md:p-8 shadow-sm border-t-4 border-[#EB4511] relative">
+          <section key={unit.id} className="bg-white rounded-2xl p-3 md:p-5 shadow-sm border-t-4 border-[#EB4511] relative">
             {units.length > 1 && (
               <button onClick={() => removeUnit(unit.id)} className="absolute right-3 top-3 bg-red-50 text-red-500 hover:bg-red-100 w-7 h-7 rounded-full flex items-center justify-center transition-colors">
                 <X size={14} strokeWidth={3}/>
               </button>
             )}
-            <h2 className="text-sm md:text-lg font-bold uppercase mb-3 md:mb-4" style={{ color: brandColor }}>Unidad {units.length > 1 ? index + 1 : ''}</h2>
+            <h2 className="text-sm md:text-base font-bold uppercase mb-2.5 md:mb-3" style={{ color: brandColor }}>Unidad {units.length > 1 ? index + 1 : ''}</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 md:gap-3.5 mb-3">
               <div>
-                <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Indicaciones (Depto/Lote)</label>
-                <input type="text" value={unit.indicaciones} onChange={(e) => updateUnit(unit.id, 'indicaciones', e.target.value)} placeholder="Ej: Depto 4A..." className="w-full bg-[#F4F4F5] border-none py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl outline-none font-medium text-[13px] md:text-sm" />
+                <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-1.5">Indicaciones (Depto/Lote)</label>
+                <input type="text" value={unit.indicaciones} onChange={(e) => updateUnit(unit.id, 'indicaciones', e.target.value)} placeholder="Ej: Depto 4A..." className="w-full bg-[#F4F4F5] border-none py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg outline-none font-medium text-[13px] md:text-sm" />
               </div>
               <div>
-                <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Metros Cuadrados</label>
-                <select value={unit.metrosCuadrados} onChange={(e) => updateUnit(unit.id, 'metrosCuadrados', e.target.value)} className="w-full bg-[#F4F4F5] border-none py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl outline-none font-medium text-[13px] md:text-sm cursor-pointer">
+                <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-1.5">Metros Cuadrados</label>
+                <select value={unit.metrosCuadrados} onChange={(e) => updateUnit(unit.id, 'metrosCuadrados', e.target.value)} className="w-full bg-[#F4F4F5] border-none py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg outline-none font-medium text-[13px] md:text-sm cursor-pointer">
                   {db.multipliers.map(m => <option key={m.id} value={m.sheetValue}>{m.label}</option>)}
                 </select>
               </div>
             </div>
 
-            <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Servicios</label>
-            <div className="grid grid-cols-4 sm:grid-cols-4 md:flex md:flex-wrap gap-2 md:gap-3">
+            <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-1.5">Servicios</label>
+            <div className="grid grid-cols-4 sm:grid-cols-4 md:flex md:flex-wrap gap-2">
               {db.services.map((srv) => {
                 const isSelected = unit.selectedServices.includes(srv.id);
                 return (
-                  <button key={srv.id} onClick={() => toggleUnitService(unit.id, srv.id)} className={`w-full h-[32px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none ${isSelected ? 'bg-[#EB4511] text-white shadow-sm -translate-y-0.5' : 'bg-[#F4F4F5] text-gray-600'}`}>
+                  <button key={srv.id} onClick={() => toggleUnitService(unit.id, srv.id)} className={`w-full h-[32px] md:w-[88px] md:h-[34px] rounded-full font-bold text-[10px] md:text-xs tracking-wide transition-all select-none ${isSelected ? 'bg-[#EB4511] text-white shadow-sm -translate-y-0.5' : 'bg-[#F4F4F5] text-gray-600'}`}>
                     {srv.label}
                   </button>
                 );
               })}
-              <button onClick={() => toggleUnitService(unit.id, 'EXTRAS')} className={`w-full h-[32px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none ${unit.selectedServices.includes('EXTRAS') ? 'bg-[#EB4511] text-white shadow-md -translate-y-0.5' : 'bg-[#F4F4F5] text-gray-600'}`}>
+              <button onClick={() => toggleUnitService(unit.id, 'EXTRAS')} className={`w-full h-[32px] md:w-[88px] md:h-[34px] rounded-full font-bold text-[10px] md:text-xs tracking-wide transition-all select-none ${unit.selectedServices.includes('EXTRAS') ? 'bg-[#EB4511] text-white shadow-md -translate-y-0.5' : 'bg-[#F4F4F5] text-gray-600'}`}>
                 EXTRAS
               </button>
             </div>
 
             {unit.selectedServices.includes('EXTRAS') && (
-              <div className="mt-3 md:mt-6 p-3 md:p-5 bg-orange-50/50 rounded-xl md:rounded-2xl border border-orange-100 animate-in fade-in duration-200">
-                <label className="block text-[10px] md:text-xs font-bold text-orange-600 uppercase tracking-widest mb-2 md:mb-3">Detalle de Extras</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
+              <div className="mt-3 md:mt-4 p-3 md:p-4 bg-orange-50/50 rounded-lg md:rounded-xl border border-orange-100 animate-in fade-in duration-200">
+                <label className="block text-[10px] md:text-xs font-bold text-orange-600 uppercase tracking-widest mb-1.5 md:mb-2">Detalle de Extras</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                   <div>
                     <label className="block text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-1.5">Descripción</label>
-                    <input type="text" value={unit.extrasDescripcion} onChange={(e) => updateUnit(unit.id, 'extrasDescripcion', e.target.value)} placeholder="Ej: Fotos 360..." className="w-full bg-white border border-orange-100 py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none text-[13px] md:text-sm" />
+                    <input type="text" value={unit.extrasDescripcion} onChange={(e) => updateUnit(unit.id, 'extrasDescripcion', e.target.value)} placeholder="Ej: Fotos 360..." className="w-full bg-white border border-orange-100 py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none text-[13px] md:text-sm" />
                   </div>
                   <div className="grid grid-cols-2 gap-2 md:gap-3">
                     <div>
                       <label className="block text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-1.5">Cobro Cliente</label>
-                      <input type="number" value={unit.costoExtras} onChange={(e) => updateUnit(unit.id, 'costoExtras', e.target.value)} placeholder="$0" className="w-full bg-white border border-orange-100 py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-bold outline-none text-[13px] md:text-sm" />
+                      <input type="number" value={unit.costoExtras} onChange={(e) => updateUnit(unit.id, 'costoExtras', e.target.value)} placeholder="$0" className="w-full bg-white border border-orange-100 py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-bold outline-none text-[13px] md:text-sm" />
                     </div>
                     <div>
                       <label className="block text-[9px] md:text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-1 md:mb-1.5">Pago Editor</label>
-                      <input type="number" value={unit.pagoEditorExtras} onChange={(e) => updateUnit(unit.id, 'pagoEditorExtras', e.target.value)} placeholder="$0" className="w-full bg-white border border-indigo-100 py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-bold outline-none text-[13px] md:text-sm" />
+                      <input type="number" value={unit.pagoEditorExtras} onChange={(e) => updateUnit(unit.id, 'pagoEditorExtras', e.target.value)} placeholder="$0" className="w-full bg-white border border-indigo-100 py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-bold outline-none text-[13px] md:text-sm" />
                     </div>
                   </div>
                 </div>
@@ -1123,27 +1123,27 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
           </section>
         ))}
 
-        <button onClick={addUnit} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 border-2 border-dashed border-blue-200 py-3 md:py-4 rounded-[20px] md:rounded-2xl font-bold uppercase tracking-wider text-[11px] md:text-sm transition-colors flex items-center justify-center gap-2">
+        <button onClick={addUnit} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 border-2 border-dashed border-blue-200 py-2.5 md:py-3 rounded-2xl font-bold uppercase tracking-wider text-[11px] md:text-xs transition-colors flex items-center justify-center gap-2">
           <Plus size={16} /> Agregar Otra Unidad
         </button>
 
         {/* 4. TEAM BUILDER */}
-        <section className="bg-white rounded-[20px] md:rounded-3xl p-3.5 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-3 md:mb-6"><h2 className="text-sm md:text-lg font-bold uppercase" style={{ color: brandColor }}>Equipo de Producción</h2></div>
+        <section className="bg-white rounded-2xl p-3 md:p-5 shadow-sm border border-gray-100">
+          <div className="mb-2.5 md:mb-4"><h2 className="text-sm md:text-base font-bold uppercase" style={{ color: brandColor }}>Equipo de Producción</h2></div>
           
-          <div className="space-y-4 md:space-y-6">
+          <div className="space-y-3 md:space-y-4">
             {teamMembers.map((member, idx) => (
               <div key={idx} className="relative">
                 {teamMembers.length > 1 && (
-                  <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Productor {idx + 1}</label>
+                  <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-1.5">Productor {idx + 1}</label>
                 )}
                 <div className="flex gap-2 items-center mb-2">
-                  <select value={member.name} onChange={(e) => { updateTeamMemberName(idx, e.target.value); autoAssignSingleProducer(); }} className="flex-1 bg-[#F4F4F5] border-none py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl outline-none font-medium text-[13px] md:text-sm cursor-pointer">
+                  <select value={member.name} onChange={(e) => { updateTeamMemberName(idx, e.target.value); autoAssignSingleProducer(); }} className="flex-1 bg-[#F4F4F5] border-none py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg outline-none font-medium text-[13px] md:text-sm cursor-pointer">
                     <option value="">Seleccionar Productor...</option>
                     {config?.realizadoresList?.map(r => <option key={r.name} value={r.name}>{r.name}</option>)}
                   </select>
                   {teamMembers.length > 1 && (
-                    <button onClick={() => removeTeamMember(idx)} className="bg-red-50 text-red-500 w-[36px] h-[36px] md:w-[48px] md:h-[48px] rounded-lg md:rounded-xl flex items-center justify-center font-bold transition-colors hover:bg-red-100 shrink-0">X</button>
+                    <button onClick={() => removeTeamMember(idx)} className="bg-red-50 text-red-500 w-[36px] h-[36px] md:w-[40px] md:h-[40px] rounded-lg flex items-center justify-center font-bold transition-colors hover:bg-red-100 shrink-0">X</button>
                   )}
                 </div>
                 
@@ -1163,26 +1163,26 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
                 {teamMembers.length > 1 && allActiveServices.length === 0 && <div className="text-[10px] md:text-xs text-gray-400 mt-1">Selecciona servicios en las unidades primero.</div>}
               </div>
             ))}
-            <button onClick={addTeamMember} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 border-2 border-dashed border-blue-200 py-2.5 md:py-3.5 rounded-lg md:rounded-xl font-bold uppercase tracking-wider text-[10px] md:text-xs transition-colors flex items-center justify-center gap-1.5 mt-2">
+            <button onClick={addTeamMember} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 border-2 border-dashed border-blue-200 py-2 md:py-2.5 rounded-lg font-bold uppercase tracking-wider text-[10px] md:text-xs transition-colors flex items-center justify-center gap-1.5 mt-2">
               <Plus size={14} /> Sumar Productor
             </button>
           </div>
 
-          <div className="mt-4 md:mt-6">
-            <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Observaciones Internas</label>
-            <textarea name="observaciones" value={formData.observaciones} onChange={handleInputChange} rows="2" placeholder="Notas para edición, links..." className="w-full bg-[#F4F4F5] border-none py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl outline-none font-medium text-[13px] md:text-sm" />
+          <div className="mt-3 md:mt-4">
+            <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-1.5">Observaciones Internas</label>
+            <textarea name="observaciones" value={formData.observaciones} onChange={handleInputChange} rows="2" placeholder="Notas para edición, links..." className="w-full bg-[#F4F4F5] border-none py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg outline-none font-medium text-[13px] md:text-sm" />
           </div>
         </section>
 
         {/* 5. GLOBAL POST-PROD */}
         {!isNewBooking && !isWebRequest && allActiveServices.filter(s => s !== 'EXTRAS').length > 0 && (
-          <section className="bg-white rounded-[20px] md:rounded-3xl p-3.5 md:p-8 shadow-sm border border-gray-100 animate-in slide-in-from-top-2 fade-in duration-200">
-            <div className="mb-3 md:mb-6"><h2 className="text-sm md:text-lg font-bold uppercase text-[#38a169]">¿El equipo editará material propio?</h2></div>
-            <div className="grid grid-cols-4 sm:grid-cols-4 md:flex md:flex-wrap gap-2 md:gap-3">
+          <section className="bg-white rounded-2xl p-3 md:p-5 shadow-sm border border-gray-100 animate-in slide-in-from-top-2 fade-in duration-200">
+            <div className="mb-2.5 md:mb-4"><h2 className="text-sm md:text-base font-bold uppercase text-[#38a169]">¿El equipo editará material propio?</h2></div>
+            <div className="grid grid-cols-4 sm:grid-cols-4 md:flex md:flex-wrap gap-2">
               {allActiveServices.filter(s => s !== 'EXTRAS').map((srv) => {
                 const isSelfEdited = globalPostProd.includes(srv);
                 return (
-                  <button key={`gpp-${srv}`} onClick={() => toggleGlobalPostProd(srv)} className={`w-full h-[32px] md:w-[100px] md:h-[40px] rounded-full font-bold text-[10px] md:text-sm tracking-wide transition-all select-none ${isSelfEdited ? 'bg-[#38a169] text-white shadow-md -translate-y-0.5' : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}>
+                  <button key={`gpp-${srv}`} onClick={() => toggleGlobalPostProd(srv)} className={`w-full h-[32px] md:w-[88px] md:h-[34px] rounded-full font-bold text-[10px] md:text-xs tracking-wide transition-all select-none ${isSelfEdited ? 'bg-[#38a169] text-white shadow-md -translate-y-0.5' : 'bg-[#F4F4F5] text-gray-600 hover:bg-gray-200'}`}>
                     {srv}
                   </button>
                 );
@@ -1192,44 +1192,44 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
         )}
 
         {/* 6. FECHA Y HORA */}
-        <section className="bg-white rounded-[20px] md:rounded-3xl p-3.5 md:p-8 shadow-sm border border-gray-100">
-          <div className="mb-3 md:mb-6"><h2 className="text-sm md:text-lg font-bold uppercase" style={{ color: brandColor }}>Fecha y Hora</h2></div>
-          <div className="space-y-5 md:space-y-8">
+        <section className="bg-white rounded-2xl p-3 md:p-5 shadow-sm border border-gray-100">
+          <div className="mb-2.5 md:mb-4"><h2 className="text-sm md:text-base font-bold uppercase" style={{ color: brandColor }}>Fecha y Hora</h2></div>
+          <div className="space-y-4 md:space-y-5">
             <div>
-              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 md:mb-3">Seleccionar Fecha</label>
-              <div className="flex items-center gap-1.5 md:gap-4">
-                <button onClick={scrollLeft} className="w-7 h-7 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#EB4511] hover:bg-gray-50"><ChevronLeft size={16}/></button>
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Seleccionar Fecha</label>
+              <div className="flex items-center gap-1.5 md:gap-3">
+                <button onClick={scrollLeft} className="w-7 h-7 md:w-8 md:h-8 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#EB4511] hover:bg-gray-50"><ChevronLeft size={16}/></button>
                 
-                <div ref={dateScrollRef} className="relative flex flex-1 gap-1.5 md:gap-3 overflow-x-auto scroll-smooth py-1 px-1 [&::-webkit-scrollbar]:hidden">
+                <div ref={dateScrollRef} className="relative flex flex-1 gap-1.5 md:gap-2 overflow-x-auto scroll-smooth py-1 px-1 [&::-webkit-scrollbar]:hidden">
                   {dateOptions.map(d => {
                     const isSelected = selectedDateObj?.id === d.id;
                     return (
-                      <button key={d.id} data-date={d.id} onClick={() => setSelectedDateObj(d)} className={`flex flex-col items-center justify-center w-[52px] h-[56px] md:w-[72px] md:h-[72px] shrink-0 rounded-[14px] md:rounded-2xl border-2 transition-all select-none ${isSelected ? 'border-[#EB4511] shadow-md bg-white -translate-y-0.5' : 'border-transparent bg-[#F4F4F5] hover:bg-gray-200'}`}>
+                      <button key={d.id} data-date={d.id} onClick={() => setSelectedDateObj(d)} className={`flex flex-col items-center justify-center w-[52px] h-[56px] md:w-[60px] md:h-[60px] shrink-0 rounded-[14px] md:rounded-xl border-2 transition-all select-none ${isSelected ? 'border-[#EB4511] shadow-md bg-white -translate-y-0.5' : 'border-transparent bg-[#F4F4F5] hover:bg-gray-200'}`}>
                         <span className={`text-[9px] md:text-[11px] font-bold uppercase ${isSelected ? 'text-[#EB4511]' : 'text-gray-500'}`}>{d.dayName}</span>
-                        <span className={`text-lg md:text-2xl font-black mt-0.5 ${isSelected ? 'text-[#2d2d2d]' : 'text-gray-500'}`}>{d.dayNumber}</span>
+                        <span className={`text-lg md:text-xl font-black mt-0.5 ${isSelected ? 'text-[#2d2d2d]' : 'text-gray-500'}`}>{d.dayNumber}</span>
                       </button>
                     )
                   })}
                 </div>
                 
-                <button onClick={scrollRight} className="w-7 h-7 md:w-10 md:h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#EB4511] hover:bg-gray-50"><ChevronRight size={16}/></button>
+                <button onClick={scrollRight} className="w-7 h-7 md:w-8 md:h-8 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-[#EB4511] hover:bg-gray-50"><ChevronRight size={16}/></button>
               </div>
-              <div className="mt-2 md:mt-5 text-center min-h-[16px]">{selectedDateObj && <span className="text-[11px] md:text-[13px] font-bold uppercase tracking-wide text-[#EB4511]">{selectedDateObj.fullFormat}</span>}</div>
+              <div className="mt-2 md:mt-3 text-center min-h-[16px]">{selectedDateObj && <span className="text-[11px] md:text-[13px] font-bold uppercase tracking-wide text-[#EB4511]">{selectedDateObj.fullFormat}</span>}</div>
             </div>
 
             <div>
-              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 md:mb-3">Seleccionar Hora</label>
-              <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5 md:gap-3">
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-2">Seleccionar Hora</label>
+              <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5 md:gap-2">
                 {timeOptions.map(time => {
                   const isSelected = selectedTime === time;
-                  return <button key={time} onClick={() => setSelectedTime(time)} className={`py-1.5 md:py-2 rounded-full font-bold text-[11px] md:text-sm transition-all select-none ${isSelected ? 'bg-[#EB4511] text-white shadow-md -translate-y-0.5' : 'bg-[#F4F4F5] text-gray-600'}`}>{time}</button>
+                  return <button key={time} onClick={() => setSelectedTime(time)} className={`py-1.5 rounded-full font-bold text-[11px] md:text-[13px] transition-all select-none ${isSelected ? 'bg-[#EB4511] text-white shadow-md -translate-y-0.5' : 'bg-[#F4F4F5] text-gray-600'}`}>{time}</button>
                 })}
               </div>
             </div>      
             
             <div>
-              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 md:mb-3">Duración Estimada</label>
-              <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full bg-[#F4F4F5] border-none py-2 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl font-medium outline-none text-[13px] md:text-sm cursor-pointer">
+              <label className="block text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 md:mb-2">Duración Estimada</label>
+              <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full bg-[#F4F4F5] border-none py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none text-[13px] md:text-sm cursor-pointer">
                 <option value="1 Hora">1 Hora</option>
                 <option value="1.5 Horas">1.5 Horas</option>
                 <option value="2 Horas">2 Horas</option>
@@ -1243,7 +1243,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
       </div>
 
       {/* FOOTER */}
-      <div className="p-4 md:px-6 md:py-4 bg-white border-t border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0 gap-3 md:gap-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+      <div className="p-3 md:px-5 md:py-3 bg-white border-t border-gray-200 flex flex-col md:flex-row justify-between items-center z-10 shrink-0 gap-2.5 md:gap-4" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
         
         {/* MOBILE: Toggle Layout */}
         <div 
@@ -1266,7 +1266,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
             <div className="flex flex-col justify-between items-start">
                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Total Estimado</span>
                <div className="flex items-baseline gap-2">
-                 <span className="text-2xl font-extrabold leading-none whitespace-nowrap" style={{ color: brandColor }}>
+                 <span className="text-xl font-extrabold leading-none whitespace-nowrap" style={{ color: brandColor }}>
                    {formatCurrency(total)}
                  </span>
                  {discountApplied > 0 && (
@@ -1279,7 +1279,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
             
             <div className="flex flex-col justify-between items-start border-l border-gray-200 pl-4">
                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Pago Prod.</span>
-               <div className="text-2xl font-extrabold leading-none text-[#38a169] whitespace-nowrap">
+               <div className="text-xl font-extrabold leading-none text-[#38a169] whitespace-nowrap">
                  {formatCurrency(producerPayout)}
                </div>
             </div>
@@ -1292,35 +1292,35 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
                 <button 
                   onClick={handleSendQuote} 
                   disabled={isSubmitting || isSendingQuote || total === 0} 
-                  className="px-5 py-3.5 bg-[#FFF5F2] text-[#E53B12] font-extrabold rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-[#FFEAE3] transition-colors disabled:opacity-50 whitespace-nowrap"
+                  className="px-5 py-2.5 bg-[#FFF5F2] text-[#E53B12] font-extrabold rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-[#FFEAE3] transition-colors disabled:opacity-50 whitespace-nowrap"
                 >
                   {isSendingQuote ? <><Loader2 size={16} className="animate-spin" /> Enviando</> : <><Mail size={16} /> Presupuesto</>}
                 </button>
                 <button 
                   onClick={() => handleFormSubmit('create_booking')} 
                   disabled={isSubmitting} 
-                  className="px-8 py-3.5 bg-[#E53B12] text-white font-extrabold rounded-full text-[11px] uppercase tracking-wider shadow-md flex items-center justify-center disabled:opacity-50 hover:bg-[#c42e0d] transition-all hover:-translate-y-0.5 whitespace-nowrap"
+                  className="px-8 py-2.5 bg-[#E53B12] text-white font-extrabold rounded-full text-[11px] uppercase tracking-wider shadow-md flex items-center justify-center disabled:opacity-50 hover:bg-[#c42e0d] transition-all hover:-translate-y-0.5 whitespace-nowrap"
                 >
                   {isSubmitting ? <><MiniLogo /> Procesando</> : 'Cargar Reserva'}
                 </button>
               </>
             ) : isWebRequest ? (
               <>
-                <button onClick={handleRejectBooking} disabled={isSubmitting} className="px-6 py-3.5 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold rounded-full text-[11px] uppercase tracking-wider disabled:opacity-50 transition-colors whitespace-nowrap">Rechazar</button>
-                <button onClick={() => handleFormSubmit('update_booking')} disabled={isSubmitting} className="px-8 py-3.5 bg-yellow-500 hover:bg-yellow-600 text-white font-extrabold rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 transition-colors whitespace-nowrap">
+                <button onClick={handleRejectBooking} disabled={isSubmitting} className="px-6 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold rounded-full text-[11px] uppercase tracking-wider disabled:opacity-50 transition-colors whitespace-nowrap">Rechazar</button>
+                <button onClick={() => handleFormSubmit('update_booking')} disabled={isSubmitting} className="px-8 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white font-extrabold rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 transition-colors whitespace-nowrap">
                   {isSubmitting ? <><MiniLogo /> Aprobando</> : 'Aprobar'}
                 </button>
               </>
             ) : (
               <>
-                <button onClick={() => handleFormSubmit('checkout_booking')} disabled={isSubmitting} className="px-6 py-3.5 bg-white hover:bg-gray-50 border-2 border-green-500 text-green-600 font-extrabold rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 shadow-sm transition-colors whitespace-nowrap">
+                <button onClick={() => handleFormSubmit('checkout_booking')} disabled={isSubmitting} className="px-6 py-2.5 bg-white hover:bg-gray-50 border-2 border-green-500 text-green-600 font-extrabold rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 shadow-sm transition-colors whitespace-nowrap">
                   Checkout
                 </button>
                 
                 <button 
                   onClick={() => handleFormSubmit('update_booking')} 
                   disabled={isSubmitting || !isDirty} 
-                  className={`px-8 py-3.5 font-extrabold rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center transition-all duration-200 whitespace-nowrap
+                  className={`px-8 py-2.5 font-extrabold rounded-full text-[11px] uppercase tracking-wider flex items-center justify-center transition-all duration-200 whitespace-nowrap
                     ${isSubmitting || !isDirty 
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
                       : 'bg-[#EB4511] text-white hover:bg-[#c42e0d] shadow-md hover:-translate-y-0.5'
@@ -1340,35 +1340,35 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
               <button 
                 onClick={handleSendQuote} 
                 disabled={isSubmitting || isSendingQuote || total === 0} 
-                className="flex-1 px-3 py-3 bg-[#FFF5F2] text-[#E53B12] font-extrabold rounded-xl text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-[#FFEAE3] transition-colors disabled:opacity-50 whitespace-nowrap"
+                className="flex-1 px-3 py-2.5 bg-[#FFF5F2] text-[#E53B12] font-extrabold rounded-xl text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 hover:bg-[#FFEAE3] transition-colors disabled:opacity-50 whitespace-nowrap"
               >
                 {isSendingQuote ? <><Loader2 size={16} className="animate-spin" /> Enviando</> : <><Mail size={16} /> Presupuesto</>}
               </button>
               <button 
                 onClick={() => handleFormSubmit('create_booking')} 
                 disabled={isSubmitting} 
-                className="flex-1 px-4 py-3 bg-[#E53B12] text-white font-extrabold rounded-xl text-[11px] uppercase tracking-wider shadow-md flex items-center justify-center disabled:opacity-50 hover:bg-[#c42e0d] transition-all hover:-translate-y-0.5 whitespace-nowrap"
+                className="flex-1 px-4 py-2.5 bg-[#E53B12] text-white font-extrabold rounded-xl text-[11px] uppercase tracking-wider shadow-md flex items-center justify-center disabled:opacity-50 hover:bg-[#c42e0d] transition-all hover:-translate-y-0.5 whitespace-nowrap"
               >
                 {isSubmitting ? <><MiniLogo /> Procesando</> : 'Cargar Reserva'}
               </button>
             </>
           ) : isWebRequest ? (
             <>
-              <button onClick={handleRejectBooking} disabled={isSubmitting} className="flex-1 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold rounded-xl text-[11px] uppercase tracking-wider disabled:opacity-50 transition-colors whitespace-nowrap">Rechazar</button>
-              <button onClick={() => handleFormSubmit('update_booking')} disabled={isSubmitting} className="flex-1 px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-extrabold rounded-xl text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 transition-colors whitespace-nowrap">
+              <button onClick={handleRejectBooking} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold rounded-xl text-[11px] uppercase tracking-wider disabled:opacity-50 transition-colors whitespace-nowrap">Rechazar</button>
+              <button onClick={() => handleFormSubmit('update_booking')} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white font-extrabold rounded-xl text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 transition-colors whitespace-nowrap">
                 {isSubmitting ? <><MiniLogo /> Aprobando</> : 'Aprobar'}
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => handleFormSubmit('checkout_booking')} disabled={isSubmitting} className="flex-1 px-4 py-3 bg-white hover:bg-gray-50 border-2 border-green-500 text-green-600 font-extrabold rounded-xl text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 shadow-sm transition-colors whitespace-nowrap">
+              <button onClick={() => handleFormSubmit('checkout_booking')} disabled={isSubmitting} className="flex-1 px-4 py-2.5 bg-white hover:bg-gray-50 border-2 border-green-500 text-green-600 font-extrabold rounded-xl text-[11px] uppercase tracking-wider flex items-center justify-center disabled:opacity-50 shadow-sm transition-colors whitespace-nowrap">
                 Checkout
               </button>
               
               <button 
                 onClick={() => handleFormSubmit('update_booking')} 
                 disabled={isSubmitting || !isDirty} 
-                className={`flex-1 px-4 py-3 font-extrabold rounded-xl text-[11px] uppercase tracking-wider flex items-center justify-center transition-all duration-200 whitespace-nowrap
+                className={`flex-1 px-4 py-2.5 font-extrabold rounded-xl text-[11px] uppercase tracking-wider flex items-center justify-center transition-all duration-200 whitespace-nowrap
                   ${isSubmitting || !isDirty 
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
                     : 'bg-[#EB4511] text-white hover:bg-[#c42e0d] shadow-md hover:-translate-y-0.5'
