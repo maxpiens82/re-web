@@ -64,7 +64,8 @@ const orientation = p => {
 // Default layout (spec §7.2.2): cover with photo 1; then, in order, consecutive landscape pairs on
 // "doble" and portraits (or a lone landscape) on "simple"; then the closing slide. A suelta goes in
 // "foto-en-marco-1350", or "-1080" for a square photo. "-noche" variants when estilo = noche.
-export function defaultLayout(tipo, fotos) {
+// cierre 'endscreen': no closing template (the end screen video goes last instead, §7.2b).
+export function defaultLayout(tipo, fotos, cierre = 'plantilla') {
   if (tipo === 'suelta') return [{ plantilla: orientation(fotos[0] || {}) === 'square' ? 'foto-en-marco-1080' : 'foto-en-marco-1350', fotos: fotos.slice(0, 1) }];
   const slides = [{ plantilla: 'carrusel-portada', fotos: fotos.slice(0, 1) }];
   for (let i = 1; i < fotos.length;) {
@@ -76,7 +77,7 @@ export function defaultLayout(tipo, fotos) {
       i += 1;
     }
   }
-  slides.push({ plantilla: 'carrusel-cierre', fotos: [] });
+  if (cierre !== 'endscreen') slides.push({ plantilla: 'carrusel-cierre', fotos: [] });
   return slides;
 }
 
@@ -131,11 +132,11 @@ async function rasterize(svgText, W, H) {
 
 // Renders every slide. photoBlob(copia) gives the photo's Blob (from the tab's photo cache).
 // Returns [{ plantilla, blob, url, warning }]; the caller revokes the URLs.
-export async function renderSlides({ tipo, fotos, barrio, estilo, photoBlob }) {
+export async function renderSlides({ tipo, fotos, barrio, estilo, cierre, photoBlob }) {
   const [templates, fonts] = await Promise.all([loadTemplates(), loadFonts()]);
   const byName = Object.fromEntries(templates.map(t => [t.name, t]));
   const css = fonts.map(f => `@font-face{font-family:'${f.family}';src:url(data:font/otf;base64,${f.base64})}`).join('');
-  const layout = defaultLayout(tipo, fotos);
+  const layout = defaultLayout(tipo, fotos, cierre);
   const dataUrls = {};
   for (const p of fotos) {
     const blob = photoBlob(p.copia);

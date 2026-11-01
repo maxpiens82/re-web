@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import {
   ArrowLeft, ChevronLeft, ChevronRight, ArrowDown, ArrowUp, Check, Copy, RefreshCw, Download, Send,
-  CalendarDays, Trash2, AlertTriangle, MapPin, Building, ExternalLink, Layers,
+  CalendarDays, Trash2, AlertTriangle, MapPin, Building, ExternalLink, Layers, Pencil, X,
 } from 'lucide-react';
 import { redesCall, FALTANTES, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
 import MiniLogo from '../MiniLogo';
 import LoadingLogo from '../LoadingLogo';
 import { renderSlides, blobToBase64, loadTemplates } from './slides';
+import { closingOf, disenoFor, startSettings, toSaved, settingsKey, renderEndscreen, canMakeVideo } from './cierre';
+import EndScreen from '../../endscreen/EndScreen.jsx';
 
 const ESTADO_COLOR = { pendiente: 'bg-amber-500', aprobado: 'bg-green-600', programado: 'bg-blue-600', publicado: 'bg-gray-800', descartado: 'bg-gray-400' };
 const MOTIVOS = [['revisor', 'No va'], ['fotos', 'Las fotos no sirven'], ['repetido', 'Repetido'], ['otro', 'Otro…']];
@@ -33,6 +35,7 @@ const btn = 'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-
 const btnGhost = `${btn} border border-gray-200 bg-white text-gray-600 hover:bg-gray-50`;
 const btnMain = `${btn} bg-[#EB4511] text-white hover:bg-[#c42e0d]`;
 const input = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#EB4511]';
+const pill = on => `px-3 py-1 rounded-full text-xs font-bold border disabled:opacity-60 ${on ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200'}`;
 
 function Photo({ p, img, selected, onClick, children, draggable, onDragStart, onDrop, label }) {
   return (
@@ -75,6 +78,16 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [tplProblems, setTplProblems] = useState([]);
   const slideUrls = useRef([]);
   useEffect(() => () => slideUrls.current.forEach(u => URL.revokeObjectURL(u)), []);
+  // Closing video (end screen): kept while its settings don't change, so it isn't encoded again.
+  const video = useRef(null);                       // { key, item: { blob, url, poster, video: true } }
+  useEffect(() => () => { const v = video.current; if (v) { URL.revokeObjectURL(v.item.url); URL.revokeObjectURL(v.item.poster); } }, []);
+  const [vprog, setVprog] = useState(null);          // { done, total } while it encodes
+  const [editor, setEditor] = useState(null);        // start settings while the end screen editor is open
+  const brandsRef = useRef(null);
+  const loadBrandLogo = useCallback(async (id, kind) => {
+    const r = await redesCall('marcas_logo', { id, kind });
+    return `data:${r.mime};base64,${r.base64}`;
+  }, []);
 
   const apply = d => {
     setData(s => ({ ...s, loading: false, draft: d }));
@@ -147,25 +160,60 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     setSelected(-1);
   };
 
-  // --- placas: rendered from the SAVED draft (order, barrio, estilo), so they match what's stored ---
-  const slidesKey = JSON.stringify([d.tipo, d.fotos.map(p => p.crudo), d.barrio || '', d.estilo || 'estandar']);
+  // --- closing slide (carousels): end screen video or the template (spec §7.2b) ---
+  const closing = closingOf(d);
+  const ensureBrands = () => {
+    if (!brandsRef.current) {
+      brandsRef.current = redesCall('marcas_list').then(r => { setBrands(r.brands || []); return r.brands || []; })
+        .catch(e => { brandsRef.current = null; throw e; });
+    }
+    return brandsRef.current;
+  };
+  const saveClosing = (kind, saved, okText) =>
+    run('cierre', () => redesCall('redes_update', { draftId, cambios: { diseno: disenoFor(kind, saved) } }), okText || '');
+  const openEditor = () => run('editor', async () => { setEditor(startSettings(closing, d, await ensureBrands())); }, '');
+  // The MP4 for the current settings (reused while they don't change), plus a still for the strip.
+  const closingVideo = async () => {
+    const list = await ensureBrands();
+    const settings = startSettings(closing, d, list);
+    const key = settingsKey(settings);
+    if (video.current && video.current.key === key) return video.current.item;
+    setVprog({ done: 0, total: 0 });
+    try {
+      const { blob, still } = await renderEndscreen(settings, { brands: list, loadBrandLogo, onProgress: (done, total) => setVprog({ done, total }) });
+      const old = video.current;
+      if (old) { URL.revokeObjectURL(old.item.url); URL.revokeObjectURL(old.item.poster); }
+      const item = { plantilla: 'end screen (video)', blob, url: URL.createObjectURL(blob), poster: URL.createObjectURL(still), video: true, warning: '' };
+      video.current = { key, item };
+      return item;
+    } finally { setVprog(null); }
+  };
+
+  // --- placas: rendered from the SAVED draft (order, barrio, estilo, closing), so they match what's stored ---
+  const slidesKey = JSON.stringify([d.tipo, d.fotos.map(p => p.crudo), d.barrio || '', d.estilo || 'estandar',
+    closing && closing.kind, closing && closing.kind === 'endscreen' ? [closing.saved, d.inmobiliaria || ''] : null]);
   const slidesFresh = slides.key === slidesKey && slides.items.length > 0;
   const makeSlides = async () => {
+    const cierre = closing ? closing.kind : 'plantilla';
+    if (cierre === 'endscreen' && !canMakeVideo()) throw new Error('Este navegador no puede armar el video del cierre. Usá Chrome o Edge, o cambiá el cierre a Plantilla.');
     const templates = await loadTemplates();
     setTplProblems(templates.filter(t => !t.ok).map(t => `${t.name}: ${t.problems.join('; ')}`));
     await fullCache.load(draftId, d.fotos.map(p => p.copia));
-    const items = await renderSlides({ tipo: d.tipo, fotos: d.fotos, barrio: d.barrio, estilo: d.estilo || 'estandar',
+    const items = await renderSlides({ tipo: d.tipo, fotos: d.fotos, barrio: d.barrio, estilo: d.estilo || 'estandar', cierre,
       photoBlob: id => (fullCache.get(id) || {}).blob });
     slideUrls.current.forEach(u => URL.revokeObjectURL(u));
-    slideUrls.current = items.map(it => it.url);
-    setSlides({ key: slidesKey, items });
-    return items;
+    slideUrls.current = items.map(it => it.url);       // the video's URLs live in `video`
+    const all = cierre === 'endscreen' ? items.concat([await closingVideo()]) : items;
+    setSlides({ key: slidesKey, items: all });
+    return all;
   };
-  // Each placa goes to Composites/<draftId>/ in Drive (one call per slide; it's the backup copy).
+  // Each placa (and the closing video) goes to Composites/<draftId>/ in Drive (one call per slide;
+  // it's the backup copy).
   const saveSlides = async items => {
     let last = null;
     for (let i = 0; i < items.length; i++) {
-      last = await redesCall('redes_composite_save', { draftId, slide: i + 1, total: items.length, base64: await blobToBase64(items[i].blob) });
+      last = await redesCall('redes_composite_save', { draftId, slide: i + 1, total: items.length, base64: await blobToBase64(items[i].blob),
+        ...(items[i].video ? { mime: 'video/mp4' } : {}) });
     }
     return last;
   };
@@ -178,7 +226,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
       catch (e) { note = ` Sin placas (${e.message}): van las fotos.`; }
     }
     if (items) {
-      items.forEach((it, i) => zip.file(`${String(i + 1).padStart(2, '0')}.jpg`, it.blob));
+      items.forEach((it, i) => zip.file(`${String(i + 1).padStart(2, '0')}.${it.video ? 'mp4' : 'jpg'}`, it.blob));
     } else {
       await fullCache.load(draftId, order.fotos.map(p => p.copia));
       order.fotos.forEach((p, i) => {
@@ -199,10 +247,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     return { note };
   }, r => 'Paquete descargado.' + ((r && r.note) || '') + (r && r.fileId ? ' Placas guardadas en Drive.' : ''));
 
-  const loadBrands = () => {
-    if (brands) return;
-    redesCall('marcas_list').then(r => setBrands(r.brands || [])).catch(e => setMsg({ error: e.message, ok: '' }));
-  };
+  const loadBrands = () => { ensureBrands().catch(e => setMsg({ error: e.message, ok: '' })); };
 
   const textDirty = text !== (d.copyFinal || '');
   const fact = [b && b.servicios && b.servicios.join(' · '), b && b.metros ? `${b.metros} m²` : '', b && b.fecha ? `Sesión ${fmtDate(b.fecha + 'T12:00')}` : '', b && b.empresa ? `EMPRESA: ${b.empresa}` : '']
@@ -283,6 +328,21 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           })}>
           {busy === 'placas' ? <MiniLogo className="w-4 h-4" /> : <Layers size={14} />} {slides.items.length ? 'Actualizar placas' : 'Generar placas'}
         </button>}>
+        {closing && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-500">Cierre:</span>
+            {[['endscreen', 'End screen (video)'], ['plantilla', 'Plantilla']].map(([k, l]) => (
+              <button key={k} type="button" disabled={!open || !!busy} className={pill(closing.kind === k)}
+                onClick={() => closing.kind !== k && saveClosing(k, closing.saved)}>{l}</button>
+            ))}
+            {closing.kind === 'endscreen' && open && (
+              <button type="button" className={btnGhost} disabled={!!busy} onClick={openEditor}>
+                {busy === 'editor' ? <MiniLogo className="w-4 h-4" /> : <Pencil size={14} />} Editar end screen
+              </button>
+            )}
+            {closing.kind === 'endscreen' && !canMakeVideo() && <span className="text-[11px] font-bold text-red-600">Este navegador no arma el video: usá Chrome o Edge.</span>}
+          </div>
+        )}
         {tplProblems.length > 0 && (
           <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
             Plantillas con problemas (no se usan): {tplProblems.join(' · ')}
@@ -291,17 +351,21 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
         {busy === 'placas' || (busy === 'zip' && !slidesFresh) ? (
           <div className="py-10 flex flex-col items-center gap-3 text-[#E53B12]">
             <MiniLogo className="w-12 h-12" />
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-500 animate-pulse">Armando placas…</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500 animate-pulse">
+              {vprog ? (vprog.total ? `Video del cierre: ${vprog.done}/${vprog.total} cuadros…` : 'Preparando el video del cierre…') : 'Armando placas…'}
+            </p>
           </div>
         ) : !slides.items.length ? (
-          <p className="text-xs text-gray-400">Las placas se arman con las plantillas, las fotos en este orden, el barrio y el estilo ({d.estilo === 'noche' ? 'noche' : 'estándar'}). También se generan solas al descargar el paquete.</p>
+          <p className="text-xs text-gray-400">Las placas se arman con las plantillas, las fotos en este orden, el barrio y el estilo ({d.estilo === 'noche' ? 'noche' : 'estándar'}){closing && closing.kind === 'endscreen' ? ', y cierran con el video del end screen' : ''}. También se generan solas al descargar el paquete.</p>
         ) : (
           <>
-            {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">Cambiaste fotos, barrio o estilo: tocá "Actualizar placas".</p>}
+            {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">Cambiaste fotos, barrio, estilo o cierre: tocá "Actualizar placas".</p>}
             <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 ${slidesFresh ? '' : 'opacity-50'}`}>
               {slides.items.map((it, i) => (
                 <figure key={it.url} className="m-0">
-                  <img src={it.url} alt="" className="w-full rounded-lg border border-gray-200" />
+                  {it.video
+                    ? <video src={it.url} poster={it.poster} controls muted loop playsInline className="w-full rounded-lg border border-gray-200 bg-[#1D1E20]" />
+                    : <img src={it.url} alt="" className="w-full rounded-lg border border-gray-200" />}
                   <figcaption className="text-[10px] text-gray-500 mt-1">{String(i + 1).padStart(2, '0')} · {it.plantilla}</figcaption>
                   {it.warning && <div className="text-[10px] font-bold text-red-600">{it.warning}</div>}
                 </figure>
@@ -454,8 +518,25 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             <button type="button" className={btnGhost} onClick={() => setDiscarding(false)}>Cancelar</button>
           </div>
         )}
-        <p className="mt-3 text-[11px] text-gray-400">El paquete trae las placas en orden (01.jpg, 02.jpg…) y copy.txt; si las plantillas fallan, las fotos. Publicar: descargalo, subilo desde el celular y volvé a marcarlo como publicado.</p>
+        <p className="mt-3 text-[11px] text-gray-400">El paquete trae las placas en orden (01.jpg, 02.jpg…), el video del cierre al final (.mp4) si el cierre es el end screen, y copy.txt; si las plantillas fallan, las fotos. Publicar: descargalo, subilo desde el celular y volvé a marcarlo como publicado.</p>
       </Section>
+
+      {/* end screen editor for the closing slide */}
+      {editor && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex">
+          <div className="m-auto w-full h-full md:w-[95vw] md:h-[94vh] bg-[#F0F2F5] md:rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+            <div className="px-4 py-2 bg-white border-b border-gray-200 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#E53B12] truncate">Cierre del carrusel{d.barrio ? ` · ${d.barrio}` : ''}</span>
+              <button type="button" onClick={() => setEditor(null)} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100" aria-label="Cerrar"><X size={18} /></button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <EndScreen brands={brands || []} loadBrandLogo={loadBrandLogo} initialParams={editor.params} initialBrandId={editor.brandId} lockFormat
+                onCancel={() => setEditor(null)}
+                onUse={s => { setEditor(null); saveClosing('endscreen', toSaved(s), 'Cierre guardado. Tocá "Actualizar placas" para armar el video.'); }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

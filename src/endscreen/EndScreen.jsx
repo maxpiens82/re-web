@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Pause, Play, Loader2, X, ChevronDown, ChevronRight, RotateCcw, Upload, ScanLine } from 'lucide-react';
+import { Download, Pause, Play, Loader2, X, ChevronDown, ChevronRight, RotateCcw, Upload, ScanLine, Check } from 'lucide-react';
 import {
   DEFAULTS, CONTROLS, FORMATS, TEMPLATES, FPS_OPTIONS, RE_COLORS, DRIFT_MODES,
   normalizeParams, createScene, drawFrame, drawSafeZone, fileName, frameCount,
@@ -7,6 +7,7 @@ import {
 import { prepareClientMark, describeMark } from './clientMark.js';
 import { exportMp4, canExport } from './exportMp4.js';
 import { loadReLogo } from './reLogo.js';
+import { loadFonts, decodeImage } from './assets.js';
 
 // Pantalla "End screen" del portal.
 //
@@ -17,41 +18,12 @@ import { loadReLogo } from './reLogo.js';
 //                  (en re-web: gasPost('marcas_logo') y devolver un data URL). Que sea estable
 //                  (useCallback): si cambia, se vuelven a pedir los logos.
 //   initialParams  opcional, se mezcla con DEFAULTS
-
-const FONT_FACES = ['300 40px AkzidenzGrotesk', '500 40px AkzidenzGrotesk'];
-// Los logos se achican a este lado máximo al cargarlos: algunos kits son enormes (Inlaza, 5170 px)
-// y analizarlos enteros traba la pantalla. Un SVG se dibuja a este tamaño.
-const LOGO_MAX = 1200;
-
-// Las dos fuentes, cargadas de verdad: si no, se exportaría con otra tipografía sin avisar.
-async function loadFonts() {
-  const loaded = await Promise.all(FONT_FACES.map(f => document.fonts.load(f).catch(() => [])));
-  return loaded.every(faces => faces.length > 0 && faces.every(ff => ff.status === 'loaded'))
-    && FONT_FACES.every(f => document.fonts.check(f));
-}
-
-// URL (data:, http) o archivo -> canvas de lado ≤ LOGO_MAX. Pasa por <img>, que sí lee SVG
-// (createImageBitmap no). La URL temporal de un archivo se libera al terminar.
-async function decodeImage(src) {
-  if (!src) return null;
-  const file = src instanceof Blob;
-  const url = file ? URL.createObjectURL(src) : src;
-  try {
-    const img = new Image();
-    img.src = url;
-    try { await img.decode(); } catch { throw new Error('No se pudo leer la imagen.'); }
-    const w = img.naturalWidth, h = img.naturalHeight;
-    if (!w || !h) throw new Error('La imagen no tiene tamaño. Si es un SVG, exportalo con ancho y alto.');
-    const svg = (file && src.type === 'image/svg+xml') || /^data:image\/svg/.test(url);
-    const k = svg ? LOGO_MAX / Math.max(w, h) : Math.min(1, LOGO_MAX / Math.max(w, h));
-    const c = document.createElement('canvas');
-    c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
-    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return c;
-  } finally {
-    if (file) URL.revokeObjectURL(url);
-  }
-}
+//   Para editar el cierre de un carrusel de Redes (REDES_SPEC §7.2b), todos opcionales:
+//   initialBrandId la inmobiliaria ya elegida
+//   lockFormat     sin selector de formato (el carrusel es 4:5)
+//   onUse          ({ params, brandId }) => void: muestra "Usar en este carrusel" en lugar de
+//                  exportar, y oculta "Otro logo" (un archivo subido no se puede guardar en el borrador)
+//   onCancel       muestra "Cancelar"
 
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
@@ -78,14 +50,14 @@ function Slider({ k, value, onChange }) {
   );
 }
 
-export default function EndScreen({ brands = [], loadBrandLogo, initialParams }) {
+export default function EndScreen({ brands = [], loadBrandLogo, initialParams, initialBrandId = '', lockFormat = false, onUse, onCancel }) {
   const [params, setParams] = useState(() => normalizeParams({ ...DEFAULTS, ...initialParams }));
   const [fonts, setFonts] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [reLogo, setReLogo] = useState(null);
-  const [brandId, setBrandId] = useState('');
-  const [query, setQuery] = useState('');
+  const [brandId, setBrandId] = useState(initialBrandId);
+  const [query, setQuery] = useState(() => (brands.find(b => b.id === initialBrandId) || {}).name || '');
   const [listOpen, setListOpen] = useState(false);
-  const [logos, setLogos] = useState({ claro: null, oscuro: null, loading: false });
+  const [logos, setLogos] = useState({ claro: null, oscuro: null, loading: !!initialBrandId && !!loadBrandLogo });
   const [upload, setUpload] = useState(null);
   const [uploadError, setUploadError] = useState('');
   const [advanced, setAdvanced] = useState(false);
@@ -221,12 +193,16 @@ export default function EndScreen({ brands = [], loadBrandLogo, initialParams })
                 </button>
               ))}
             </div>
-            <label className="block">
-              <Label>Formato</Label>
-              <select className={inputCls} value={params.format} onChange={e => set('format', e.target.value)}>
-                {Object.entries(FORMATS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-            </label>
+            {lockFormat ? (
+              <div className="text-[11px] text-gray-500">Formato: <b>{FORMATS[params.format].label}</b> (el del carrusel)</div>
+            ) : (
+              <label className="block">
+                <Label>Formato</Label>
+                <select className={inputCls} value={params.format} onChange={e => set('format', e.target.value)}>
+                  {Object.entries(FORMATS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </label>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Slider k="dur" value={params.dur} onChange={set} />
               <label className="block">
@@ -277,10 +253,12 @@ export default function EndScreen({ brands = [], loadBrandLogo, initialParams })
                     <span className="text-[11px] text-gray-400">{params.client.accent ? params.client.accent.toUpperCase() : 'naranja RE!'}</span>
                   </div>
                 </label>
-                <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-500 hover:bg-gray-100 px-3 py-2 rounded-lg border border-gray-200">
-                  <Upload size={14} /> Otro logo
-                  <input type="file" accept="image/png,image/svg+xml,image/webp,image/jpeg" className="hidden" onChange={onUpload} />
-                </label>
+                {!onUse && (
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-500 hover:bg-gray-100 px-3 py-2 rounded-lg border border-gray-200">
+                    <Upload size={14} /> Otro logo
+                    <input type="file" accept="image/png,image/svg+xml,image/webp,image/jpeg" className="hidden" onChange={onUpload} />
+                  </label>
+                )}
               </div>
               {uploadError && <div className="text-[11px] text-red-600">{uploadError}</div>}
               {logos.loading ? (
@@ -343,6 +321,21 @@ export default function EndScreen({ brands = [], loadBrandLogo, initialParams })
             )}
           </div>
 
+          {onUse ? (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col gap-2">
+              <button type="button" disabled={!scene || overflow.length > 0} onClick={() => onUse({ params, brandId })}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#E53B12] hover:bg-[#c42e0d] disabled:opacity-40 text-white font-bold uppercase tracking-wider text-sm py-3">
+                <Check size={16} /> Usar en este carrusel
+              </button>
+              {onCancel && (
+                <button type="button" onClick={onCancel}
+                  className="w-full rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 font-bold uppercase tracking-wider text-xs py-2.5">
+                  Cancelar
+                </button>
+              )}
+              <div className="text-[11px] text-gray-400">El video se arma con las placas ("Generar placas" o al descargar el paquete).</div>
+            </div>
+          ) : (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col gap-2">
             {exp.running ? (
               <>
@@ -363,6 +356,7 @@ export default function EndScreen({ brands = [], loadBrandLogo, initialParams })
             {!exportable && <div className="text-[11px] text-red-600">Este navegador no puede exportar video. Usá Chrome o Edge actualizados.</div>}
             {exp.message && <div className={`text-[11px] ${exp.error ? 'text-red-600' : exp.warn ? 'text-amber-700 font-bold' : 'text-gray-500'}`}>{exp.message}</div>}
           </div>
+          )}
         </aside>
 
         {/* ---------- Vista previa: en pantalla grande queda fija mientras se bajan los controles,
