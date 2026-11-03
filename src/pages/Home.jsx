@@ -3,6 +3,7 @@ import MiniLogo from '../components/MiniLogo';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { computeClientPrice, isNewPriceEra, priceTable } from '../lib/pricing';
 import {
   Camera, Video, Clapperboard, Mic, Map as MapIcon, Compass,
   Plane, Crosshair, MapPin, Calendar, User, Building, Mail,
@@ -379,76 +380,21 @@ export default function Home() {
   }, []);
 
   // --- CALCULATION ENGINE ---
+  // Same math as the sheet's PRECIO and the staff form: src/lib/pricing.js
   const { total, discountApplied, baseCount } = useMemo(() => {
     if (!db) return { total: 0, discountApplied: 0, baseCount: 0 };
-
-    // 1. Determine active Pricing Era based on selected Date
-    let isNewEra = false;
-    if (pricingData && pricingData.pricingConfig && pricingData.pricingConfig.threshold) {
-      let targetMs = Date.now();
-      if (pricingData.pricingConfig.rule === "FECHA" && selectedDateObj) {
-        const p = selectedDateObj.id.split('-');
-        targetMs = new Date(p[0], p[1] - 1, p[2], 12, 0, 0).getTime();
-      }
-      isNewEra = targetMs >= pricingData.pricingConfig.threshold;
-    }
-
-    const activePrices = isNewEra && pricingData ? (pricingData.newPrices || {}) : (pricingData ? pricingData.currentPrices || {} : {});
-
-    let baseMult = 0;
-    let baseFixed = 0;
-    let serviceCount = 0;
-    let hasStandardService = false;
-
-    selectedServices.forEach(serviceId => {
-      const service = db.services.find(s => s.id === serviceId);
-      if (service) {
-        // Fallback to legacy price array if engine isn't loaded yet
-        const price = (pricingData && activePrices[serviceId] !== undefined) ? activePrices[serviceId] : service.price;
-
-        if (service.isFixed) {
-          baseFixed += price;
-        } else {
-          baseMult += price;
-          serviceCount++;
-          hasStandardService = true;
-        }
-      }
-    });
-
-    if (hasStandardService) {
-      baseMult += 30000; // Tarifa base por unidad
-    }
-
-    let basePreExtras = (baseMult * multiplier) + baseFixed;
-    let discount = 0;
-
-    if (serviceCount > db.discountThreshold) {
-      if (isNewEra) {
-        const steps = serviceCount - db.discountThreshold;
-        let totalPct = 0;
-        let currentPct = db.discountPct !== undefined ? db.discountPct : 0.035;
-        const dDecay = db.discountDecay !== undefined ? db.discountDecay : 1;
-        
-        for (let i = 0; i < steps; i++) {
-          totalPct += currentPct;
-          currentPct *= dDecay; // Diminishing returns!
-        }
-        
-        discount = basePreExtras * totalPct;
-      } else {
-        // Old Era ALWAYS uses 3 and $5000 strictly for backward compatibility
-        discount = (serviceCount - 3) * 5000 * multiplier;
-      }
-    }
-
-    const calculatedTotal = basePreExtras - discount;
-
-    return {
-      total: calculatedTotal,
-      discountApplied: discount,
-      baseCount: serviceCount
+    const newEra = isNewPriceEra(pricingData, selectedDateObj && selectedDateObj.id);
+    const fallback = {};
+    db.services.forEach(s => { fallback[s.id] = s.price; });
+    const constants = (pricingData && pricingData.constants) || {
+      discountThreshold: db.discountThreshold, discountPct: db.discountPct, discountDecay: db.discountDecay
     };
+    const r = computeClientPrice({
+      units: [{ services: selectedServices, mult: multiplier, extras: 0 }],
+      prices: priceTable(pricingData, newEra, fallback),
+      constants
+    });
+    return { total: r.total, discountApplied: r.discount, baseCount: r.serviceCount };
   }, [selectedServices, multiplier, db, pricingData, selectedDateObj]);
 
   // Trigger elegant pulse animation when total changes
@@ -840,7 +786,7 @@ export default function Home() {
                 <Info className={`mt-0.5 flex-shrink-0 w-4 h-4 md:w-5 md:h-5 ${baseCount >= 4 ? 'text-green-600' : 'text-gray-400'}`} />
                 <div className="text-xs md:text-sm font-medium">
                   <span className="block mb-0.5 md:mb-1 font-bold">* Descuento automático por volumen:</span>
-                  Llevando 4 o más servicios base, se aplica una bonificación.
+                  Llevando 4 o más servicios, se aplica una bonificación.
                   {baseCount >= 4 && <span className="block mt-1 text-green-700 font-bold">¡Descuento activado!</span>}
                 </div>
               </div>
