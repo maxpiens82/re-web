@@ -10,6 +10,7 @@ import {
 const GOOGLE_MAPS_API_KEY = "AIzaSyCfHCPO8Yb-rYqxMWToYq7GsV3VZ1iz0EE"; 
 const GAS_API_URL = import.meta.env.VITE_GAS_API_URL; // only for the public ?api=init_v2 GET
 import { gasPost } from '../lib/gasApi';
+import { computeClientPrice, isNewPriceEra, priceTable } from '../lib/pricing';
 import { useAuth } from '../context/AuthContext';
 import NoPublicarSwitch from './redes/NoPublicarSwitch';
 
@@ -291,50 +292,25 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
   const { total, producerPayout, discountApplied, baseCount } = useMemo(() => {
     if (!db || !pricingData) return { total: 0, producerPayout: 0, discountApplied: 0, baseCount: 0 };
     
-    // 1. Determine active Pricing Era
-    let isNewEra = false;
-    if (pricingData.pricingConfig && pricingData.pricingConfig.threshold) {
-      let targetMs = Date.now();
-      if (pricingData.pricingConfig.rule === "FECHA" && selectedDateObj) {
-        const p = selectedDateObj.id.split('-');
-        targetMs = new Date(p[0], p[1]-1, p[2], 12, 0, 0).getTime();
-      }
-      isNewEra = targetMs >= pricingData.pricingConfig.threshold;
-    }
+    // 1. Determine active Pricing Era (same rule as the sheet, src/lib/pricing.js)
+    const isNewEra = isNewPriceEra(pricingData, selectedDateObj && selectedDateObj.id);
 
-    const activePrices = isNewEra ? (pricingData.newPrices || {}) : (pricingData.currentPrices || {});
     const activeProdPrices = isNewEra ? (pricingData.newProdPrices || {}) : (pricingData.currentProdPrices || {});
     const activePostPrices = isNewEra ? (pricingData.newPostPrices || {}) : (pricingData.currentPostPrices || {});
     const sizeMults = pricingData.multipliers || {};
     const constants = pricingData.constants || { viaticos: 0, comboVR: 0, ppMultiplier: 1 };
 
-    let grandTotal = 0;
-    let globalServiceCount = 0;
     let totalProdPayout = 0;
     let anyUnitHasServices = false;
 
     // 2. Calculate per unit
     units.forEach(unit => {
-      let unitBaseMult = 0;
-      let unitBaseFixed = 0;
-      let hasStandardService = false;
-      
       let prodFeeBase = 0;
       let prodFeeFixed = 0;
       
       unit.selectedServices.forEach(srv => {
         if (srv !== 'EXTRAS') {
           anyUnitHasServices = true;
-          globalServiceCount++;
-          
-          // Client Price Math
-          const price = activePrices[srv] || 0;
-          if (srv === 'DRONE' || srv === 'FPV') {
-            unitBaseFixed += price;
-          } else {
-            unitBaseMult += price;
-            hasStandardService = true;
-          }
 
           // Producer Payout Math
           const prodPrice = activeProdPrices[srv] || 0;
@@ -343,24 +319,7 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
         }
       });
 
-      if (hasStandardService) {
-        unitBaseMult += 30000; // Tarifa base por unidad (Cliente)
-      }
-
       const multValue = sizeMults[unit.metrosCuadrados] || 1;
-      
-      // --- Client Unit Total ---
-      let unitBasePreExtras = (unitBaseMult * multValue) + unitBaseFixed;
-      let unitSubtotal = unitBasePreExtras;
-      
-      // Keep track of the pre-extras total for the discount formula
-      if (!window.grandBasePreExtras) window.grandBasePreExtras = 0;
-      window.grandBasePreExtras += unitBasePreExtras;
-
-      if (unit.selectedServices.includes('EXTRAS')) {
-        unitSubtotal += (Number(unit.costoExtras) || 0);
-      }
-      grandTotal += unitSubtotal;
 
       // --- Producer Unit Total ---
       let unitProdPayout = (prodFeeBase * multValue) + prodFeeFixed;
@@ -395,37 +354,19 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
       totalProdPayout += (constants.viaticos || 0);
     }
 
-    let discount = 0;
-    if (globalServiceCount > (db.discountThreshold || 3)) {
-      if (isNewEra) {
-        const steps = globalServiceCount - (db.discountThreshold || 3);
-        const dPct = db.discountPct || 0.035;
-        // 🛡️ SHIELD: If backend sends 1 or undefined, force it to 0.8 to ensure decay!
-        const dDecay = (db.discountDecay && db.discountDecay !== 1) ? db.discountDecay : 0.8;
-        
-        // 🚀 PERFECT SYNC SHIELD: Use the exact geometric series formula from Google Sheets
-        let totalPct = 0;
-        if (dDecay === 1) {
-          totalPct = steps * dPct;
-        } else {
-          totalPct = dPct * (1 - Math.pow(dDecay, steps)) / (1 - dDecay);
-        }
-        
-        // Match the Google Sheets ROUND(..., 0) logic exactly
-        discount = Math.round((window.grandBasePreExtras || 0) * totalPct);
-      } else {
-        // Old Era ALWAYS uses 3 and $5000 strictly for backward compatibility
-        discount = (globalServiceCount - 3) * 5000;
-      }
-    }
-    
-    // Clear out the temporary window variable
-    window.grandBasePreExtras = 0;
+    // 3. Client price: exactly the sheet's PRECIO (src/lib/pricing.js), all units of the booking together
+    const client = computeClientPrice({
+      units: units.map(unit => ({
+        services: unit.selectedServices,
+        mult: sizeMults[unit.metrosCuadrados] || 1,
+        extras: unit.selectedServices.includes('EXTRAS') ? (Number(unit.costoExtras) || 0) : 0
+      })),
+      prices: priceTable(pricingData, isNewEra),
+      constants: pricingData.constants || {}
+    });
+    const grandTotal = Math.max(0, client.total);
 
-    grandTotal -= discount;
-    if (grandTotal < 0) grandTotal = 0;
-
-    return { total: grandTotal, producerPayout: totalProdPayout, discountApplied: discount, baseCount: globalServiceCount };
+    return { total: grandTotal, producerPayout: totalProdPayout, discountApplied: client.discount, baseCount: client.serviceCount };
   }, [units, selectedDateObj, db, pricingData, globalPostProd]);
 
   // ==========================================
