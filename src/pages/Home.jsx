@@ -34,27 +34,39 @@ const ICON_MAP = {
   'PLANO': MapIcon, 'TOUR': Compass, 'DRONE': Plane, 'FPV': Crosshair
 };
 
-// 🚀 THE FALLBACK DB: Guarantees instant 0-second load and prevents white screens
+// The multiplier options exactly as init_v2 sends them (sheetValue = what goes to the sheet).
+const mapMultipliers = (list) => list.map(m => {
+  const labelStr = String(m.sheetValue).includes('m') ? m.sheetValue : `${m.sheetValue}m²`;
+  return { id: `m${m.sheetValue}`, label: `Hasta ${labelStr}`, value: m.value, sheetValue: m.sheetValue };
+});
+
+// LAST RESORT ONLY, so the page can draw before init_v2 answers on a first visit. It is never
+// used to price or send a booking: the form waits for a fresh init_v2 (see pricesStatus).
+// Values = Valores (both sheets) on 6 Nov 2026: cols A-B prices, J-K m² and multiplier, Q5-Q7.
 const FALLBACK_DB = {
   services: [
-    { id: 'FOTO', price: 40000, isFixed: false, icon: ICON_MAP['FOTO'] },
-    { id: 'VIDEO', price: 45000, isFixed: false, icon: ICON_MAP['VIDEO'] },
-    { id: 'REEL', price: 40000, isFixed: false, icon: ICON_MAP['REEL'] },
-    { id: 'TH', price: 15000, isFixed: false, icon: ICON_MAP['TH'] },
-    { id: 'PLANO', price: 15000, isFixed: false, icon: ICON_MAP['PLANO'] },
-    { id: 'TOUR', price: 25000, isFixed: false, icon: ICON_MAP['TOUR'] },
-    { id: 'DRONE', price: 45000, isFixed: true, icon: ICON_MAP['DRONE'] },
-    { id: 'FPV', price: 65000, isFixed: true, icon: ICON_MAP['FPV'] }
+    { id: 'FOTO', price: 35000, isFixed: false, icon: ICON_MAP['FOTO'] },
+    { id: 'VIDEO', price: 35000, isFixed: false, icon: ICON_MAP['VIDEO'] },
+    { id: 'REEL', price: 35000, isFixed: false, icon: ICON_MAP['REEL'] },
+    { id: 'TH', price: 55000, isFixed: false, icon: ICON_MAP['TH'] },
+    { id: 'PLANO', price: 35000, isFixed: false, icon: ICON_MAP['PLANO'] },
+    { id: 'TOUR', price: 35000, isFixed: false, icon: ICON_MAP['TOUR'] },
+    { id: 'DRONE', price: 185000, isFixed: true, icon: ICON_MAP['DRONE'] },
+    { id: 'FPV', price: 185000, isFixed: true, icon: ICON_MAP['FPV'] }
   ],
-  multipliers: [
-    { id: 'm100', label: 'Hasta 100m²', value: 1, sheetValue: 100 },
-    { id: 'm200', label: '101 a 200m²', value: 1.25, sheetValue: 200 },
-    { id: 'm300', label: '201 a 300m²', value: 1.5, sheetValue: 300 },
-    { id: 'm400', label: 'Más de 300m²', value: 2, sheetValue: 400 }
-  ],
+  multipliers: mapMultipliers(
+    [100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]
+      .map((m2, i) => ({ sheetValue: String(m2), value: Math.round((1 + i * 0.15) * 100) / 100 }))
+  ),
   discountThreshold: 3,
-  discountAmount: 5000
+  discountPct: 0.035,
+  discountDecay: 0.8
 };
+
+// init_v2: 4 tries. The first gives up after 15 s; later ones wait longer (a connection that
+// is slow but working must still get through), with 2 s, 4 s, 8 s pauses in between.
+const PRICES_TIMEOUTS_MS = [15000, 25000, 35000, 45000];
+const PRICES_RETRY_DELAYS_MS = [2000, 4000, 8000];
 
 const generateDates = () => {
   const options = [];
@@ -77,7 +89,8 @@ const generateDates = () => {
 export default function Home() {
   const { currentUser } = useAuth();
   const [selectedServices, setSelectedServices] = useState([]);
-  const [multiplier, setMultiplier] = useState(1.0);
+  // The chosen m² option, by its sheetValue ('150'), so it can be checked against a fresh list.
+  const [selectedM2, setSelectedM2] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isAddressValid, setIsAddressValid] = useState(false);
@@ -244,30 +257,44 @@ export default function Home() {
   const handleTouchEnd = () => setInitialTouchDist(0);
 
   // ==========================================
-  // 2. SYNCHRONOUS MEMORY LOAD (ZERO FLICKER)
+  // 2. FIRST DRAW: last visit's list (or FALLBACK_DB), shown but NOT confirmed
   // ==========================================
+  // A cache can be days old and FALLBACK_DB is a guess: both only fill the page until a fresh
+  // init_v2 answers. Until then pricesStatus is 'loading' (no total, no booking); if every try
+  // fails it is 'error' (message + Reintentar). Only 'ok' prices a booking.
   const [db, setDb] = useState(() => {
     try {
       const cached = localStorage.getItem('re_prices_cache');
       if (cached) {
         const parsed = JSON.parse(cached);
-        parsed.services = parsed.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
-        return parsed;
+        if (Array.isArray(parsed.services) && parsed.services.length &&
+            Array.isArray(parsed.multipliers) && parsed.multipliers.length) {
+          parsed.services = parsed.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
+          return parsed;
+        }
       }
     } catch (e) { console.error("Cache error, falling back.", e); }
-    return FALLBACK_DB; // 🚀 NEVER RETURNS NULL. ZERO WHITE SCREENS.
+    return FALLBACK_DB;
   });
 
-  const [isLoadingPrices, setIsLoadingPrices] = useState(false); // 🚀 ALWAYS FALSE. WE ALWAYS HAVE DATA.
+  const [pricesStatus, setPricesStatus] = useState('loading'); // 'loading' | 'ok' | 'error'
+  const [pricesAttempt, setPricesAttempt] = useState(0); // bumped by "Reintentar"
+  const pricesConfirmed = pricesStatus === 'ok';
 
   // 🚀 ENGINE: Date-Aware Pricing State
   const [pricingData, setPricingData] = useState(() => {
     try {
       const cached = localStorage.getItem('re_pricing_engine');
       if (cached) return JSON.parse(cached);
-    } catch (e) { }
+    } catch { /* storage blocked: fine */ }
     return null;
   });
+
+  // The selected m² option. No choice yet, or a choice the current list doesn't have → the first.
+  const selectedM2Option = useMemo(() => (
+    db.multipliers.find(m => String(m.sheetValue) === selectedM2) || db.multipliers[0]
+  ), [db, selectedM2]);
+  const multiplier = selectedM2Option ? Number(selectedM2Option.value) || 1 : 1;
 
   // Date & Time Picker State
   const [dateOptions] = useState(generateDates);
@@ -294,55 +321,82 @@ export default function Home() {
   // 3. SILENT BACKGROUND SYNC
   // ==========================================
   useEffect(() => {
-    const fetchPrices = async () => {
-      // 🚀 NOW HITTING THE V2 RAM CACHE IN GOOGLE APPS SCRIPT
-      const GOOGLE_URL = `${import.meta.env.VITE_GAS_API_URL}?api=init_v2`;
+    let cancelled = false;
+    let controller = null;
+    let timer = null;
+    const wait = (ms) => new Promise(resolve => { timer = setTimeout(resolve, ms); });
 
+    // One try: the parsed init_v2 response, or an exception (timeout, network, bad data).
+    const fetchOnce = async (timeoutMs) => {
+      controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const response = await fetch(GOOGLE_URL);
+        // cache: 'no-store' so a slow phone never gets yesterday's answer from its own HTTP cache
+        const response = await fetch(`${import.meta.env.VITE_GAS_API_URL}?api=init_v2`,
+          { signal: controller.signal, cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-
-        if (data.success) {
-          const mappedServices = data.prices.services.map(s => ({
-            id: s.id,
-            price: s.price,
-            isFixed: s.isFixed
-          }));
-
-          const mappedMultipliers = data.prices.multipliers.map(m => {
-            let labelStr = String(m.sheetValue).includes('m') ? m.sheetValue : `${m.sheetValue}m²`;
-            return { id: `m${m.sheetValue}`, label: `Hasta ${labelStr}`, value: m.value, sheetValue: m.sheetValue };
-          });
-
-          const freshDb = { 
-            services: mappedServices, 
-            multipliers: mappedMultipliers, 
-            discountThreshold: data.prices.constants?.discountThreshold !== undefined ? data.prices.constants.discountThreshold : 3, 
-            discountPct: data.prices.constants?.discountPct !== undefined ? data.prices.constants.discountPct : 0.035,
-            discountDecay: data.prices.constants?.discountDecay !== undefined ? data.prices.constants.discountDecay : 1, // New Decay Factor
-            discountAmount: 5000 // Legacy fallback
-          };
-
-          // Save pure JSON to memory for their next visit
-          localStorage.setItem('re_prices_cache', JSON.stringify(freshDb));
-
-          // Attach icons and update state silently
-          freshDb.services = freshDb.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
-          setDb(freshDb);
-
-          // 🚀 Inject the Pricing Engine
-          if (data.pricingData) {
-            setPricingData(data.pricingData);
-            localStorage.setItem('re_pricing_engine', JSON.stringify(data.pricingData));
-          }
+        const p = data && data.prices;
+        if (!data.success || !p || !Array.isArray(p.services) || !p.services.length ||
+            !Array.isArray(p.multipliers) || !p.multipliers.length) {
+          throw new Error('init_v2: respuesta incompleta');
         }
-      } catch (error) {
-        console.error("Background sync failed:", error);
+        return data;
+      } finally {
+        clearTimeout(timeout);
       }
     };
 
+    const fetchPrices = async () => {
+      setPricesStatus('loading');
+      for (let attempt = 0; attempt < PRICES_TIMEOUTS_MS.length; attempt++) {
+        if (attempt > 0) await wait(PRICES_RETRY_DELAYS_MS[attempt - 1]);
+        if (cancelled) return;
+        try {
+          const data = await fetchOnce(PRICES_TIMEOUTS_MS[attempt]);
+          if (cancelled) return;
+          const k = data.prices.constants || {};
+          const freshDb = {
+            services: data.prices.services.map(s => ({ id: s.id, price: s.price, isFixed: s.isFixed })),
+            multipliers: mapMultipliers(data.prices.multipliers),
+            discountThreshold: k.discountThreshold !== undefined ? k.discountThreshold : 3,
+            discountPct: k.discountPct !== undefined ? k.discountPct : 0.035,
+            discountDecay: k.discountDecay !== undefined ? k.discountDecay : 1
+          };
+
+          // Kept for the next visit's first draw (never trusted on its own, see above)
+          try { localStorage.setItem('re_prices_cache', JSON.stringify(freshDb)); } catch { /* storage blocked: fine */ }
+
+          freshDb.services = freshDb.services.map(s => ({ ...s, icon: ICON_MAP[s.id] || Camera }));
+          // A chosen m² the fresh list doesn't have goes back to the first option
+          setSelectedM2(prev => (prev !== null && freshDb.multipliers.some(m => String(m.sheetValue) === prev))
+            ? prev : String(freshDb.multipliers[0].sheetValue));
+          setDb(freshDb);
+          // The engine always comes from this same response: an old cached one must not price it
+          setPricingData(data.pricingData || null);
+          try {
+            if (data.pricingData) localStorage.setItem('re_pricing_engine', JSON.stringify(data.pricingData));
+            else localStorage.removeItem('re_pricing_engine');
+          } catch { /* storage blocked: fine */ }
+          setPricesStatus('ok');
+          return;
+        } catch (error) {
+          if (cancelled) return;
+          console.error(`init_v2, intento ${attempt + 1}:`, error);
+        }
+      }
+      if (!cancelled) setPricesStatus('error');
+    };
+
     fetchPrices();
-  }, []);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (controller) controller.abort();
+    };
+  }, [pricesAttempt]);
+
+  const retryPrices = () => setPricesAttempt(n => n + 1);
 
   // ==========================================
   // GOOGLE MAPS AUTOCOMPLETE INITIALIZATION
@@ -420,6 +474,14 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
+    // 0. Never send a booking priced with a cached or built-in list: wait for a fresh init_v2
+    if (!pricesConfirmed || !selectedM2Option) {
+      alert(pricesStatus === 'error'
+        ? "⚠️ No pudimos cargar los precios actualizados. Revisá tu conexión y tocá «Reintentar»."
+        : "⏳ Estamos cargando los precios actualizados. Esperá unos segundos y volvé a intentar.");
+      return;
+    }
+
     // 1. Strict Validation: Contact Info
     if (!formData.name.trim()) { alert("⚠️ Por favor, ingresa tu Nombre y Apellido."); return; }
     if (!formData.company.trim()) { alert("⚠️ Por favor, ingresa tu Empresa o Inmobiliaria (o escribe 'Particular')."); return; }
@@ -469,7 +531,7 @@ export default function Home() {
         instructions: formData.instructions,
         datetime: validIsoDateTime,
         services: selectedServices,
-        multiplierLabel: db.multipliers.find(m => m.value === multiplier)?.sheetValue || '100',
+        multiplierLabel: selectedM2Option.sheetValue,
         total: total
       }
     };
@@ -807,11 +869,11 @@ export default function Home() {
                 <div className="relative">
                   <select
                     className="w-full appearance-none bg-[#F4F4F5] border-none text-gray-800 py-2.5 px-3 md:py-3.5 md:px-4 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E53B12]/20 transition-colors cursor-pointer font-medium text-sm md:text-base"
-                    value={multiplier}
-                    onChange={(e) => setMultiplier(parseFloat(e.target.value))}
+                    value={selectedM2Option ? String(selectedM2Option.sheetValue) : ''}
+                    onChange={(e) => setSelectedM2(e.target.value)}
                   >
                     {db.multipliers.map(m => (
-                      <option key={m.id} value={m.value}>{m.label}</option>
+                      <option key={m.id} value={String(m.sheetValue)}>{m.label}</option>
                     ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 md:px-4 text-gray-500">
@@ -961,12 +1023,12 @@ export default function Home() {
           </section>
 
           {/* 5. BOTÓN DE CONFIRMACIÓN ESTÁTICO (Siempre visible al final del formulario) */}
-          <div className="pt-2 pb-0 md:pt-6 md:pb-4 flex justify-center">
+          <div className="pt-2 pb-0 md:pt-6 md:pb-4 flex flex-col items-center gap-3">
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !pricesConfirmed}
               className={`w-full md:w-auto min-w-[300px] px-8 py-4 rounded-full font-bold uppercase tracking-widest text-sm transition-all duration-300 flex items-center justify-center gap-3
-                ${isSubmitting
+                ${isSubmitting || !pricesConfirmed
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
                   : 'bg-[#E53B12] text-white shadow-[0_4px_20px_rgba(235,69,17,0.35)] hover:bg-[#c42e0d] hover:shadow-[0_6px_25px_rgba(235,69,17,0.4)] hover:-translate-y-1'
                 }`}
@@ -977,6 +1039,24 @@ export default function Home() {
                 <>Solicitar Reserva <ArrowRight size={20} /></>
               )}
             </button>
+            {pricesStatus === 'loading' && (
+              <p className="text-xs md:text-sm text-gray-500 font-medium text-center animate-pulse">
+                Cargando precios actualizados… En unos segundos vas a poder reservar.
+              </p>
+            )}
+            {pricesStatus === 'error' && (
+              <div className="flex flex-col items-center gap-2 text-center">
+                <p className="text-xs md:text-sm text-red-600 font-medium">
+                  No pudimos cargar los precios actualizados. Revisá tu conexión e intentá de nuevo.
+                </p>
+                <button
+                  onClick={retryPrices}
+                  className="px-6 py-2.5 rounded-full font-bold uppercase tracking-widest text-xs bg-[#2d2d2d] text-white hover:bg-black transition-colors"
+                >
+                  Reintentar
+                </button>
+              </div>
+            )}
           </div>
 
         </div>
@@ -1104,38 +1184,53 @@ export default function Home() {
             <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">
               Total Estimado
             </span>
-            <div className="flex items-baseline gap-2">
-              <span 
-                className={`text-2xl md:text-3xl font-extrabold tracking-tight transition-all duration-300 ease-out inline-block origin-left
-                  ${pricePulse ? 'scale-110 brightness-125 drop-shadow-[0_0_12px_rgba(229,59,18,0.6)]' : 'scale-100'}
-                `} 
-                style={{ color: brandColor }}
-              >
-                {formatCurrency(total)}
-              </span>
-              {discountApplied > 0 && (
-                <span className="text-sm font-bold text-gray-400 line-through hidden sm:inline-block">
-                  {formatCurrency(total + discountApplied)}
+            {pricesConfirmed ? (
+              <div className="flex items-baseline gap-2">
+                <span
+                  className={`text-2xl md:text-3xl font-extrabold tracking-tight transition-all duration-300 ease-out inline-block origin-left
+                    ${pricePulse ? 'scale-110 brightness-125 drop-shadow-[0_0_12px_rgba(229,59,18,0.6)]' : 'scale-100'}
+                  `}
+                  style={{ color: brandColor }}
+                >
+                  {formatCurrency(total)}
                 </span>
-              )}
-            </div>
+                {discountApplied > 0 && (
+                  <span className="text-sm font-bold text-gray-400 line-through hidden sm:inline-block">
+                    {formatCurrency(total + discountApplied)}
+                  </span>
+                )}
+              </div>
+            ) : pricesStatus === 'error' ? (
+              <span className="text-sm md:text-base font-bold text-red-600">No pudimos cargar los precios</span>
+            ) : (
+              <span className="text-lg md:text-2xl font-extrabold tracking-tight text-gray-400 animate-pulse">Cargando precios…</span>
+            )}
           </div>
 
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className={`px-6 py-3.5 md:px-10 md:py-4 rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all duration-300 flex items-center justify-center gap-2
-              ${isSubmitting
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-                : 'bg-[#E53B12] text-white shadow-[0_4px_20px_rgba(235,69,17,0.35)] hover:bg-[#c42e0d] hover:shadow-[0_6px_25px_rgba(235,69,17,0.4)] hover:-translate-y-1'
-              }`}
-          >
-            {isSubmitting ? (
-              <><MiniLogo /> Procesando...</>
-            ) : (
-              <>Reservar <ArrowRight size={18} className="hidden sm:inline-block" /></>
-            )}
-          </button>
+          {pricesStatus === 'error' ? (
+            <button
+              onClick={retryPrices}
+              className="px-6 py-3.5 md:px-10 md:py-4 rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all duration-300 flex items-center justify-center gap-2 bg-[#2d2d2d] text-white hover:bg-black"
+            >
+              Reintentar
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !pricesConfirmed}
+              className={`px-6 py-3.5 md:px-10 md:py-4 rounded-full font-bold uppercase tracking-widest text-xs md:text-sm transition-all duration-300 flex items-center justify-center gap-2
+                ${isSubmitting || !pricesConfirmed
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                  : 'bg-[#E53B12] text-white shadow-[0_4px_20px_rgba(235,69,17,0.35)] hover:bg-[#c42e0d] hover:shadow-[0_6px_25px_rgba(235,69,17,0.4)] hover:-translate-y-1'
+                }`}
+            >
+              {isSubmitting ? (
+                <><MiniLogo /> Procesando...</>
+              ) : (
+                <>Reservar <ArrowRight size={18} className="hidden sm:inline-block" /></>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1159,7 +1254,7 @@ export default function Home() {
                 setShowModal(false);
                 setFormData({ address: '', instructions: '', name: '', company: '', email: '', phone: '' });
                 setSelectedServices([]);
-                setMultiplier(1.0);
+                setSelectedM2(null);
                 setIsAddressValid(false);
                 setSelectedDateObj(dateOptions[0]);
                 setSelectedTime(null);
