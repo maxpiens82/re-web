@@ -19,10 +19,16 @@ t('extras added after the discount, not discounted', () => assert.equal(one(['FO
 t('EXTRAS is not a counted service', () => assert.equal(one(['FOTO', 'VIDEO', 'REEL', 'EXTRAS']).discount, 0));
 t('decay = 1 is linear', () => assert.equal(discountPercent(5, k).toFixed(4), '0.0700'));
 t('decay 0.8 is geometric', () => assert.equal(discountPercent(5, { ...k, discountDecay: 0.8 }).toFixed(4), (0.035 * 1.8).toFixed(4)));
-t('multi-unit: services counted across units, discount split like the sheet', () => {
+t('multi-unit: services counted across units, each unit gets the whole %', () => {
   const r = computeClientPrice({ units: [{ services: ['FOTO', 'VIDEO'], mult: 1 }, { services: ['FOTO', 'VIDEO'], mult: 1 }], prices, constants: k });
-  // each row: base 100,000; 4 services → 3.5% → ROUND(3,500)=3,500 / 2 rows = 1,750
-  assert.equal(r.serviceCount, 4); assert.equal(r.discount, 3500); assert.equal(r.total, 196500);
+  // each row: base 100,000; 4 services in the booking → 3.5% → 3,500 per row (not split by 2)
+  assert.equal(r.serviceCount, 4); assert.equal(r.discount, 7000); assert.equal(r.total, 193000);
+  assert.deepEqual(r.perUnit.map(u => u.discount), [3500, 3500]);
+});
+t('multi-unit: different sizes, each unit discounted on its own base', () => {
+  const r = computeClientPrice({ units: [{ services: ['FOTO', 'VIDEO', 'REEL'], mult: 1.15 }, { services: ['FOTO'], mult: 1 }], prices, constants: k });
+  // row 1: (105,000 + 30,000) x 1.15 = 155,250 → 3.5% = 5,433.75 → 5,434; row 2: 65,000 → 2,275
+  assert.deepEqual(r.perUnit.map(u => u.discount), [5434, 2275]); assert.equal(r.total, 155250 - 5434 + 65000 - 2275);
 });
 t('no cutoff date → old price columns', () => {
   const pd = { pricingConfig: { rule: 'TIMESTAMP', threshold: null }, currentPrices: { FOTO: 35000 }, newPrices: { FOTO: 99 } };

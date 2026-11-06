@@ -12,7 +12,8 @@
 //   steps  = n - threshold (Valores!Q5)            if n > threshold, else no discount
 //   pct    = steps * Q6                             if decay (Q7) = 1
 //          = Q6 * (1 - Q7^steps) / (1 - Q7)         otherwise
-//   unit discount = ROUND( ROUND(base * pct) / numberOfUnits )
+//   unit discount = ROUND(base * pct)   (each unit gets the whole %; until Nov 2026 the sheet
+//                                        also divided it by the number of units, a bug)
 // Unit price = base - unit discount + extras.
 
 export const FIXED_SERVICES = ['DRONE', 'FPV'];
@@ -56,7 +57,6 @@ export function computeClientPrice({ units, prices, constants }) {
   const serviceCount = list.reduce(
     (n, u) => n + (u.services || []).filter(s => PRICED_SERVICES.includes(s)).length, 0);
   const totalPct = discountPercent(serviceCount, constants || {});
-  const rowCount = list.length || 1;
 
   let total = 0;
   let discount = 0;
@@ -73,7 +73,7 @@ export function computeClientPrice({ units, prices, constants }) {
     if (hasStandard) baseMult += BASE_FEE;
     const mult = Number(u.mult) || 1;
     const base = clean(baseMult * mult + baseFixed);
-    const unitDiscount = totalPct > 0 ? sheetRound(sheetRound(base * totalPct) / rowCount) : 0;
+    const unitDiscount = totalPct > 0 ? sheetRound(base * totalPct) : 0;
     const extras = Number(u.extras) || 0;
     const price = base - unitDiscount + extras;
     total += price;
