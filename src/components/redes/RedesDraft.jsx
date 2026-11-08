@@ -574,7 +574,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
 
       {/* end screen editor for the closing slide */}
       {editor && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex">
+        <div className="fixed inset-0 z-[110] bg-black/40 flex">
           <div className="m-auto w-full h-full md:w-[95vw] md:h-[94vh] bg-[#F0F2F5] md:rounded-2xl overflow-hidden flex flex-col shadow-2xl">
             <div className="px-4 py-2 bg-white border-b border-gray-200 flex items-center justify-between gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#E53B12] truncate">Cierre del carrusel{d.barrio ? ` · ${d.barrio}` : ''}</span>
