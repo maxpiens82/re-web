@@ -58,12 +58,16 @@ function Photo({ p, img, selected, onClick, children, draggable, onDragStart, on
 
 const mini = 'bg-white/90 hover:bg-white text-gray-700 rounded p-1 shadow';
 
+// A slide's name in the package: numbered, except the two closings, which are alternatives.
+const packageName = (it, i) => (it.video ? 'cierre-end-screen.mp4' : it.cierre ? 'cierre-plantilla.jpg' : `${String(i + 1).padStart(2, '0')}.jpg`);
+
 export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [data, setData] = useState({ loading: true, draft: null, booking: null, error: '' });
   const [order, setOrder] = useState(null);          // { fotos, alts } local, until saved
   const [selected, setSelected] = useState(-1);
   const [dragFrom, setDragFrom] = useState(-1);
   const [text, setText] = useState('');
+  const [videoProblem, setVideoProblem] = useState('');   // why the end screen video isn't in the package
   const [barrio, setBarrio] = useState('');
   const [brands, setBrands] = useState(null);
   const [brandPick, setBrandPick] = useState('');
@@ -175,8 +179,8 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     }
     return brandsRef.current;
   };
-  const saveClosing = (kind, saved, okText) =>
-    run('cierre', () => redesCall('redes_update', { draftId, cambios: { diseno: disenoFor(kind, saved) } }), okText || '');
+  const saveEndscreen = (saved, okText) =>
+    run('cierre', () => redesCall('redes_update', { draftId, cambios: { diseno: disenoFor('endscreen', saved) } }), okText || '');
   const openEditor = () => run('editor', async () => { setEditor(startSettings(closing, d, await ensureBrands())); }, '');
   // The MP4 for the current settings (reused while they don't change), plus a still for the strip.
   const closingVideo = async () => {
@@ -198,7 +202,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   // --- placas: rendered from the SAVED draft (order, barrio, estilo, closing), so they match what's stored ---
   const look = parseEstilo(d.estilo);
   const slidesKey = JSON.stringify([d.tipo, d.fotos.map(p => p.crudo), d.barrio || '', estiloOf(look.serie, look.noche), d.inmobiliaria || '',
-    closing && closing.kind, closing && closing.kind === 'endscreen' ? closing.saved : null]);
+    closing && closing.saved]);
   // What the templates' fields get: the barrio, the booked services and the agency's @ (its name when
   // it has no Instagram; nothing for a private owner, so that line is hidden).
   const camposFor = async () => {
@@ -209,16 +213,21 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   };
   const slidesFresh = slides.key === slidesKey && slides.items.length > 0;
   const makeSlides = async () => {
-    const cierre = closing ? closing.kind : 'plantilla';
-    if (cierre === 'endscreen' && !canMakeVideo()) throw new Error('Este navegador no puede armar el video del cierre. Usá Chrome o Edge, o cambiá el cierre a Plantilla.');
     const templates = await loadTemplates();
     setTplProblems(templates.filter(t => !t.ok).map(t => `${t.name}: ${t.problems.join('; ')}`));
     await fullCache.load(draftId, d.fotos.map(p => p.copia));
-    const items = await renderSlides({ tipo: d.tipo, fotos: d.fotos, estilo: d.estilo, cierre, campos: await camposFor(),
+    // A carousel closes both ways, to choose when publishing (Max, 8 Nov 2026): the template's slide and the end
+    // screen video, the edited one or else the default. A video that can't be made doesn't stop the package.
+    const items = await renderSlides({ tipo: d.tipo, fotos: d.fotos, estilo: d.estilo, cierre: 'plantilla', campos: await camposFor(),
       photoBlob: id => (fullCache.get(id) || {}).blob });
     slideUrls.current.forEach(u => URL.revokeObjectURL(u));
     slideUrls.current = items.map(it => it.url);       // the video's URLs live in `video`
-    const all = cierre === 'endscreen' ? items.concat([await closingVideo()]) : items;
+    let all = items;
+    setVideoProblem('');
+    if (closing) {
+      try { all = items.concat([await closingVideo()]); }
+      catch (e) { setVideoProblem(e.message); }
+    }
     setSlides({ key: slidesKey, items: all });
     return all;
   };
@@ -241,7 +250,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
       catch (e) { note = ` Sin placas (${e.message}): van las fotos.`; }
     }
     if (items) {
-      items.forEach((it, i) => zip.file(`${String(i + 1).padStart(2, '0')}.${it.video ? 'mp4' : 'jpg'}`, it.blob));
+      items.forEach((it, i) => zip.file(packageName(it, i), it.blob));
     } else {
       await fullCache.load(draftId, order.fotos.map(p => p.copia));
       order.fotos.forEach((p, i) => {
@@ -361,17 +370,14 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
         </div>
         {closing && (
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-500">Cierre:</span>
-            {[['endscreen', 'End screen (video)'], ['plantilla', 'Plantilla']].map(([k, l]) => (
-              <button key={k} type="button" disabled={!open || !!busy} className={pill(closing.kind === k)}
-                onClick={() => closing.kind !== k && saveClosing(k, closing.saved)}>{l}</button>
-            ))}
-            {closing.kind === 'endscreen' && open && (
+            <span className="text-xs text-gray-500">Cierre: el paquete trae los dos, la plantilla y el video del end screen{closing.saved ? ' (editado)' : ''}.</span>
+            {open && (
               <button type="button" className={btnGhost} disabled={!!busy} onClick={openEditor}>
                 {busy === 'editor' ? <MiniLogo className="w-4 h-4" /> : <Pencil size={14} />} Editar end screen
               </button>
             )}
-            {closing.kind === 'endscreen' && !canMakeVideo() && <span className="text-[11px] font-bold text-red-600">Este navegador no arma el video: usá Chrome o Edge.</span>}
+            {!canMakeVideo() && <span className="text-[11px] font-bold text-red-600">Este navegador no arma el video: usá Chrome o Edge.</span>}
+            {videoProblem && <span className="text-[11px] font-bold text-red-600">Sin video: {videoProblem}</span>}
           </div>
         )}
         {tplProblems.length > 0 && (
@@ -387,17 +393,17 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             </p>
           </div>
         ) : !slides.items.length ? (
-          <p className="text-xs text-gray-400">Las placas se arman con las plantillas ({serieLabel(look.serie)}, {look.noche ? 'noche' : 'día'}), las fotos en este orden, el barrio, los servicios y la inmobiliaria{closing && closing.kind === 'endscreen' ? ', y cierran con el video del end screen' : ''}. También se generan solas al descargar el paquete.</p>
+          <p className="text-xs text-gray-400">Las placas se arman con las plantillas ({serieLabel(look.serie)}, {look.noche ? 'noche' : 'día'}), las fotos en este orden, el barrio, los servicios y la inmobiliaria{closing ? ', y el cierre sale de las dos maneras: plantilla y video del end screen' : ''}. También se generan solas al descargar el paquete.</p>
         ) : (
           <>
-            {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">Cambiaste fotos, barrio, diseño, inmobiliaria o cierre: tocá "Actualizar placas".</p>}
+            {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">Cambiaste fotos, barrio, diseño, inmobiliaria o end screen: tocá "Actualizar placas".</p>}
             <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 ${slidesFresh ? '' : 'opacity-50'}`}>
               {slides.items.map((it, i) => (
                 <figure key={it.url} className="m-0">
                   {it.video
                     ? <video src={it.url} poster={it.poster} controls muted loop playsInline className="w-full rounded-lg border border-gray-200 bg-[#1D1E20]" />
                     : <img src={it.url} alt="" className="w-full rounded-lg border border-gray-200" />}
-                  <figcaption className="text-[10px] text-gray-500 mt-1">{String(i + 1).padStart(2, '0')} · {it.plantilla}</figcaption>
+                  <figcaption className="text-[10px] text-gray-500 mt-1">{packageName(it, i)} · {it.plantilla}</figcaption>
                   {it.warning && <div className="text-[10px] font-bold text-red-600">{it.warning}</div>}
                 </figure>
               ))}
@@ -537,7 +543,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             <button type="button" className={btnGhost} onClick={() => setDiscarding(false)}>Cancelar</button>
           </div>
         )}
-        <p className="mt-3 text-[11px] text-gray-400">El paquete trae las placas en orden (01.jpg, 02.jpg…), el video del cierre al final (.mp4) si el cierre es el end screen, y copy.txt; si las plantillas fallan, las fotos. Publicar: descargalo, subilo desde el celular y volvé a marcarlo como publicado.</p>
+        <p className="mt-3 text-[11px] text-gray-400">El paquete trae las placas en orden (01.jpg, 02.jpg…), los dos cierres para elegir al publicar (cierre-plantilla.jpg y cierre-end-screen.mp4), y copy.txt; si las plantillas fallan, las fotos. Publicar: descargalo, subilo desde el celular y volvé a marcarlo como publicado.</p>
       </Section>
 
       {/* end screen editor for the closing slide */}
@@ -551,7 +557,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             <div className="flex-1 min-h-0">
               <EndScreen brands={brands || []} loadBrandLogo={loadBrandLogo} initialParams={editor.params} initialBrandId={editor.brandId} lockFormat
                 onCancel={() => setEditor(null)}
-                onUse={s => { setEditor(null); saveClosing('endscreen', toSaved(s), 'Cierre guardado. Tocá "Actualizar placas" para armar el video.'); }} />
+                onUse={s => { setEditor(null); saveEndscreen(toSaved(s), 'Cierre guardado. Tocá "Actualizar placas" para armar el video.'); }} />
             </div>
           </div>
         </div>
