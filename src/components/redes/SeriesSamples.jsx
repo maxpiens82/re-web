@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { serieLabel } from './slides';
 
@@ -25,8 +26,9 @@ export default function SeriesSamples({ series, tipo, current, canChoose, onChoo
     return () => window.removeEventListener('keydown', onKey);
   }, [big, onClose]);
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex" onClick={onClose}>
+  // On the page's body and over the portal's top bar (z-[100]).
+  return createPortal(
+    <div className="fixed inset-0 z-[110] bg-black/40 flex" onClick={onClose}>
       <div className="m-auto w-full h-full md:w-[min(95vw,64rem)] md:h-[94vh] bg-white md:rounded-2xl overflow-hidden flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="px-4 py-2.5 border-b border-gray-200 flex items-center gap-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#E53B12] mr-auto">Cómo es cada serie</span>
@@ -63,10 +65,11 @@ export default function SeriesSamples({ series, tipo, current, canChoose, onChoo
         </div>
       </div>
       {big && (
-        <div className="fixed inset-0 z-[60] bg-black/70 flex p-4" onClick={e => { e.stopPropagation(); setBig(null); }}>
+        <div className="fixed inset-0 z-[120] bg-black/70 flex p-4" onClick={e => { e.stopPropagation(); setBig(null); }}>
           <img src={big} alt="" className="m-auto max-w-full max-h-full rounded shadow-2xl" />
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
