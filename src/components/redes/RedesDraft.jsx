@@ -4,7 +4,7 @@ import {
   ArrowLeft, ChevronLeft, ChevronRight, ArrowDown, ArrowUp, Check, Copy, RefreshCw, Download, Send,
   CalendarDays, Trash2, AlertTriangle, MapPin, Building, ExternalLink, Images, Layers, Pencil, X,
 } from 'lucide-react';
-import { redesCall, FALTANTES, daysLeft, fmtDate } from './redesApi';
+import { redesCall, FALTANTES, MOTIVOS, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
 import MiniLogo from '../MiniLogo';
 import LoadingLogo from '../LoadingLogo';
@@ -14,7 +14,6 @@ import EndScreen from '../../endscreen/EndScreen.jsx';
 import SeriesSamples from './SeriesSamples';
 
 const ESTADO_COLOR = { pendiente: 'bg-amber-500', aprobado: 'bg-green-600', programado: 'bg-blue-600', publicado: 'bg-gray-800', descartado: 'bg-gray-400' };
-const MOTIVOS = [['revisor', 'No va'], ['fotos', 'Las fotos no sirven'], ['repetido', 'Repetido'], ['otro', 'Otro…']];
 const FINAL = ['publicado', 'descartado'];
 
 const slug = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sin-barrio';
@@ -291,6 +290,11 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
         {d.estado === 'descartado' && <span className="text-xs text-gray-500">Motivo: {d.motivoDescarte}</span>}
         <span className="ml-auto text-[10px] text-gray-400 truncate max-w-[50%]">{d.draftId}</span>
       </div>
+      {b && (
+        <div className="flex items-center gap-1.5 text-base font-bold text-gray-800">
+          <MapPin size={16} className="text-[#EB4511] shrink-0" /> {b.direccion || 'Sin dirección'}
+        </div>
+      )}
       {fact && <div className="text-xs text-gray-500">{fact}</div>}
 
       {d.faltantes.length > 0 && (
@@ -535,6 +539,16 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           )}
           {open && !discarding && (
             <button type="button" className={`${btnGhost} text-red-600 ml-auto`} disabled={!!busy} onClick={() => setDiscarding(true)}><Trash2 size={14} /> Descartar</button>
+          )}
+          {d.estado === 'descartado' && d.motivoDescarte !== 'paso a carrusel' && (
+            <button type="button" className={btnGhost} disabled={!!busy}
+              onClick={() => run('recuperar', async () => {
+                const r = await redesCall('redes_restore', { draftIds: [draftId] });
+                if (r.failed.length) throw new Error(r.failed[0].error);
+                return redesCall('redes_get', { draftId });
+              }, 'Recuperado: volvió a pendiente.')}>
+              <RefreshCw size={14} /> Recuperar
+            </button>
           )}
           {d.estado === 'publicado' && d.publicadoUrl && (
             <a href={d.publicadoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600"><ExternalLink size={14} /> Ver publicación</a>

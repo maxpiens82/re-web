@@ -29,6 +29,9 @@ export const FALTANTES = {
   'fotos-nuevas': 'Llegaron fotos nuevas: están en Alternativas',
 };
 
+// Why a draft is discarded: [what's saved, what people read]. 'otro' asks for the text.
+export const MOTIVOS = [['revisor', 'No va'], ['fotos', 'Las fotos no sirven'], ['repetido', 'Repetido'], ['otro', 'Otro…']];
+
 export const EXPIRY_DAYS = 14;
 export function daysLeft(draft) {
   const t = new Date(draft.listoDesde || '').getTime();
