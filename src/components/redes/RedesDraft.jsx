@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import {
   ArrowLeft, ChevronLeft, ChevronRight, ArrowDown, ArrowUp, Check, Copy, RefreshCw, Download, Send,
-  CalendarDays, Trash2, AlertTriangle, MapPin, Building, ExternalLink, Layers, Pencil, X,
+  CalendarDays, Trash2, AlertTriangle, MapPin, Building, ExternalLink, Images, Layers, Pencil, X,
 } from 'lucide-react';
 import { redesCall, FALTANTES, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
@@ -11,6 +11,7 @@ import LoadingLogo from '../LoadingLogo';
 import { renderSlides, blobToBase64, loadTemplates, parseEstilo, estiloOf, seriesOf, serieLabel, servicesText } from './slides';
 import { closingOf, disenoFor, startSettings, toSaved, settingsKey, renderEndscreen, canMakeVideo, brandForDraft } from './cierre';
 import EndScreen from '../../endscreen/EndScreen.jsx';
+import SeriesSamples from './SeriesSamples';
 
 const ESTADO_COLOR = { pendiente: 'bg-amber-500', aprobado: 'bg-green-600', programado: 'bg-blue-600', publicado: 'bg-gray-800', descartado: 'bg-gray-400' };
 const MOTIVOS = [['revisor', 'No va'], ['fotos', 'Las fotos no sirven'], ['repetido', 'Repetido'], ['otro', 'Otro…']];
@@ -89,6 +90,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [editor, setEditor] = useState(null);        // start settings while the end screen editor is open
   const brandsRef = useRef(null);
   const [series, setSeries] = useState([]);          // template series in Plantillas: ["serie1", "serie2"…]
+  const [samples, setSamples] = useState(false);     // showing how each series looks
   useEffect(() => {
     let alive = true;
     loadTemplates().then(t => { if (alive) setSeries(seriesOf(t)); }).catch(() => {});
@@ -367,7 +369,17 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
               {l}
             </button>
           ))}
+          <button type="button" className="ml-1 inline-flex items-center gap-1 text-xs font-bold text-[#E53B12] hover:underline" onClick={() => setSamples(true)}>
+            <Images size={14} /> Ver cómo es cada serie
+          </button>
         </div>
+        {samples && (
+          <SeriesSamples series={series} tipo={d.tipo} current={look} canChoose={open && !busy} onClose={() => setSamples(false)}
+            onChoose={(se, n) => {
+              setSamples(false);
+              run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo: estiloOf(se, n) } }), '');
+            }} />
+        )}
         {closing && (
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-500">Cierre: el paquete trae los dos, la plantilla y el video del end screen{closing.saved ? ' (editado)' : ''}.</span>
