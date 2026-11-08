@@ -1,7 +1,6 @@
-// Closing slide of a carousel (re-backend docs/REDES_SPEC.md §7.2b): the end screen video (default)
-// or the "carrusel-cierre" template. Stored as the last entry of the draft's `diseno`:
-//   { plantilla: 'endscreen' | 'carrusel-cierre', endscreen: { params, brandId } }
-// The end screen settings are kept even while the template is chosen, so switching back keeps them.
+// Closing of a carousel (re-backend docs/REDES_SPEC.md §7.2b): the package brings both, the "carrusel-cierre"
+// template and the end screen video, to choose when publishing. The video's settings, when edited, are the
+// last entry of the draft's `diseno`: { plantilla: 'endscreen', endscreen: { params, brandId } }.
 import { DEFAULTS, normalizeParams, drawFrame, lastFrameTime } from '../../endscreen/engine.js';
 import { buildScene } from '../../endscreen/assets.js';
 import { exportMp4, canExport } from '../../endscreen/exportMp4.js';
@@ -55,7 +54,7 @@ export const canMakeVideo = canExport;
 // The MP4 and a still of its settled moment (logo and texts in place, before any fade-out), for the
 // slide strip. onProgress(done, total) while encoding.
 export async function renderEndscreen({ params, brandId }, { brands, loadBrandLogo, onProgress, signal } = {}) {
-  if (!canExport()) throw new Error('Este navegador no puede armar el video del cierre. Usá Chrome o Edge, o cambiá el cierre a Plantilla.');
+  if (!canExport()) throw new Error('Este navegador no puede armar el video del cierre. Usá Chrome o Edge.');
   const brand = (brands || []).find(b => b.id === brandId) || null;
   const scene = await buildScene(params, { brand, loadBrandLogo });
   if (scene.overflow.length) throw new Error('Un texto del end screen no entra: tocá "Editar end screen" y acortalo.');

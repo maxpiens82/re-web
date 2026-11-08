@@ -259,7 +259,7 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
       style.textContent = css;
       svg.insertBefore(style, svg.firstChild);
       const blob = await rasterize(new XMLSerializer().serializeToString(svg), W, H);
-      out.push({ plantilla: tpl.name, blob, url: URL.createObjectURL(blob), warning });
+      out.push({ plantilla: tpl.name, blob, url: URL.createObjectURL(blob), warning, cierre: slide.plantilla === 'carrusel-cierre' });
     }
     return out;
   } finally {
