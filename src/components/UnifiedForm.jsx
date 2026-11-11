@@ -13,6 +13,7 @@ import { gasPost } from '../lib/gasApi';
 import { computeClientPrice, isNewPriceEra, priceTable } from '../lib/pricing';
 import { useAuth } from '../context/AuthContext';
 import NoPublicarSwitch from './redes/NoPublicarSwitch';
+import AddonsPanel from './addons/AddonsPanel';
 
 // Generate dates from 15 days ago to 90 days ahead
 const generateDates = () => {
@@ -1067,6 +1068,9 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
         <button onClick={addUnit} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 border-2 border-dashed border-blue-200 py-2.5 md:py-3 rounded-2xl font-bold uppercase tracking-wider text-[11px] md:text-xs transition-colors flex items-center justify-center gap-2">
           <Plus size={16} /> Agregar Otra Unidad
         </button>
+
+        {/* Servicios adicionales: módulo aparte, solo en reservas confirmadas. No dibuja nada si están desactivados. */}
+        {!isNewBooking && /^[PU]-/.test(bookingEventId) && <AddonsPanel eventId={bookingEventId} units={units} />}
 
         {/* 4. TEAM BUILDER */}
         <section className="bg-white rounded-2xl p-3 md:p-5 shadow-sm border border-gray-100">
