@@ -60,6 +60,9 @@ const mini = 'bg-white/90 hover:bg-white text-gray-700 rounded p-1 shadow';
 
 // A slide's name in the package: numbered, except the two closings, which are alternatives.
 const packageName = (it, i) => (it.video ? 'cierre-end-screen.mp4' : it.cierre ? 'cierre-plantilla.jpg' : `${String(i + 1).padStart(2, '0')}.jpg`);
+// The photos on screen (or their order) differ from the draft's.
+const orderChanged = (o, dr) => JSON.stringify(o.fotos.map(p => p.crudo)) !== JSON.stringify(dr.fotos.map(p => p.crudo)) ||
+  JSON.stringify(o.alts.map(p => p.crudo)) !== JSON.stringify(dr.alternativas.map(p => p.crudo));
 
 export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [data, setData] = useState({ loading: true, draft: null, booking: null, error: '' });
@@ -80,6 +83,13 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [msg, setMsg] = useState({ error: '', ok: '' });
   const [slides, setSlides] = useState({ key: '', items: [] });   // rendered placas (object URLs)
   const [tplProblems, setTplProblems] = useState([]);
+  // Unsaved changes: the browser asks before closing or reloading the tab (Santi, 11 Nov 2026: a text was lost).
+  const dirtyRef = useRef(false);
+  useEffect(() => {
+    const warn = e => { if (dirtyRef.current) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, []);
   const slideUrls = useRef([]);
   useEffect(() => () => slideUrls.current.forEach(u => URL.revokeObjectURL(u)), []);
   // Closing video (end screen): kept while its settings don't change, so it isn't encoded again.
@@ -100,11 +110,15 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     return `data:${r.mime};base64,${r.base64}`;
   }, []);
 
-  const apply = d => {
-    setData(s => ({ ...s, loading: false, draft: d }));
-    setOrder({ fotos: d.fotos, alts: d.alternativas });
-    setText(d.copyFinal || '');
-    setBarrio(d.barrio || '');
+  // A draft from the server, after any action. What the producer changed and hasn't saved stays as they left it:
+  // before, choosing a design or confirming the barrio wiped an unsaved text. Only an action that replaces a
+  // field on purpose (`replace`: Regenerar the text, Sin barrio the barrio, Guardar cambios all) overwrites it.
+  const apply = (nd, replace = {}) => {
+    const old = data.draft;
+    setData(s => ({ ...s, loading: false, draft: nd }));
+    setOrder(o => (old && o && !replace.order && orderChanged(o, old) ? o : { fotos: nd.fotos, alts: nd.alternativas }));
+    setText(t => (old && !replace.text && t !== (old.copyFinal || '') ? t : (nd.copyFinal || '')));
+    setBarrio(x => (old && !replace.barrio && x.trim() !== (old.barrio || '').trim() ? x : (nd.barrio || '')));
   };
 
   useEffect(() => {
@@ -122,11 +136,11 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const all = order ? order.fotos.concat(order.alts) : [];
   const getImg = usePhotos(cache, draftId, all.map(p => p.copia));
 
-  const run = async (name, fn, okText) => {
+  const run = async (name, fn, okText, replace) => {
     setBusy(name); setMsg({ error: '', ok: '' });
     try {
       const r = await fn();
-      if (r && r.draft) apply(r.draft);
+      if (r && r.draft) apply(r.draft, replace);
       setMsg({ error: '', ok: typeof okText === 'function' ? okText(r) : (okText || '') });
       return r;
     } catch (e) {
@@ -145,8 +159,28 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
 
   const d = data.draft, b = data.booking;
   const open = !FINAL.includes(d.estado);
-  const orderDirty = order && (JSON.stringify(order.fotos.map(p => p.crudo)) !== JSON.stringify(d.fotos.map(p => p.crudo)) ||
-    JSON.stringify(order.alts.map(p => p.crudo)) !== JSON.stringify(d.alternativas.map(p => p.crudo)));
+  const orderDirty = !!order && orderChanged(order, d);
+  // Everything changed on screen and not saved yet, saved together by "Guardar cambios" (Max, 11 Nov 2026).
+  const textDirty = text !== (d.copyFinal || '');
+  const barrioDirty = open && barrio.trim() !== '' && barrio.trim() !== (d.barrio || '').trim();
+  const inmoDirty = open && brandPick !== '' && brandPick !== (d.inmobiliaria || '');
+  const pending = open ? [textDirty && 'el texto', orderDirty && 'el orden de las fotos', barrioDirty && 'el barrio', inmoDirty && 'la inmobiliaria'].filter(Boolean) : [];
+  dirtyRef.current = pending.length > 0;
+  const saveAll = () => {
+    const cambios = {};
+    if (textDirty) cambios.copyFinal = text;
+    if (orderDirty) { cambios.fotos = order.fotos.map(p => p.crudo); cambios.alternativas = order.alts.map(p => p.crudo); }
+    if (barrioDirty) { cambios.barrio = barrio.trim(); cambios.barrioConfirmado = true; }
+    if (inmoDirty) cambios.inmobiliaria = brandPick;
+    return run('guardar', () => redesCall('redes_update', { draftId, cambios }), 'Cambios guardados.', { text: true, order: true, barrio: true });
+  };
+  const undoAll = () => {
+    setText(d.copyFinal || ''); setOrder({ fotos: d.fotos, alts: d.alternativas }); setSelected(-1); setBarrio(d.barrio || ''); setBrandPick('');
+  };
+  const leave = () => {
+    if (pending.length && !window.confirm(`Tenés cambios sin guardar (${pending.join(', ')}). ¿Salir sin guardarlos?`)) return;
+    onBack();
+  };
   const maxFotos = d.tipo === 'suelta' ? 1 : 5;
   const left = d.estado === 'pendiente' ? daysLeft(d) : null;
 
@@ -274,7 +308,6 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
 
   const loadBrands = () => { ensureBrands().catch(e => setMsg({ error: e.message, ok: '' })); };
 
-  const textDirty = text !== (d.copyFinal || '');
   const fact = [b && b.servicios && b.servicios.join(' · '), b && b.metros ? `${b.metros} m²` : '', b && b.fecha ? `Sesión ${fmtDate(b.fecha + 'T12:00')}` : '', b && b.empresa ? `EMPRESA: ${b.empresa}` : '']
     .filter(Boolean).join('  ·  ');
 
@@ -282,7 +315,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     <div className="max-w-5xl mx-auto p-3 md:p-4 flex flex-col gap-3">
       {/* header */}
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={onBack} className={btnGhost}><ArrowLeft size={14} /> Cola</button>
+        <button type="button" onClick={leave} className={btnGhost}><ArrowLeft size={14} /> Cola</button>
         <span className={`text-[11px] font-bold uppercase text-white rounded-full px-2.5 py-1 ${ESTADO_COLOR[d.estado] || 'bg-gray-500'}`}>{d.estado}</span>
         <span className="text-sm font-bold text-gray-700">{d.tipo === 'suelta' ? 'Foto suelta' : 'Carrusel'}</span>
         {left !== null && <span className={`text-xs font-bold ${left <= 3 ? 'text-red-600' : 'text-gray-500'}`}>Vence en {Math.max(0, left)} día{left === 1 ? '' : 's'}</span>}
@@ -311,13 +344,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
       {/* photos */}
       <Section title={`Fotos (${order.fotos.length}${d.tipo === 'suelta' ? '' : ' de máximo 5'})`}
         right={orderDirty && open && (
-          <div className="flex gap-2">
-            <button type="button" className={btnGhost} onClick={() => { setOrder({ fotos: d.fotos, alts: d.alternativas }); setSelected(-1); }}>Deshacer</button>
-            <button type="button" className={btnMain} disabled={!!busy}
-              onClick={() => run('orden', () => redesCall('redes_update', { draftId, cambios: { fotos: order.fotos.map(p => p.crudo), alternativas: order.alts.map(p => p.crudo) } }), 'Orden guardado.')}>
-              {busy === 'orden' ? <MiniLogo className="w-4 h-4" /> : <Check size={14} />} Guardar orden
-            </button>
-          </div>
+          <button type="button" className={btnGhost} onClick={() => { setOrder({ fotos: d.fotos, alts: d.alternativas }); setSelected(-1); }}>Deshacer</button>
         )}>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {order.fotos.map((p, i) => (
@@ -351,7 +378,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
       {/* placas */}
       <Section title="Placas"
         right={<button type="button" className={btnGhost} disabled={!!busy || orderDirty || !order.fotos.length}
-          title={orderDirty ? 'Guardá el orden primero' : ''}
+          title={orderDirty ? 'Guardá los cambios primero' : ''}
           onClick={() => run('placas', makeSlides, items => {
             const w = (items || []).filter(it => it.warning).length;
             return w ? `Placas listas, pero ${w} con texto muy largo.` : 'Placas listas.';
@@ -444,7 +471,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
                 <Check size={14} /> Confirmar
               </button>
               <button type="button" className={btnGhost} disabled={!!busy}
-                onClick={() => run('barrio', () => redesCall('redes_update', { draftId, cambios: { sinBarrio: true } }), 'Guardado sin barrio.')}>Sin barrio</button>
+                onClick={() => run('barrio', () => redesCall('redes_update', { draftId, cambios: { sinBarrio: true } }), 'Guardado sin barrio.', { barrio: true })}>Sin barrio</button>
             </div>
           )}
         </Section>
@@ -477,7 +504,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           <button type="button" className={btnGhost} onClick={() => navigator.clipboard.writeText(text).then(() => setMsg({ error: '', ok: 'Texto copiado.' }))}><Copy size={14} /> Copiar</button>
           {open && <button type="button" className={btnGhost} disabled={!!busy}
             onClick={() => (!textDirty && text === (d.copyIA || '') || window.confirm('Regenerar reemplaza el texto actual. ¿Seguimos?')) &&
-              run('regen', () => redesCall('redes_regenerate_copy', { draftId }), r => (r && r.problems && r.problems.length ? 'Texto nuevo, pero no pasó: ' + r.problems.join('; ') : 'Texto nuevo.'))}>
+              run('regen', () => redesCall('redes_regenerate_copy', { draftId }), r => (r && r.problems && r.problems.length ? 'Texto nuevo, pero no pasó: ' + r.problems.join('; ') : 'Texto nuevo.'), { text: true })}>
             {busy === 'regen' ? <MiniLogo className="w-4 h-4" /> : <RefreshCw size={14} />} Regenerar
           </button>}
         </div>}>
@@ -487,12 +514,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             <textarea className={`${input} min-h-[220px] font-sans`} value={text} onChange={e => setText(e.target.value)} disabled={!open} />
             <div className="flex items-center justify-between mt-1">
               <span className={`text-[11px] ${text.length > 2200 ? 'text-red-600 font-bold' : 'text-gray-400'}`}>{text.length} / 2200</span>
-              {open && textDirty && (
-                <button type="button" className={btnMain} disabled={!!busy}
-                  onClick={() => run('texto', () => redesCall('redes_update', { draftId, cambios: { copyFinal: text } }), 'Texto guardado.')}>
-                  <Check size={14} /> Guardar texto
-                </button>
-              )}
+              {open && textDirty && <span className="text-[11px] font-bold text-amber-700">Sin guardar</span>}
             </div>
           </div>
           <div>
@@ -506,8 +528,8 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
       <Section title="Acciones">
         <div className="flex flex-wrap items-end gap-2">
           {d.estado === 'pendiente' && (
-            <button type="button" className={btnMain} disabled={!!busy || textDirty || orderDirty}
-              title={textDirty || orderDirty ? 'Guardá los cambios primero' : ''}
+            <button type="button" className={btnMain} disabled={!!busy || pending.length > 0}
+              title={pending.length ? 'Guardá los cambios primero' : ''}
               onClick={() => run('aprobar', () => redesCall('redes_approve', { draftId }), r => (r && r.correccion ? 'Aprobado. Tu corrección del texto queda como ejemplo para Gemini.' : 'Aprobado.'))}>
               {busy === 'aprobar' ? <MiniLogo className="w-4 h-4" /> : <Check size={14} />} Aprobar
             </button>
@@ -571,6 +593,18 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
         )}
         <p className="mt-3 text-[11px] text-gray-400">El paquete trae las placas en orden (01.jpg, 02.jpg…), los dos cierres para elegir al publicar (cierre-plantilla.jpg y cierre-end-screen.mp4), y copy.txt; si las plantillas fallan, las fotos. Publicar: descargalo, subilo desde el celular y volvé a marcarlo como publicado.</p>
       </Section>
+
+      {/* unsaved changes: one button saves them all, always in sight while scrolling */}
+      {pending.length > 0 && (
+        <div className="sticky bottom-3 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 shadow-lg">
+          <AlertTriangle size={16} className="text-amber-700 shrink-0" />
+          <span className="flex-1 min-w-[180px] text-sm font-bold text-amber-800">Sin guardar: {pending.join(', ')}.</span>
+          <button type="button" className={btnGhost} disabled={!!busy} onClick={undoAll}>Deshacer</button>
+          <button type="button" className={btnMain} disabled={!!busy} onClick={saveAll}>
+            {busy === 'guardar' ? <MiniLogo className="w-4 h-4" /> : <Check size={14} />} Guardar cambios
+          </button>
+        </div>
+      )}
 
       {/* end screen editor for the closing slide */}
       {editor && (
