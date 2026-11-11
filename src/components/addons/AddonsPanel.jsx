@@ -140,7 +140,7 @@ export default function AddonsPanel({ eventId, units = [] }) {
       {chosen && chosen.aplicaMetros && (
         <p className="mt-2 text-[11px] text-gray-400">Se calcula con los m² de {multi ? 'la unidad elegida' : 'la unidad'} ({unit.metrosCuadrados || '—'} m²), tal como están ahora.</p>
       )}
-      <p className="mt-2 text-[11px] text-gray-400">Se guardan al instante, aparte del formulario. Todavía no se suman al total ni a los pagos.</p>
+      <p className="mt-2 text-[11px] text-gray-400">Se guardan al instante, aparte del formulario. Se cobran con el trabajo; el Total Estimado de abajo no los incluye.</p>
       {error && <p className="mt-2 text-xs font-bold text-red-600">{error}</p>}
     </section>
   );
