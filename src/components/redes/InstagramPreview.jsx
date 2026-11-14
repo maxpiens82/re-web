@@ -9,14 +9,16 @@ import MiniLogo from '../MiniLogo';
 const HANDLE = 'somos.re.ok';
 
 /** What the post shows: the photos' slides plus ONE closing (the template's, or the end screen video). */
+// The end screen video is a closing; the supercut, also a video, is one more slide.
+const isEnd = it => it.video && !it.supercut;
 function postSlides(items, closing) {
-  const hasBoth = items.some(it => it.cierre) && items.some(it => it.video);
+  const hasBoth = items.some(it => it.cierre) && items.some(isEnd);
   if (!hasBoth) return items;
-  return items.filter(it => (closing === 'video' ? !it.cierre : !it.video));
+  return items.filter(it => (closing === 'video' ? !it.cierre : !isEnd(it)));
 }
 
 export default function InstagramPreview({ items, caption, onClose }) {
-  const hasBoth = items.some(it => it.cierre) && items.some(it => it.video);
+  const hasBoth = items.some(it => it.cierre) && items.some(isEnd);
   const [closing, setClosing] = useState('plantilla');
   const shown = postSlides(items, closing);
   const [i, setI] = useState(0);
