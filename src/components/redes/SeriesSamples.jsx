@@ -6,8 +6,12 @@ import { serieLabel } from './slides';
 // How each template series looks, before making any placas. The images are in public/redes-muestras/
 // (one per template, day and night), made with render.js in Plantillas redes RE! from the photos the
 // landing already shows: this folder is public, so never put an unpublished client's photos in it.
-const SAMPLE_SERIES = ['serie1', 'serie2', 'serie3', 'serie4', 'serie5', 'serie6'];
-const NAMES = { serie3: 'Diagonal', serie4: 'Tinte', serie5: 'Editorial', serie6: 'Marco' };
+const SAMPLE_SERIES = Array.from({ length: 16 }, (_, i) => `serie${i + 1}`);
+const NAMES = { serie3: 'Diagonal', serie4: 'Tinte', serie5: 'Editorial', serie6: 'Marco', serie7: 'Panorámica', serie8: 'Ficha',
+  serie9: 'Plano', serie10: 'Titular', serie11: 'Póster', serie12: 'Galería', serie13: 'Detalle', serie14: 'Cine', serie15: 'Mosaico',
+  serie16: 'Contactos' };
+// Series whose cover continues on a second slide (carrusel-panorama).
+const PANORAMA = ['serie7'];
 const CARRUSEL = [['carrusel-portada', 'Portada'], ['carrusel-doble', 'Doble'], ['carrusel-simple', 'Simple'], ['carrusel-cierre', 'Cierre']];
 const SUELTA = [['foto-en-marco-1350', 'Vertical'], ['foto-en-marco-1080', 'Cuadrada']];
 
@@ -18,7 +22,8 @@ export default function SeriesSamples({ series, tipo, current, canChoose, onChoo
   const [noche, setNoche] = useState(current.noche);
   const [big, setBig] = useState(null);
   const shown = (series && series.length ? series : SAMPLE_SERIES).filter(s => SAMPLE_SERIES.includes(s));
-  const templates = tipo === 'suelta' ? SUELTA : CARRUSEL;
+  const templatesOf = serie => (tipo === 'suelta' ? SUELTA
+    : PANORAMA.includes(serie) ? [CARRUSEL[0], ['carrusel-panorama', 'Panorámica'], ...CARRUSEL.slice(1)] : CARRUSEL);
 
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') { if (big) setBig(null); else onClose(); } };
@@ -57,8 +62,8 @@ export default function SeriesSamples({ series, tipo, current, canChoose, onChoo
                     </button>
                   )}
                 </div>
-                <div className={`grid gap-2 ${tipo === 'suelta' ? 'grid-cols-2 max-w-md' : 'grid-cols-2 sm:grid-cols-4'} ${oculta ? 'opacity-40' : ''}`}>
-                  {templates.map(([template, label]) => (
+                <div className={`grid gap-2 ${tipo === 'suelta' ? 'grid-cols-2 max-w-md' : PANORAMA.includes(serie) ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'} ${oculta ? 'opacity-40' : ''}`}>
+                  {templatesOf(serie).map(([template, label]) => (
                     <figure key={template} className="m-0">
                       <button type="button" className="block w-full" aria-label={`Ver grande: ${serieLabel(serie)}, ${label}`} onClick={() => setBig(srcOf(serie, template, noche))}>
                         <img src={srcOf(serie, template, noche)} alt="" loading="lazy" style={{ aspectRatio: template === 'foto-en-marco-1080' ? '1 / 1' : '4 / 5' }} className="w-full rounded border border-gray-200 bg-gray-100" />
