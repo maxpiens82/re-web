@@ -5,7 +5,7 @@
 // "serie2/carrusel-portada-noche"); the draft's estilo picks one ("serie2-noche"; the old "estandar"
 // and "noche" mean Serie 1). Made with G:\My Drive\Identidad\Plantillas redes RE!\build.py.
 //
-// Fill: <image id="foto-N"> gets the photo as a data: URI; <text>/<tspan id="campo-X"> gets campos[X]
+// Fill: <image id="foto-N"> gets the photo as a data: URI (and <image data-copia="foto-N"> the same photo again); <text>/<tspan id="campo-X"> gets campos[X]
 // (barrio, servicios, inmobiliaria; web, whatsapp, marca and cierre-* keep the template's text). An
 // empty field is removed together with its label (an id-less text right above it, same x), or with
 // its whole line when it's a <tspan>. data-mayusculas = upper case; data-ancho-max = shrink font and
@@ -45,7 +45,9 @@ export const estiloOf = (serie, noche) => `${serie}${noche ? '-noche' : ''}`;
 export function seriesOf(templates) {
   const set = new Set();
   (templates || []).filter(t => t.ok).forEach(t => set.add(t.name.includes('/') ? t.name.split('/')[0] : 'serie1'));
-  return [...set].sort();
+  // Numbers in order: Serie 2 before Serie 10.
+  const num = n => (/^serie(\d+)$/.test(n) ? Number(n.slice(5)) : Infinity);
+  return [...set].sort((a, z) => num(a) - num(z) || a.localeCompare(z));
 }
 export const serieLabel = serie => (/^serie(\d+)$/.test(serie) ? `Serie ${serie.slice(5)}` : serie.charAt(0).toUpperCase() + serie.slice(1));
 
@@ -194,6 +196,11 @@ function fill(svg, { photos, campos, W }) {
     const src = photos[Number(img.id.slice(5)) - 1];
     if (src) { img.setAttribute('href', src); img.setAttributeNS(XLINK, 'xlink:href', src); }
   });
+  // <image data-copia="foto-N">: the same photo again, zoomed in or cropped another way (series 13 and 15).
+  svg.querySelectorAll('image[data-copia]').forEach(img => {
+    const src = photos[Number(img.getAttribute('data-copia').slice(5)) - 1];
+    if (src) { img.setAttribute('href', src); img.setAttributeNS(XLINK, 'xlink:href', src); }
+  });
   const modern = !!svg.querySelector('[data-ancho-max]');
   svg.querySelectorAll('[id^="campo-"]').forEach(el => {
     const key = el.id.slice(6);
@@ -232,6 +239,11 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
   const css = fonts.map(f => `@font-face{font-family:'${f.family}';src:url(data:font/otf;base64,${f.base64})}`).join('');
   const look = parseEstilo(estilo);
   const layout = defaultLayout(tipo, fotos, cierre);
+  // A series with a "carrusel-panorama" (Serie 7) continues the cover photo on the next slide: its right half, so
+  // swiping shows one wide picture.
+  if (layout[0] && layout[0].plantilla === 'carrusel-portada' && pickTemplate(byName, 'carrusel-panorama', look)) {
+    layout.splice(1, 0, { plantilla: 'carrusel-panorama', fotos: layout[0].fotos });
+  }
   const dataUrls = {};
   for (const p of fotos) {
     const blob = photoBlob(p.copia);
@@ -259,7 +271,8 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
       style.textContent = css;
       svg.insertBefore(style, svg.firstChild);
       const blob = await rasterize(new XMLSerializer().serializeToString(svg), W, H);
-      out.push({ plantilla: tpl.name, blob, url: URL.createObjectURL(blob), warning, cierre: slide.plantilla === 'carrusel-cierre' });
+      out.push({ plantilla: tpl.name, blob, url: URL.createObjectURL(blob), warning, cierre: slide.plantilla === 'carrusel-cierre',
+        ...(slide.plantilla === 'carrusel-panorama' ? { panorama: true } : {}) });
     }
     return out;
   } finally {
