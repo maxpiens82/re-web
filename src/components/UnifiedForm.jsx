@@ -14,6 +14,7 @@ import { computeClientPrice, isNewPriceEra, priceTable } from '../lib/pricing';
 import { useAuth } from '../context/AuthContext';
 import NoPublicarSwitch from './redes/NoPublicarSwitch';
 import AddonsPanel from './addons/AddonsPanel';
+import ClienteInstagram from './redes/ClienteInstagram';
 
 // Generate dates from 15 days ago to 90 days ahead
 const generateDates = () => {
@@ -977,6 +978,8 @@ export default function UnifiedForm({ jobId, onCancel, onSuccess, globalClientDb
               </div>
               <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg font-medium outline-none transition-all text-[13px] md:text-sm" style={getFieldStyle('email')} />
             </div>
+
+            {userRole && <ClienteInstagram telefono={formData.phone} email={formData.email} nombre={`${formData.name || ''} ${formData.lastName || ''}`.trim()} />}
 
             <div className="sm:col-span-2 mt-0.5 p-2.5 md:p-3 bg-gray-50 rounded-lg md:rounded-xl border transition-all" style={getFieldStyle('modalidadPago')}>
               <div className="flex justify-between items-center mb-1">

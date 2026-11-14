@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { Eye, EyeOff, X } from 'lucide-react';
 import { serieLabel } from './slides';
 
 // How each template series looks, before making any placas. The images are in public/redes-muestras/
@@ -14,7 +14,7 @@ const SUELTA = [['foto-en-marco-1350', 'Vertical'], ['foto-en-marco-1080', 'Cuad
 const pill = on => `px-3 py-1 rounded-full text-xs font-bold border ${on ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200'}`;
 const srcOf = (serie, template, noche) => `/redes-muestras/${serie}/${template}${noche ? '-noche' : ''}.jpg`;
 
-export default function SeriesSamples({ series, tipo, current, canChoose, onChoose, onClose }) {
+export default function SeriesSamples({ series, tipo, current, canChoose, onChoose, onClose, ocultos = [], onToggleOculto }) {
   const [noche, setNoche] = useState(current.noche);
   const [big, setBig] = useState(null);
   const shown = (series && series.length ? series : SAMPLE_SERIES).filter(s => SAMPLE_SERIES.includes(s));
@@ -40,15 +40,24 @@ export default function SeriesSamples({ series, tipo, current, canChoose, onChoo
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-6">
           {shown.map(serie => {
             const inUse = current.serie === serie && current.noche === noche;
+            const estilo = `${serie}${noche ? '-noche' : ''}`;
+            const oculta = ocultos.includes(estilo);
             return (
               <section key={serie}>
-                <div className="mb-2 flex items-center gap-3">
-                  <h4 className="text-sm font-bold text-gray-800">{serieLabel(serie)}{NAMES[serie] ? ` · ${NAMES[serie]}` : ''}</h4>
+                <div className="mb-2 flex flex-wrap items-center gap-3">
+                  <h4 className={`text-sm font-bold ${oculta ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{serieLabel(serie)}{NAMES[serie] ? ` · ${NAMES[serie]}` : ''}</h4>
                   {inUse
                     ? <span className="text-xs font-bold text-green-700">En uso</span>
-                    : canChoose && <button type="button" className="text-xs font-bold text-[#E53B12] hover:underline" onClick={() => onChoose(serie, noche)}>Usar esta, {noche ? 'noche' : 'día'}</button>}
+                    : canChoose && !oculta && <button type="button" className="text-xs font-bold text-[#E53B12] hover:underline" onClick={() => onChoose(serie, noche)}>Usar esta, {noche ? 'noche' : 'día'}</button>}
+                  {onToggleOculto && (
+                    <button type="button" className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-gray-800"
+                      title={oculta ? 'Vuelve a aparecer en los borradores y en el azar' : 'Deja de aparecer en los borradores y en el azar. No se borra nada.'}
+                      onClick={() => onToggleOculto(estilo, !oculta)}>
+                      {oculta ? <><Eye size={14} /> Oculta · Mostrar</> : <><EyeOff size={14} /> Ocultar {noche ? 'noche' : 'día'}</>}
+                    </button>
+                  )}
                 </div>
-                <div className={`grid gap-2 ${tipo === 'suelta' ? 'grid-cols-2 max-w-md' : 'grid-cols-2 sm:grid-cols-4'}`}>
+                <div className={`grid gap-2 ${tipo === 'suelta' ? 'grid-cols-2 max-w-md' : 'grid-cols-2 sm:grid-cols-4'} ${oculta ? 'opacity-40' : ''}`}>
                   {templates.map(([template, label]) => (
                     <figure key={template} className="m-0">
                       <button type="button" className="block w-full" aria-label={`Ver grande: ${serieLabel(serie)}, ${label}`} onClick={() => setBig(srcOf(serie, template, noche))}>

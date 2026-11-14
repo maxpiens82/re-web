@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import {
   ArrowLeft, ChevronLeft, ChevronRight, ArrowDown, ArrowUp, Check, Copy, RefreshCw, Download, Send,
-  CalendarDays, Trash2, AlertTriangle, MapPin, Building, ExternalLink, Images, Layers, Pencil, X,
+  CalendarDays, Trash2, AlertTriangle, MapPin, Building, ExternalLink, Images, Layers, Pencil, X, Smartphone,
 } from 'lucide-react';
 import { redesCall, FALTANTES, MOTIVOS, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
@@ -12,6 +12,8 @@ import { renderSlides, blobToBase64, loadTemplates, parseEstilo, estiloOf, serie
 import { closingOf, disenoFor, startSettings, toSaved, settingsKey, renderEndscreen, canMakeVideo, brandForDraft } from './cierre';
 import EndScreen from '../../endscreen/EndScreen.jsx';
 import SeriesSamples from './SeriesSamples';
+import InstagramPreview from './InstagramPreview';
+import InstagramField from './InstagramField';
 
 const ESTADO_COLOR = { pendiente: 'bg-amber-500', aprobado: 'bg-green-600', programado: 'bg-blue-600', publicado: 'bg-gray-800', descartado: 'bg-gray-400' };
 const FINAL = ['publicado', 'descartado'];
@@ -100,6 +102,15 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const brandsRef = useRef(null);
   const [series, setSeries] = useState([]);          // template series in Plantillas: ["serie1", "serie2"…]
   const [samples, setSamples] = useState(false);     // showing how each series looks
+  const [preview, setPreview] = useState(false);     // "Ver como en Instagram"
+  const [ocultos, setOcultos] = useState([]);        // designs hidden for everyone ("serie3", "serie5-noche"), redes_config
+  useEffect(() => {
+    let alive = true;
+    redesCall('redes_config').then(r => { if (alive) setOcultos(r.ocultos || []); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const toggleOculto = (estilo, oculto) => redesCall('redes_config', { ocultar: { estilo, oculto } }).then(r => setOcultos(r.ocultos || []))
+    .catch(e => setMsg({ error: e.message, ok: '' }));
   useEffect(() => {
     let alive = true;
     loadTemplates().then(t => { if (alive) setSeries(seriesOf(t)); }).catch(() => {});
@@ -377,17 +388,25 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
 
       {/* placas */}
       <Section title="Placas"
-        right={<button type="button" className={btnGhost} disabled={!!busy || orderDirty || !order.fotos.length}
-          title={orderDirty ? 'Guardá los cambios primero' : ''}
-          onClick={() => run('placas', makeSlides, items => {
-            const w = (items || []).filter(it => it.warning).length;
-            return w ? `Placas listas, pero ${w} con texto muy largo.` : 'Placas listas.';
-          })}>
-          {busy === 'placas' ? <MiniLogo className="w-4 h-4" /> : <Layers size={14} />} {slides.items.length ? 'Actualizar placas' : 'Generar placas'}
-        </button>}>
+        right={<div className="flex flex-wrap justify-end gap-2">
+          <button type="button" className={btnGhost} disabled={!!busy || orderDirty || !order.fotos.length}
+            title={orderDirty ? 'Guardá los cambios primero' : 'La publicación a pantalla completa, como se ve en el celular'}
+            onClick={async () => { if (slidesFresh || await run('placas', makeSlides, '')) setPreview(true); }}>
+            <Smartphone size={14} /> Ver como en Instagram
+          </button>
+          <button type="button" className={btnGhost} disabled={!!busy || orderDirty || !order.fotos.length}
+            title={orderDirty ? 'Guardá los cambios primero' : ''}
+            onClick={() => run('placas', makeSlides, items => {
+              const w = (items || []).filter(it => it.warning).length;
+              return w ? `Placas listas, pero ${w} con texto muy largo.` : 'Placas listas.';
+            })}>
+            {busy === 'placas' ? <MiniLogo className="w-4 h-4" /> : <Layers size={14} />} {slides.items.length ? 'Actualizar placas' : 'Generar placas'}
+          </button>
+        </div>}>
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <span className="text-xs text-gray-500">Diseño:</span>
-          {(series.length ? series : [look.serie]).map(se => (
+          {(series.length ? series : [look.serie])
+            .filter(se => se === look.serie || !(ocultos.includes(estiloOf(se, false)) && ocultos.includes(estiloOf(se, true)))).map(se => (
             <button key={se} type="button" disabled={!open || !!busy} className={pill(look.serie === se)}
               onClick={() => look.serie !== se && run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo: estiloOf(se, look.noche) } }), '')}>
               {serieLabel(se)}
@@ -395,7 +414,8 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           ))}
           <span className="w-px h-5 bg-gray-200 mx-1" />
           {[[false, 'Día'], [true, 'Noche']].map(([n, l]) => (
-            <button key={l} type="button" disabled={!open || !!busy} className={pill(look.noche === n)}
+            <button key={l} type="button" disabled={!open || !!busy || (look.noche !== n && ocultos.includes(estiloOf(look.serie, n)))}
+              title={look.noche !== n && ocultos.includes(estiloOf(look.serie, n)) ? 'Oculta' : ''} className={pill(look.noche === n)}
               onClick={() => look.noche !== n && run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo: estiloOf(look.serie, n) } }), '')}>
               {l}
             </button>
@@ -406,6 +426,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
         </div>
         {samples && (
           <SeriesSamples series={series} tipo={d.tipo} current={look} canChoose={open && !busy} onClose={() => setSamples(false)}
+            ocultos={ocultos} onToggleOculto={toggleOculto}
             onChoose={(se, n) => {
               setSamples(false);
               run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo: estiloOf(se, n) } }), '');
@@ -497,6 +518,35 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           )}
         </Section>
       </div>
+
+      {/* Instagram handles, typed once and kept: the agency's (placas, closing, text) and the client's */}
+      {b && (
+        <Section title="Instagram">
+          <div className="grid md:grid-cols-2 gap-3">
+            {d.inmobiliaria && d.inmobiliaria !== 'particular' ? (
+              <InstagramField label={`Inmobiliaria · ${d.inmobiliaria}`} value={b.inmobiliariaInstagram} disabled={!open}
+                hint="Va en las placas, en el cierre y en el texto. Cambiarlo acá vale para todas sus publicaciones."
+                onSave={async text => {
+                  const r = await redesCall('marcas_instagram', { inmobiliaria: d.inmobiliaria, instagram: text });
+                  setData(s => ({ ...s, booking: { ...s.booking, inmobiliariaInstagram: r.instagram || '' } }));
+                  // The draft checks again what's missing ("La inmobiliaria no tiene Instagram cargado").
+                  const u = await redesCall('redes_update', { draftId, cambios: { inmobiliaria: d.inmobiliaria } });
+                  if (u.draft) apply(u.draft);
+                  return r.instagram || '';
+                }} />
+            ) : <p className="text-xs text-gray-400 self-center">{d.inmobiliaria === 'particular' ? 'Particular: sin inmobiliaria.' : 'Elegí la inmobiliaria para cargar su Instagram.'}</p>}
+            {b.cliente ? (
+              <InstagramField label={`Cliente · ${b.cliente.nombre || 'sin nombre'}`} value={b.cliente.instagram}
+                hint="Queda guardado para este cliente. Si se lo arroba en el texto, se decide aparte."
+                onSave={async text => {
+                  const r = await redesCall('marcas_instagram', { cliente: b.cliente, instagram: text });
+                  setData(s => ({ ...s, booking: { ...s.booking, cliente: { ...s.booking.cliente, instagram: r.instagram || '' } } }));
+                  return r.instagram || '';
+                }} />
+            ) : <p className="text-xs text-gray-400 self-center">Esta publicación no tiene reserva con cliente.</p>}
+          </div>
+        </Section>
+      )}
 
       {/* caption */}
       <Section title="Texto"
@@ -605,6 +655,8 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           </button>
         </div>
       )}
+
+      {preview && slides.items.length > 0 && <InstagramPreview items={slides.items} caption={text} onClose={() => setPreview(false)} />}
 
       {/* end screen editor for the closing slide */}
       {editor && (
