@@ -309,7 +309,6 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
 // (each design a nested <svg>, its ids prefixed so they don't clash), drawn once and cut into pieces.
 // Resolves to { estilo: Blob | null } (null: that series has no cover for that look).
 export async function renderCovers({ estilos, photo, campos = {}, width = 168 }) {
-  const tStart = performance.now();
   const [templates, fonts] = await Promise.all([loadTemplates(), loadFonts()]);
   const byName = Object.fromEntries(templates.map(t => [t.name, t]));
   const css = fonts.map(f => `@font-face{font-family:'${f.family}';src:url(data:font/otf;base64,${f.base64})}`).join('');
@@ -335,7 +334,6 @@ export async function renderCovers({ estilos, photo, campos = {}, width = 168 })
   } finally {
     box.remove();
   }
-  const tFill = performance.now();
   const out = Object.fromEntries(estilos.map(e => [e, null]));
   if (!cells.length) return out;
   const cols = Math.min(8, cells.length), rows = Math.ceil(cells.length / cols);
@@ -344,7 +342,6 @@ export async function renderCovers({ estilos, photo, campos = {}, width = 168 })
   const inner = cells.map((c, k) => c.text.replace(/^<svg\b/, `<svg x="${(k % cols) * cw}" y="${Math.floor(k / cols) * ch}"`)
     .replace(/(<svg\b[^>]*?)\swidth="[^"]*"/, `$1 width="${cw}"`).replace(/(<svg\b[^>]*?)\sheight="[^"]*"/, `$1 height="${ch}"`)).join('');
   const sheet = `<svg xmlns="${SVG_NS}" xmlns:xlink="${XLINK}" width="${cols * cw}" height="${rows * ch}" viewBox="0 0 ${cols * cw} ${rows * ch}"><style>${css}</style>${inner}</svg>`;
-  console.debug('[covers] fill', Math.round(tFill - tStart), 'ms');
   const url = URL.createObjectURL(new Blob([sheet], { type: 'image/svg+xml' }));
   try {
     const img = new Image();
@@ -363,6 +360,18 @@ export async function renderCovers({ estilos, photo, campos = {}, width = 168 })
   }
   return out;
 }
-export const photoDataUrl = blobToDataUrl;
+// A photo made small for the covers (a smaller picture to decode, 32 times over), as a data: URL.
+export async function smallPhotoUrl(blob, px = 360) {
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const k = Math.min(1, px / Math.min(bitmap.width, bitmap.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bitmap.width * k); c.height = Math.round(bitmap.height * k);
+    c.getContext('2d').drawImage(bitmap, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.85);
+  } finally { bitmap.close(); }
+}
+// While the photo is on its way: a plain grey square, so the covers show the design at once.
+export const PLACEHOLDER_PHOTO = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="5"><rect width="4" height="5" fill="#B9B6B0"/></svg>');
 
 export const blobToBase64 = blob => blobToDataUrl(blob).then(u => u.slice(u.indexOf(',') + 1));
