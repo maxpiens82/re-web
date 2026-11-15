@@ -8,7 +8,7 @@ import { redesCall, FALTANTES, MOTIVOS, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
 import MiniLogo from '../MiniLogo';
 import LoadingLogo from '../LoadingLogo';
-import { renderSlides, blobToBase64, loadTemplates, parseEstilo, estiloOf, seriesOf, serieLabel, servicesText, phoneText } from './slides';
+import { renderSlides, blobToBase64, loadTemplates, parseEstilo, estiloOf, seriesOf, designsOf, serieLabel, servicesText, phoneText } from './slides';
 import { closingOf, disenoFor, startSettings, toSaved, settingsKey, renderEndscreen, canMakeVideo, brandForDraft } from './cierre';
 import EndScreen from '../../endscreen/EndScreen.jsx';
 import SeriesSamples from './SeriesSamples';
@@ -130,6 +130,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [editor, setEditor] = useState(null);        // start settings while the end screen editor is open
   const brandsRef = useRef(null);
   const [series, setSeries] = useState([]);          // template series in Plantillas: ["serie1", "serie2"…]
+  const [designs, setDesigns] = useState(null);      // the designs that exist ("serie7", "serie4-noche"…), designsOf
   const [samples, setSamples] = useState(false);     // showing how each series looks
   const [preview, setPreview] = useState(false);     // "Ver como en Instagram"
   const [ocultos, setOcultos] = useState([]);        // designs hidden for everyone ("serie3", "serie5-noche"), redes_config
@@ -160,7 +161,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     .catch(e => setMsg({ error: e.message, ok: '' }));
   useEffect(() => {
     let alive = true;
-    loadTemplates().then(t => { if (alive) setSeries(seriesOf(t)); }).catch(() => {});
+    loadTemplates().then(t => { if (alive) { setSeries(seriesOf(t)); setDesigns(designsOf(t)); } }).catch(() => {});
     return () => { alive = false; };
   }, []);
   const loadBrandLogo = useCallback(async (id, kind) => {
@@ -528,14 +529,14 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             <Images size={14} /> Ver carruseles completos
           </button>
         </div>
-        <DisenoStrip series={series.length ? series : [look.serie]} ocultos={ocultos} current={look}
+        <DisenoStrip series={series.length ? series : [look.serie]} designs={designs} ocultos={ocultos} current={look}
           photo={d.fotos[0] && (getImg(d.fotos[0].copia) || {}).blob}
           campos={{ barrio: d.barrio || '', servicios: servicesText(b && b.servicios), inmobiliaria: /^particular$/i.test(d.inmobiliaria || '') ? '' : (d.inmobiliaria || '') }}
           disabled={!open || !!busy || orderDirty}
           onPick={estilo => run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo } }), '')
             .then(r => { if (r && r.draft && r.draft.fotos.length && !slides.items.length) setAutoPlacas(true); })} />
         {samples && (
-          <SeriesSamples series={series} tipo={d.tipo} current={look} canChoose={open && !busy} onClose={() => setSamples(false)}
+          <SeriesSamples series={series} designs={designs} tipo={d.tipo} current={look} canChoose={open && !busy} onClose={() => setSamples(false)}
             ocultos={ocultos} onToggleOculto={toggleOculto}
             onChoose={(se, n) => {
               setSamples(false);
