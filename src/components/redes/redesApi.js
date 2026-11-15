@@ -96,6 +96,8 @@ export function createPhotoCache(size = 'full') {
   const urls = new Map();      // copia -> { url, blob }
   const waiting = new Map();   // copia -> Promise
   const queue = [];
+  const listeners = new Set();
+  const notify = () => listeners.forEach(fn => fn());
   let running = 0;
   let disposed = false;
 
@@ -103,6 +105,10 @@ export function createPhotoCache(size = 'full') {
     while (running < 2 && queue.length && !disposed) {
       const job = queue.shift();
       running++;
+      // A big photo takes a minute or two: the batch's other photos show at once (notify) and the slot is freed for
+      // other requests; the batch's promise waits for the big one, since the placas need it.
+      let released = false;
+      const release = () => { if (!released) { released = true; running--; pump(); } };
       redesCall('redes_photo', { draftId: job.draftId, fileIds: job.ids, size })
         .then(async res => {
           const big = [];
@@ -114,18 +120,22 @@ export function createPhotoCache(size = 'full') {
             } else if (p.pending && p.bytes > NO_PREVIEW_BYTES) big.push([id, p.bytes]);
             else if (!disposed) urls.set(id, { pending: !!p.pending, error: p.error || '' });
           });
+          if (big.length) { notify(); release(); }
           await Promise.all(big.map(([id, bytes]) => loadBigPhoto(job.draftId, id, bytes)
             .then(both => { if (!disposed) { const blob = size === 'thumb' ? both.thumb : both.full; urls.set(id, { url: URL.createObjectURL(blob), blob }); } })
             .catch(e => { if (!disposed) urls.set(id, { error: 'La foto es muy pesada y no se pudo bajar: ' + e.message }); })));
           job.resolve();
+          notify();
         })
         .catch(e => { job.ids.forEach(id => urls.set(id, { error: e.message })); job.resolve(); })
-        .finally(() => { running--; pump(); });
+        .finally(release);
     }
   };
 
   return {
     get: id => urls.get(id),
+    // fn() runs whenever photos arrive outside a load() promise (the rest of a batch while a big photo is still coming).
+    subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     // Loads what isn't loaded yet; resolves when this request's photos are in.
     load(draftId, ids) {
       const todo = ids.filter(id => id && !urls.has(id) && !waiting.has(id));
@@ -141,6 +151,6 @@ export function createPhotoCache(size = 'full') {
         .then(() => ids.forEach(id => waiting.delete(id)));
     },
     forget(ids) { ids.forEach(id => { const u = urls.get(id); if (u && u.url) URL.revokeObjectURL(u.url); urls.delete(id); }); },
-    dispose() { disposed = true; urls.forEach(u => u.url && URL.revokeObjectURL(u.url)); urls.clear(); queue.length = 0; },
+    dispose() { disposed = true; listeners.clear(); urls.forEach(u => u.url && URL.revokeObjectURL(u.url)); urls.clear(); queue.length = 0; },
   };
 }
