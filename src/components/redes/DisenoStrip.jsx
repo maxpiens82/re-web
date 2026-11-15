@@ -2,12 +2,12 @@
 // a small cover made with THIS draft's first photo, barrio and texts, side by side; one tap picks it and the placas
 // are made again on their own. Covers are drawn in the browser from the templates bundled with the portal.
 import { useEffect, useRef, useState } from 'react';
-import { estiloOf, renderCovers, photoDataUrl } from './slides';
+import { estiloOf, renderCovers, smallPhotoUrl, PLACEHOLDER_PHOTO } from './slides';
 import { SERIE_NAMES } from './seriesInfo';
 
 const COVER_W = 168;   // px drawn; shown at half that on screen, sharp on phones and retina
 
-export default function DisenoStrip({ series, ocultos, current, photo, getCampos, camposKey, disabled, onPick }) {
+export default function DisenoStrip({ series, ocultos, current, photo, campos, disabled, onPick }) {
   const [covers, setCovers] = useState({});      // estilo -> object URL | null (no cover in that series)
   const urls = useRef([]);
   const strip = useRef(null);
@@ -15,32 +15,30 @@ export default function DisenoStrip({ series, ocultos, current, photo, getCampos
   const designs = series.flatMap(se => [false, true].map(n => estiloOf(se, n)))
     .filter(e => e === estiloOf(current.serie, current.noche) || !ocultos.includes(e));
 
-  // Covers again whenever the photo or the texts change; one at a time, in the strip's order.
+  // Covers again whenever the photo or the texts change: first with a grey stand-in while the photo is on its way,
+  // so the designs show at once, then with the photo.
   const designsKey = designs.join(',');
+  const camposKey = JSON.stringify(campos);
   useEffect(() => {
-    if (!photo || !designsKey) return undefined;
+    if (!designsKey) return undefined;
     let alive = true;
     (async () => {
-      const t0 = performance.now();
-      const [src, campos] = await Promise.all([photoDataUrl(photo), getCampos()]);
-      const t1 = performance.now();
-      if (!alive) return;
-      urls.current.forEach(u => URL.revokeObjectURL(u));
-      urls.current = [];
-      setCovers({});
-      const blobs = await renderCovers({ estilos: designsKey.split(','), photo: src, campos, width: COVER_W }).catch(() => ({}));
-      console.debug('[covers] campos', Math.round(t1 - t0), 'ms, render', Math.round(performance.now() - t1), 'ms');
-      if (!alive) return;
+      const src = photo ? await smallPhotoUrl(photo).catch(() => PLACEHOLDER_PHOTO) : PLACEHOLDER_PHOTO;
+      const blobs = await renderCovers({ estilos: designsKey.split(','), photo: src, campos: JSON.parse(camposKey), width: COVER_W })
+        .catch(() => null);
+      if (!alive || !blobs) return;
       const next = {};
+      const made = [];
       for (const [estilo, blob] of Object.entries(blobs)) {
         next[estilo] = blob ? URL.createObjectURL(blob) : null;
-        if (next[estilo]) urls.current.push(next[estilo]);
+        if (next[estilo]) made.push(next[estilo]);
       }
+      urls.current.forEach(u => URL.revokeObjectURL(u));
+      urls.current = made;
       setCovers(next);
     })();
     return () => { alive = false; };
-    // getCampos changes every render; camposKey says when its answer would change.
-  }, [photo, camposKey, designsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [photo, camposKey, designsKey]);
   useEffect(() => () => urls.current.forEach(u => URL.revokeObjectURL(u)), []);
 
   // The chosen design in sight when the draft opens.

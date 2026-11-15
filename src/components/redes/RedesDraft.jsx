@@ -516,8 +516,9 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           </button>
         </div>
         <DisenoStrip series={series.length ? series : [look.serie]} ocultos={ocultos} current={look}
-          photo={d.fotos[0] && (getImg(d.fotos[0].copia) || {}).blob} getCampos={camposFor}
-          camposKey={JSON.stringify([d.barrio, d.inmobiliaria, b && b.servicios])} disabled={!open || !!busy || orderDirty}
+          photo={d.fotos[0] && (getImg(d.fotos[0].copia) || {}).blob}
+          campos={{ barrio: d.barrio || '', servicios: servicesText(b && b.servicios), inmobiliaria: /^particular$/i.test(d.inmobiliaria || '') ? '' : (d.inmobiliaria || '') }}
+          disabled={!open || !!busy || orderDirty}
           onPick={estilo => run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo } }), '')
             .then(r => { if (r && r.draft && r.draft.fotos.length) setAutoPlacas(true); })} />
         {samples && (
