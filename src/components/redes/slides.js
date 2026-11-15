@@ -27,6 +27,17 @@ const FILLED = ['barrio', 'servicios', 'inmobiliaria'];   // fields the draft fi
 // Short on purpose (Max, 1 Nov): Serie 2's sheet column is narrow; captions keep the full names.
 const SERVICE_NAMES = { FOTO: 'Foto', VIDEO: 'Video', REEL: 'Reel', TH: 'TH', PLANO: 'Plano', TOUR: '360', DRONE: 'Drone', FPV: 'FPV' };
 
+// "11 5555-6666" from what the booking has ("+54 9 11 5555 6666", "1155556666"…): Argentine numbers without the country
+// code, the 9 or the 0; Buenos Aires' 11 split 4-4. Anything else is left as typed.
+export function phoneText(raw) {
+  let n = String(raw || '').replace(/\D/g, '');
+  if (!n) return '';
+  n = n.replace(/^54/, '').replace(/^9(?=\d{10}$)/, '').replace(/^0/, '');
+  if (n.length !== 10) return String(raw).trim();
+  if (n.startsWith('11')) return `11 ${n.slice(2, 6)}-${n.slice(6)}`;
+  return String(raw).trim();    // other area codes are 2 to 4 digits: only the person knows where they split
+}
+
 // "Foto · Video · Drone" from the booking's service codes.
 export const servicesText = codes => (codes || []).map(c => SERVICE_NAMES[c] || c).join(' · ');
 
@@ -190,7 +201,7 @@ function fitLine(t) {
 }
 
 // Fills a template already in the page. Returns the warnings.
-function fill(svg, { photos, campos, W }) {
+function fill(svg, { photos, campos, W, filled = FILLED }) {
   const warnings = [];
   svg.querySelectorAll('image[id^="foto-"]').forEach(img => {
     const src = photos[Number(img.id.slice(5)) - 1];
@@ -204,7 +215,7 @@ function fill(svg, { photos, campos, W }) {
   const modern = !!svg.querySelector('[data-ancho-max]');
   svg.querySelectorAll('[id^="campo-"]').forEach(el => {
     const key = el.id.slice(6);
-    if (!FILLED.includes(key)) return;                              // fixed text (web, whatsapp…)
+    if (!filled.includes(key)) return;                              // fixed text (web, whatsapp…)
     const value = String(campos[key] || '').trim();
     if (!value) { dropField(el); return; }
     const upper = el.hasAttribute('data-mayusculas') || (!modern && key === 'barrio');
@@ -266,7 +277,13 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
       // A template photo the layout doesn't feed (Serie 2's closing slide) takes the carousel's last photos.
       const own = slide.fotos.map(p => dataUrls[p.copia]);
       const photos = Array.from(svg.querySelectorAll('image[id^="foto-"]'), (_, i) => own[i] || dataUrls[(fotos[fotos.length - 1 - i] || {}).copia]);
-      const warning = fill(svg, { photos, campos, W }).join(' ');
+      // The closing slide is the client's (Max, 15 Nov 2026: they repost it to advertise themselves): "producción para"
+      // their name and @, and their phone instead of RE!'s WhatsApp when the booking has one. The agency stays on the
+      // other slides; RE!'s contact is in the end screen video, which now always follows this slide.
+      const isCierre = slide.plantilla === 'carrusel-cierre';
+      const mine = isCierre && campos.cierre ? { ...campos, ...campos.cierre } : campos;
+      const filled = isCierre && mine.whatsapp ? FILLED.concat('whatsapp') : FILLED;
+      const warning = fill(svg, { photos, campos: mine, W, filled }).join(' ');
       const style = document.createElementNS(SVG_NS, 'style');
       style.textContent = css;
       svg.insertBefore(style, svg.firstChild);

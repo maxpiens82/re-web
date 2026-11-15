@@ -8,7 +8,7 @@ import { redesCall, FALTANTES, MOTIVOS, daysLeft, fmtDate } from './redesApi';
 import usePhotos from './usePhotos';
 import MiniLogo from '../MiniLogo';
 import LoadingLogo from '../LoadingLogo';
-import { renderSlides, blobToBase64, loadTemplates, parseEstilo, estiloOf, seriesOf, serieLabel, servicesText } from './slides';
+import { renderSlides, blobToBase64, loadTemplates, parseEstilo, estiloOf, seriesOf, serieLabel, servicesText, phoneText } from './slides';
 import { closingOf, disenoFor, startSettings, toSaved, settingsKey, renderEndscreen, canMakeVideo, brandForDraft } from './cierre';
 import EndScreen from '../../endscreen/EndScreen.jsx';
 import SeriesSamples from './SeriesSamples';
@@ -78,7 +78,7 @@ function ArrobaSwitch({ on, handle, disabled, onChange }) {
 // A slide's name in the package: numbered, except the two closings, which are alternatives. The supercut keeps its
 // place in the numbering and its own format (Instagram crops it to 4:5 when publishing).
 const packageName = (it, i) => (it.supercut ? `${String(i + 1).padStart(2, '0')}-supercut.${/quicktime/.test(it.mime || '') ? 'mov' : 'mp4'}`
-  : it.video ? 'cierre-end-screen.mp4' : it.cierre ? 'cierre-plantilla.jpg' : `${String(i + 1).padStart(2, '0')}.jpg`);
+  : it.video ? `${String(i + 1).padStart(2, '0')}-end-screen.mp4` : `${String(i + 1).padStart(2, '0')}.jpg`);
 // Where the supercut goes among the slides before the closing: the saved place, else right after the cover (after the
 // cover's panorama, in a series that has one).
 const supercutAt = (d, body) => Math.max(0, Math.min(body.length, d.supercutPos === null || d.supercutPos === undefined
@@ -284,6 +284,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const look = parseEstilo(d.estilo);
   const sc = data.supercut;
   const slidesKeyOf = dr => JSON.stringify([dr.tipo, dr.fotos.map(p => p.crudo), dr.barrio || '', dr.estilo || '', dr.inmobiliaria || '',
+    b && b.cliente,
     closing && closing.saved, sc && sc.copia, dr.supercutPos]);
   const slidesKey = slidesKeyOf(d);
   // The supercut as a slide: its bytes come from Drive in pieces (an Apps Script answer can't carry 50 MB at once).
@@ -321,12 +322,18 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     return body.slice(0, at).concat([item], body.slice(at), end);
   };
   // What the templates' fields get: the barrio, the booked services and the agency's @ (its name when
-  // it has no Instagram; nothing for a private owner, so that line is hidden).
+  // it has no Instagram; nothing for a private owner, so that line is hidden). The closing slide gets the client
+  // instead: name and @ ("Juan Pérez · @juanperez"), and their phone (Max, 15 Nov 2026).
   const camposFor = async () => {
     const brand = brandForDraft(d, await ensureBrands().catch(() => []));
     const ig = brand && String(brand.instagram || '').trim();
-    return { barrio: d.barrio || '', servicios: servicesText(b && b.servicios),
-      inmobiliaria: brand ? (ig ? (ig.startsWith('@') ? ig : '@' + ig) : brand.name) : '' };
+    const inmobiliaria = brand ? (ig ? (ig.startsWith('@') ? ig : '@' + ig) : brand.name) : '';
+    const c = (b && b.cliente) || {};
+    const cig = String(c.instagram || '').trim().replace(/^@/, '');
+    const quien = [String(c.nombre || '').trim(), cig && '@' + cig].filter(Boolean).join(' · ');
+    const tel = phoneText(c.telefono);
+    return { barrio: d.barrio || '', servicios: servicesText(b && b.servicios), inmobiliaria,
+      cierre: { inmobiliaria: quien || inmobiliaria, ...(tel ? { whatsapp: `WhatsApp al ${tel}` } : {}) } };
   };
   const slidesFresh = slides.key === slidesKey && slides.items.length > 0;
   const makeSlides = async () => {
@@ -522,7 +529,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
         )}
         {closing && (
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-500">Cierre: el paquete trae los dos, la plantilla y el video del end screen{closing.saved ? ' (editado)' : ''}.</span>
+            <span className="text-xs text-gray-500">Cierre: la placa del cliente (su nombre y teléfono) y después el video del end screen{closing.saved ? ' (editado)' : ''}.</span>
             {open && (
               <button type="button" className={btnGhost} disabled={!!busy} onClick={openEditor}>
                 {busy === 'editor' ? <MiniLogo className="w-4 h-4" /> : <Pencil size={14} />} Editar end screen
@@ -553,7 +560,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             </p>
           </div>
         ) : !slides.items.length ? (
-          <p className="text-xs text-gray-400">Las placas se arman con las plantillas ({serieLabel(look.serie)}, {look.noche ? 'noche' : 'día'}), las fotos en este orden, el barrio, los servicios y la inmobiliaria{closing ? ', y el cierre sale de las dos maneras: plantilla y video del end screen' : ''}. También se generan solas al descargar el paquete.</p>
+          <p className="text-xs text-gray-400">Las placas se arman con las plantillas ({serieLabel(look.serie)}, {look.noche ? 'noche' : 'día'}), las fotos en este orden, el barrio, los servicios y la inmobiliaria{closing ? '; al final, la placa con el nombre y el teléfono del cliente y el video del end screen' : ''}. También se generan solas al descargar el paquete.</p>
         ) : (
           <>
             {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">Cambiaste fotos, barrio, diseño, inmobiliaria o end screen: tocá "Actualizar placas".</p>}
@@ -749,7 +756,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             <button type="button" className={btnGhost} onClick={() => setDiscarding(false)}>Cancelar</button>
           </div>
         )}
-        <p className="mt-3 text-[11px] text-gray-400">El paquete trae las placas en orden (01.jpg, 02.jpg…), los dos cierres para elegir al publicar (cierre-plantilla.jpg y cierre-end-screen.mp4), y copy.txt; si las plantillas fallan, las fotos. Publicar: descargalo, subilo desde el celular y volvé a marcarlo como publicado.</p>
+        <p className="mt-3 text-[11px] text-gray-400">El paquete trae todo en orden (01.jpg, 02.jpg…), terminando con la placa del cliente y el video del end screen, y copy.txt; si las plantillas fallan, las fotos. Publicar: descargalo, subilo desde el celular y volvé a marcarlo como publicado.</p>
       </Section>
 
       {/* unsaved changes: one button saves them all, always in sight while scrolling */}
