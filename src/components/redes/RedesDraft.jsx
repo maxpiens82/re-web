@@ -12,6 +12,8 @@ import { renderSlides, blobToBase64, loadTemplates, parseEstilo, estiloOf, serie
 import { closingOf, disenoFor, startSettings, toSaved, settingsKey, renderEndscreen, canMakeVideo, brandForDraft } from './cierre';
 import EndScreen from '../../endscreen/EndScreen.jsx';
 import SeriesSamples from './SeriesSamples';
+import DisenoStrip from './DisenoStrip';
+import { SERIE_NAMES } from './seriesInfo';
 import InstagramPreview from './InstagramPreview';
 import InstagramField from './InstagramField';
 
@@ -37,7 +39,6 @@ const btn = 'inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-
 const btnGhost = `${btn} border border-gray-200 bg-white text-gray-600 hover:bg-gray-50`;
 const btnMain = `${btn} bg-[#EB4511] text-white hover:bg-[#c42e0d]`;
 const input = 'w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#EB4511]';
-const pill = on => `px-3 py-1 rounded-full text-xs font-bold border disabled:opacity-60 ${on ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200'}`;
 
 function Photo({ p, img, selected, onClick, children, draggable, onDragStart, onDrop, label }) {
   return (
@@ -132,6 +133,12 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [samples, setSamples] = useState(false);     // showing how each series looks
   const [preview, setPreview] = useState(false);     // "Ver como en Instagram"
   const [ocultos, setOcultos] = useState([]);        // designs hidden for everyone ("serie3", "serie5-noche"), redes_config
+  // A design picked in the strip makes the placas again by itself (Max, 15 Nov 2026), once the draft is back.
+  const [autoPlacas, setAutoPlacas] = useState(false);
+  const autoPlacasRun = useRef(null);
+  useEffect(() => {
+    if (autoPlacas && !busy && autoPlacasRun.current) { setAutoPlacas(false); autoPlacasRun.current(); }
+  }, [autoPlacas, busy]);
   useEffect(() => {
     let alive = true;
     redesCall('redes_config').then(r => { if (alive) setOcultos(r.ocultos || []); }).catch(() => {});
@@ -336,6 +343,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
       cierre: { inmobiliaria: quien || inmobiliaria, ...(tel ? { whatsapp: `WhatsApp al ${tel}` } : {}) } };
   };
   const slidesFresh = slides.key === slidesKey && slides.items.length > 0;
+  autoPlacasRun.current = () => run('placas', () => makeSlides(), '');
   const makeSlides = async () => {
     const templates = await loadTemplates();
     setTplProblems(templates.filter(t => !t.ok).map(t => `${t.name}: ${t.problems.join('; ')}`));
@@ -498,27 +506,20 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             {busy === 'placas' ? <MiniLogo className="w-4 h-4" /> : <Layers size={14} />} {slides.items.length ? 'Actualizar placas' : 'Generar placas'}
           </button>
         </div>}>
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500">Diseño:</span>
-          {(series.length ? series : [look.serie])
-            .filter(se => se === look.serie || !(ocultos.includes(estiloOf(se, false)) && ocultos.includes(estiloOf(se, true)))).map(se => (
-            <button key={se} type="button" disabled={!open || !!busy} className={pill(look.serie === se)}
-              onClick={() => look.serie !== se && run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo: estiloOf(se, look.noche) } }), '')}>
-              {serieLabel(se)}
-            </button>
-          ))}
-          <span className="w-px h-5 bg-gray-200 mx-1" />
-          {[[false, 'Día'], [true, 'Noche']].map(([n, l]) => (
-            <button key={l} type="button" disabled={!open || !!busy || (look.noche !== n && ocultos.includes(estiloOf(look.serie, n)))}
-              title={look.noche !== n && ocultos.includes(estiloOf(look.serie, n)) ? 'Oculta' : ''} className={pill(look.noche === n)}
-              onClick={() => look.noche !== n && run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo: estiloOf(look.serie, n) } }), '')}>
-              {l}
-            </button>
-          ))}
-          <button type="button" className="ml-1 inline-flex items-center gap-1 text-xs font-bold text-[#E53B12] hover:underline" onClick={() => setSamples(true)}>
-            <Images size={14} /> Ver cómo es cada serie
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-500">
+            Diseño: <b className="text-gray-800">{serieLabel(look.serie)}{SERIE_NAMES[look.serie] ? ` · ${SERIE_NAMES[look.serie]}` : ''}, {look.noche ? 'noche' : 'día'}</b>
+            {open && ' · tocá otro para cambiarlo'}
+          </span>
+          <button type="button" className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-[#E53B12] hover:underline" onClick={() => setSamples(true)}>
+            <Images size={14} /> Ver carruseles completos
           </button>
         </div>
+        <DisenoStrip series={series.length ? series : [look.serie]} ocultos={ocultos} current={look}
+          photo={d.fotos[0] && (getImg(d.fotos[0].copia) || {}).blob} getCampos={camposFor}
+          camposKey={JSON.stringify([d.barrio, d.inmobiliaria, b && b.servicios])} disabled={!open || !!busy || orderDirty}
+          onPick={estilo => run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo } }), '')
+            .then(r => { if (r && r.draft && r.draft.fotos.length) setAutoPlacas(true); })} />
         {samples && (
           <SeriesSamples series={series} tipo={d.tipo} current={look} canChoose={open && !busy} onClose={() => setSamples(false)}
             ocultos={ocultos} onToggleOculto={toggleOculto}
