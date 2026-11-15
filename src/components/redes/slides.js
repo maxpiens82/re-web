@@ -304,31 +304,61 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
   }
 }
 
-// One design's cover with this draft's first photo and texts, small (the design strip, Max 15 Nov 2026). Resolves to a
-// Blob, or null when the series has no cover for that look.
-export function renderCover({ estilo, photo, campos = {}, width = 216 }) {
-  return (async () => {
-    const [templates, fonts] = await Promise.all([loadTemplates(), loadFonts()]);
-    const byName = Object.fromEntries(templates.map(t => [t.name, t]));
-    const tpl = pickTemplate(byName, 'carrusel-portada', parseEstilo(estilo));
-    if (!tpl) return null;
-    const css = fonts.map(f => `@font-face{font-family:'${f.family}';src:url(data:font/otf;base64,${f.base64})}`).join('');
-    const box = document.createElement('div');
-    box.style.cssText = 'position:fixed;left:-20000px;top:0;opacity:0;pointer-events:none';
-    document.body.appendChild(box);
-    try {
+// Every design's cover with this draft's first photo and texts, small (the design strip, Max 15 Nov 2026). The
+// browser takes about a second to draw any SVG that carries fonts, however small, so all the covers go into ONE sheet
+// (each design a nested <svg>, its ids prefixed so they don't clash), drawn once and cut into pieces.
+// Resolves to { estilo: Blob | null } (null: that series has no cover for that look).
+export async function renderCovers({ estilos, photo, campos = {}, width = 168 }) {
+  const [templates, fonts] = await Promise.all([loadTemplates(), loadFonts()]);
+  const byName = Object.fromEntries(templates.map(t => [t.name, t]));
+  const css = fonts.map(f => `@font-face{font-family:'${f.family}';src:url(data:font/otf;base64,${f.base64})}`).join('');
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;left:-20000px;top:0;opacity:0;pointer-events:none';
+  document.body.appendChild(box);
+  const cells = [];
+  try {
+    for (const estilo of estilos) {
+      const tpl = pickTemplate(byName, 'carrusel-portada', parseEstilo(estilo));
+      if (!tpl) continue;
       const svg = document.importNode(new DOMParser().parseFromString(tpl.svg, 'image/svg+xml').documentElement, true);
       box.replaceChildren(svg);
       const W = Number(svg.getAttribute('width')) || 1080, H = Number(svg.getAttribute('height')) || 1350;
       fill(svg, { photos: Array.from(svg.querySelectorAll('image[id^="foto-"]'), () => photo), campos, W });
-      const style = document.createElementNS(SVG_NS, 'style');
-      style.textContent = css;
-      svg.insertBefore(style, svg.firstChild);
-      return await rasterize(new XMLSerializer().serializeToString(svg), W, H, width);
-    } finally {
-      box.remove();
+      const p = `d${cells.length}-`;
+      const text = new XMLSerializer().serializeToString(svg)
+        .replace(/\sid="([^"]+)"/g, ` id="${p}$1"`)
+        .replace(/url\(#([^)]+)\)/g, `url(#${p}$1)`)
+        .replace(/(\s(?:xlink:)?href)="#([^"]+)"/g, `$1="#${p}$2"`);
+      cells.push({ estilo, W, H, text });
     }
-  })();
+  } finally {
+    box.remove();
+  }
+  const out = Object.fromEntries(estilos.map(e => [e, null]));
+  if (!cells.length) return out;
+  const cols = Math.min(8, cells.length), rows = Math.ceil(cells.length / cols);
+  const cw = width, ch = Math.round(width * cells[0].H / cells[0].W);
+  // Each cover in its cell: the nested <svg>'s own width/height/viewBox scale it down.
+  const inner = cells.map((c, k) => c.text.replace(/^<svg\b/, `<svg x="${(k % cols) * cw}" y="${Math.floor(k / cols) * ch}"`)
+    .replace(/(<svg\b[^>]*?)\swidth="[^"]*"/, `$1 width="${cw}"`).replace(/(<svg\b[^>]*?)\sheight="[^"]*"/, `$1 height="${ch}"`)).join('');
+  const sheet = `<svg xmlns="${SVG_NS}" xmlns:xlink="${XLINK}" width="${cols * cw}" height="${rows * ch}" viewBox="0 0 ${cols * cw} ${rows * ch}"><style>${css}</style>${inner}</svg>`;
+  const url = URL.createObjectURL(new Blob([sheet], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const piece = document.createElement('canvas');
+    piece.width = cw; piece.height = ch;
+    const ctx = piece.getContext('2d');
+    for (let k = 0; k < cells.length; k++) {
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, (k % cols) * cw, Math.floor(k / cols) * ch, cw, ch, 0, 0, cw, ch);
+      out[cells[k].estilo] = await new Promise(resolve => piece.toBlob(resolve, 'image/jpeg', 0.85));
+    }
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  return out;
 }
 export const photoDataUrl = blobToDataUrl;
 

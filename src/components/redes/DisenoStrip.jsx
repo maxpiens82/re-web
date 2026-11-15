@@ -2,7 +2,7 @@
 // a small cover made with THIS draft's first photo, barrio and texts, side by side; one tap picks it and the placas
 // are made again on their own. Covers are drawn in the browser from the templates bundled with the portal.
 import { useEffect, useRef, useState } from 'react';
-import { estiloOf, renderCover, photoDataUrl } from './slides';
+import { estiloOf, renderCovers, photoDataUrl } from './slides';
 import { SERIE_NAMES } from './seriesInfo';
 
 const COVER_W = 168;   // px drawn; shown at half that on screen, sharp on phones and retina
@@ -26,19 +26,14 @@ export default function DisenoStrip({ series, ocultos, current, photo, getCampos
       urls.current.forEach(u => URL.revokeObjectURL(u));
       urls.current = [];
       setCovers({});
-      // A few at a time: most of a cover's time is the browser decoding the SVG, which runs alongside.
-      const todo = designsKey.split(',');
-      const worker = async () => {
-        while (alive && todo.length) {
-          const estilo = todo.shift();
-          const blob = await renderCover({ estilo, photo: src, campos, width: COVER_W }).catch(() => null);
-          if (!alive) return;
-          const url = blob ? URL.createObjectURL(blob) : null;
-          if (url) urls.current.push(url);
-          setCovers(c => ({ ...c, [estilo]: url }));
-        }
-      };
-      await Promise.all([worker(), worker(), worker(), worker()]);
+      const blobs = await renderCovers({ estilos: designsKey.split(','), photo: src, campos, width: COVER_W }).catch(() => ({}));
+      if (!alive) return;
+      const next = {};
+      for (const [estilo, blob] of Object.entries(blobs)) {
+        next[estilo] = blob ? URL.createObjectURL(blob) : null;
+        if (next[estilo]) urls.current.push(next[estilo]);
+      }
+      setCovers(next);
     })();
     return () => { alive = false; };
     // getCampos changes every render; camposKey says when its answer would change.
