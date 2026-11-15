@@ -21,12 +21,15 @@ export default function DisenoStrip({ series, ocultos, current, photo, getCampos
     if (!photo || !designsKey) return undefined;
     let alive = true;
     (async () => {
+      const t0 = performance.now();
       const [src, campos] = await Promise.all([photoDataUrl(photo), getCampos()]);
+      const t1 = performance.now();
       if (!alive) return;
       urls.current.forEach(u => URL.revokeObjectURL(u));
       urls.current = [];
       setCovers({});
       const blobs = await renderCovers({ estilos: designsKey.split(','), photo: src, campos, width: COVER_W }).catch(() => ({}));
+      console.debug('[covers] campos', Math.round(t1 - t0), 'ms, render', Math.round(performance.now() - t1), 'ms');
       if (!alive) return;
       const next = {};
       for (const [estilo, blob] of Object.entries(blobs)) {
