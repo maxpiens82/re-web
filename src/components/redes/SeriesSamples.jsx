@@ -2,16 +2,12 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Eye, EyeOff, X } from 'lucide-react';
 import { serieLabel } from './slides';
+import { SERIE_NAMES as NAMES, PANORAMA } from './seriesInfo';
 
 // How each template series looks, before making any placas. The images are in public/redes-muestras/
 // (one per template, day and night), made with render.js in Plantillas redes RE! from the photos the
 // landing already shows: this folder is public, so never put an unpublished client's photos in it.
 const SAMPLE_SERIES = Array.from({ length: 16 }, (_, i) => `serie${i + 1}`);
-const NAMES = { serie3: 'Diagonal', serie4: 'Tinte', serie5: 'Editorial', serie6: 'Marco', serie7: 'Panorámica', serie8: 'Ficha',
-  serie9: 'Plano', serie10: 'Titular', serie11: 'Póster', serie12: 'Galería', serie13: 'Detalle', serie14: 'Cine', serie15: 'Mosaico',
-  serie16: 'Contactos' };
-// Series whose cover continues on a second slide (carrusel-panorama).
-const PANORAMA = ['serie7'];
 const CARRUSEL = [['carrusel-portada', 'Portada'], ['carrusel-doble', 'Doble'], ['carrusel-simple', 'Simple'], ['carrusel-cierre', 'Cierre']];
 const SUELTA = [['foto-en-marco-1350', 'Vertical'], ['foto-en-marco-1080', 'Cuadrada']];
 

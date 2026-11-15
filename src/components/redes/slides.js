@@ -65,9 +65,15 @@ export const serieLabel = serie => (/^serie(\d+)$/.test(serie) ? `Serie ${serie.
 let templatesPromise = null;
 let fontsPromise = null;
 
+// The templates travel with the portal (plantillas.json, made by tools/redes-plantillas.mjs from build.py's SVGs, Max
+// 15 Nov 2026): a cached file of about 25 KB compressed, instead of 2.5 to 15 s through the backend. If that file can't
+// load, the backend's copy in Drive.
 export function loadTemplates(force) {
   if (!templatesPromise || force) {
-    templatesPromise = redesCall('redes_templates').then(r => r.templates || []).catch(e => { templatesPromise = null; throw e; });
+    templatesPromise = import('./plantillas.json')
+      .then(m => (m.default || m).templates.map(t => ({ ...t, ok: true, problems: [] })))
+      .catch(() => redesCall('redes_templates').then(r => r.templates || []))
+      .catch(e => { templatesPromise = null; throw e; });
   }
   return templatesPromise;
 }
@@ -226,16 +232,17 @@ function fill(svg, { photos, campos, W, filled = FILLED }) {
   return warnings;
 }
 
-async function rasterize(svgText, W, H) {
+// outW: a smaller picture (the design strip's covers); the SVG is drawn straight at that size.
+async function rasterize(svgText, W, H, outW = W) {
   const url = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
   try {
     const img = new Image();
     img.src = url;
     await img.decode();
     const canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    canvas.getContext('2d').drawImage(img, 0, 0, W, H);
-    return await new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('No se pudo generar la placa.'))), 'image/jpeg', 0.92));
+    canvas.width = outW; canvas.height = Math.round(H * outW / W);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('No se pudo generar la placa.'))), 'image/jpeg', outW < W ? 0.85 : 0.92));
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -296,5 +303,37 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
     box.remove();
   }
 }
+
+// One design's cover with this draft's first photo and texts, small (the design strip, Max 15 Nov 2026). Resolves to a
+// Blob, or null when the series has no cover for that look. Covers are made one at a time (queue) so the page stays
+// responsive while the strip fills in.
+let coverQueue = Promise.resolve();
+export function renderCover({ estilo, photo, campos = {}, width = 216 }) {
+  const job = coverQueue.then(async () => {
+    const [templates, fonts] = await Promise.all([loadTemplates(), loadFonts()]);
+    const byName = Object.fromEntries(templates.map(t => [t.name, t]));
+    const tpl = pickTemplate(byName, 'carrusel-portada', parseEstilo(estilo));
+    if (!tpl) return null;
+    const css = fonts.map(f => `@font-face{font-family:'${f.family}';src:url(data:font/otf;base64,${f.base64})}`).join('');
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:-20000px;top:0;opacity:0;pointer-events:none';
+    document.body.appendChild(box);
+    try {
+      const svg = document.importNode(new DOMParser().parseFromString(tpl.svg, 'image/svg+xml').documentElement, true);
+      box.replaceChildren(svg);
+      const W = Number(svg.getAttribute('width')) || 1080, H = Number(svg.getAttribute('height')) || 1350;
+      fill(svg, { photos: Array.from(svg.querySelectorAll('image[id^="foto-"]'), () => photo), campos, W });
+      const style = document.createElementNS(SVG_NS, 'style');
+      style.textContent = css;
+      svg.insertBefore(style, svg.firstChild);
+      return await rasterize(new XMLSerializer().serializeToString(svg), W, H, width);
+    } finally {
+      box.remove();
+    }
+  });
+  coverQueue = job.catch(() => null);
+  return job;
+}
+export const photoDataUrl = blobToDataUrl;
 
 export const blobToBase64 = blob => blobToDataUrl(blob).then(u => u.slice(u.indexOf(',') + 1));
