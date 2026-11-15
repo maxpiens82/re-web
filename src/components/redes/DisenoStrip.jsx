@@ -26,14 +26,19 @@ export default function DisenoStrip({ series, ocultos, current, photo, getCampos
       urls.current.forEach(u => URL.revokeObjectURL(u));
       urls.current = [];
       setCovers({});
-      for (const estilo of designsKey.split(',')) {
-        if (!alive) return;
-        const blob = await renderCover({ estilo, photo: src, campos, width: COVER_W }).catch(() => null);
-        if (!alive) return;
-        const url = blob ? URL.createObjectURL(blob) : null;
-        if (url) urls.current.push(url);
-        setCovers(c => ({ ...c, [estilo]: url }));
-      }
+      // A few at a time: most of a cover's time is the browser decoding the SVG, which runs alongside.
+      const todo = designsKey.split(',');
+      const worker = async () => {
+        while (alive && todo.length) {
+          const estilo = todo.shift();
+          const blob = await renderCover({ estilo, photo: src, campos, width: COVER_W }).catch(() => null);
+          if (!alive) return;
+          const url = blob ? URL.createObjectURL(blob) : null;
+          if (url) urls.current.push(url);
+          setCovers(c => ({ ...c, [estilo]: url }));
+        }
+      };
+      await Promise.all([worker(), worker(), worker(), worker()]);
     })();
     return () => { alive = false; };
     // getCampos changes every render; camposKey says when its answer would change.
@@ -67,7 +72,7 @@ export default function DisenoStrip({ series, ocultos, current, photo, getCampos
                   {src
                     ? <img src={src} alt="" className="block w-full aspect-[4/5] object-cover" />
                     : <span className={`block w-full aspect-[4/5] ${src === null ? 'bg-gray-100' : 'bg-gray-100 animate-pulse'}`} />}
-                  <span className={`absolute left-1 bottom-1 rounded px-1 text-[9px] font-bold uppercase ${noche ? 'bg-[#1D1E20] text-white' : 'bg-white/90 text-gray-800'}`}>
+                  <span className={`absolute right-1 top-1 rounded px-1 text-[9px] font-bold uppercase ${noche ? 'bg-[#1D1E20] text-white' : 'bg-white/90 text-gray-800'}`}>
                     {noche ? 'Noche' : 'Día'}
                   </span>
                 </button>

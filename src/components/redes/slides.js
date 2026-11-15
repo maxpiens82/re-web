@@ -305,11 +305,9 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
 }
 
 // One design's cover with this draft's first photo and texts, small (the design strip, Max 15 Nov 2026). Resolves to a
-// Blob, or null when the series has no cover for that look. Covers are made one at a time (queue) so the page stays
-// responsive while the strip fills in.
-let coverQueue = Promise.resolve();
+// Blob, or null when the series has no cover for that look.
 export function renderCover({ estilo, photo, campos = {}, width = 216 }) {
-  const job = coverQueue.then(async () => {
+  return (async () => {
     const [templates, fonts] = await Promise.all([loadTemplates(), loadFonts()]);
     const byName = Object.fromEntries(templates.map(t => [t.name, t]));
     const tpl = pickTemplate(byName, 'carrusel-portada', parseEstilo(estilo));
@@ -330,9 +328,7 @@ export function renderCover({ estilo, photo, campos = {}, width = 216 }) {
     } finally {
       box.remove();
     }
-  });
-  coverQueue = job.catch(() => null);
-  return job;
+  })();
 }
 export const photoDataUrl = blobToDataUrl;
 
