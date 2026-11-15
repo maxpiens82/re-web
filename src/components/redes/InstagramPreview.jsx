@@ -15,7 +15,10 @@ export default function InstagramPreview({ items, caption, onClose }) {
   const shown = items;
   const [i, setI] = useState(0);
   const [more, setMore] = useState(false);
-  const touch = useRef(null);
+  // The slides sit side by side in a strip that follows the finger (or the mouse, dragged) and settles on one, as on
+  // Instagram, so a panorama reads as one wide picture while it moves (Max, 15 Nov 2026).
+  const track = useRef(null);
+  const drag = useRef(null);
   // Full screen (Max, 15 Nov 2026): on a phone the post always takes the whole screen; on a computer a button puts the
   // preview in full screen and the post grows to the screen's height.
   const box = useRef(null);
@@ -39,19 +42,58 @@ export default function InstagramPreview({ items, caption, onClose }) {
     if (el && !more) setClipped(el.scrollHeight > el.clientHeight + 1);
   }, [caption, more]);
   const at = Math.min(i, shown.length - 1);
-  const go = n => setI(Math.max(0, Math.min(shown.length - 1, n)));
+  const go = n => {
+    const k = Math.max(0, Math.min(shown.length - 1, n));
+    const el = track.current;
+    if (el) el.scrollTo({ left: k * el.clientWidth, behavior: 'smooth' });
+    setI(k);
+  };
+  const onScroll = () => {
+    const el = track.current;
+    if (el && el.clientWidth && !drag.current) setI(Math.round(el.scrollLeft / el.clientWidth));
+  };
+  // The strip changes width with Pantalla completa: stay on the same slide.
+  useEffect(() => {
+    const el = track.current;
+    if (el) el.scrollLeft = Math.round(el.scrollLeft / (el.scrollWidth / shown.length || 1)) * el.clientWidth;
+  }, [full, shown.length]);
+  // Mouse: drag the strip by hand (touch and trackpads scroll it natively).
+  const onPointerDown = e => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    const el = track.current;
+    drag.current = { x: e.clientX, left: el.scrollLeft };
+    el.style.scrollSnapType = 'none';
+    el.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = e => {
+    if (!drag.current) return;
+    track.current.scrollLeft = drag.current.left - (e.clientX - drag.current.x);
+  };
+  const onPointerUp = e => {
+    if (!drag.current) return;
+    const el = track.current, moved = e.clientX - drag.current.x, from = Math.round(drag.current.left / el.clientWidth);
+    drag.current = null;
+    const to = Math.abs(moved) > el.clientWidth * 0.15 ? from + (moved < 0 ? 1 : -1) : from;
+    const k = Math.max(0, Math.min(shown.length - 1, to));
+    el.scrollTo({ left: k * el.clientWidth, behavior: 'smooth' });
+    setI(k);
+    setTimeout(() => { if (track.current && !drag.current) track.current.style.scrollSnapType = ''; }, 400);
+  };
 
   useEffect(() => {
     const key = e => {
       if (e.key === 'Escape') { if (document.fullscreenElement) return; if (full) setFull(false); else onClose(); }
-      else if (e.key === 'ArrowRight') setI(n => Math.min(shown.length - 1, n + 1));
-      else if (e.key === 'ArrowLeft') setI(n => Math.max(0, n - 1));
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        const el = track.current;
+        if (!el) return;
+        const now = Math.round(el.scrollLeft / el.clientWidth);
+        el.scrollTo({ left: Math.max(0, Math.min(shown.length - 1, now + (e.key === 'ArrowRight' ? 1 : -1))) * el.clientWidth, behavior: 'smooth' });
+      }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [shown.length, onClose, full]);
 
-  const it = shown[at];
   const text = String(caption || '').trim();
   const arrow = 'absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/85 hover:bg-white text-gray-800 shadow flex items-center justify-center';
 
@@ -79,17 +121,17 @@ export default function InstagramPreview({ items, caption, onClose }) {
             <button type="button" onClick={onClose} className="ml-auto sm:hidden p-1.5 -mr-1.5" aria-label="Cerrar"><X size={22} /></button>
           </div>
 
-          <div className="relative w-full aspect-[4/5] bg-black select-none"
-            onTouchStart={e => { touch.current = e.touches[0].clientX; }}
-            onTouchEnd={e => {
-              if (touch.current === null) return;
-              const dx = e.changedTouches[0].clientX - touch.current;
-              touch.current = null;
-              if (Math.abs(dx) > 40) go(at + (dx < 0 ? 1 : -1));
-            }}>
-            {it && (it.video
-              ? <video key={it.url} src={it.url} poster={it.poster} autoPlay muted loop playsInline className="w-full h-full object-cover" />
-              : <img src={it.url} alt="" className="w-full h-full object-cover" draggable={false} />)}
+          <div className="relative w-full aspect-[4/5] bg-black select-none">
+            <div ref={track} onScroll={onScroll} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
+              className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing">
+              {shown.map(s2 => (
+                <div key={s2.url} className="w-full h-full shrink-0 snap-center snap-always">
+                  {s2.video
+                    ? <video src={s2.url} poster={s2.poster} autoPlay muted loop playsInline className="w-full h-full object-cover pointer-events-none" />
+                    : <img src={s2.url} alt="" className="w-full h-full object-cover pointer-events-none" draggable={false} />}
+                </div>
+              ))}
+            </div>
             {shown.length > 1 && <span className="absolute top-3 right-3 rounded-full bg-black/60 text-white text-[11px] font-semibold px-2 py-0.5">{at + 1}/{shown.length}</span>}
             {at > 0 && <button type="button" className={`${arrow} left-2`} onClick={() => go(at - 1)} aria-label="Anterior"><ChevronLeft size={16} /></button>}
             {at < shown.length - 1 && <button type="button" className={`${arrow} right-2`} onClick={() => go(at + 1)} aria-label="Siguiente"><ChevronRight size={16} /></button>}
