@@ -19,14 +19,18 @@ export default function InstagramPreview({ items, caption, onClose }) {
   // Full screen (Max, 15 Nov 2026): on a phone the post always takes the whole screen; on a computer a button puts the
   // preview in full screen and the post grows to the screen's height.
   const box = useRef(null);
+  // The post grows to the screen's height either way; the browser's own full screen is tried on top, when allowed.
   const [full, setFull] = useState(false);
   useEffect(() => {
-    const on = () => setFull(document.fullscreenElement === box.current);
+    const on = () => { if (!document.fullscreenElement) setFull(false); };
     document.addEventListener('fullscreenchange', on);
     return () => { document.removeEventListener('fullscreenchange', on); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); };
   }, []);
-  const canFull = typeof document !== 'undefined' && !!document.fullscreenEnabled;
-  const toggleFull = () => (document.fullscreenElement ? document.exitFullscreen() : box.current.requestFullscreen()).catch(() => {});
+  const toggleFull = () => {
+    if (full) { setFull(false); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); return; }
+    setFull(true);
+    if (document.fullscreenEnabled && box.current.requestFullscreen) box.current.requestFullscreen().catch(() => {});
+  };
   // "… más" only when two lines don't hold the whole text, as on Instagram.
   const cap = useRef(null);
   const [clipped, setClipped] = useState(false);
@@ -39,13 +43,13 @@ export default function InstagramPreview({ items, caption, onClose }) {
 
   useEffect(() => {
     const key = e => {
-      if (e.key === 'Escape') { if (!document.fullscreenElement) onClose(); }
+      if (e.key === 'Escape') { if (document.fullscreenElement) return; if (full) setFull(false); else onClose(); }
       else if (e.key === 'ArrowRight') setI(n => Math.min(shown.length - 1, n + 1));
       else if (e.key === 'ArrowLeft') setI(n => Math.max(0, n - 1));
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [shown.length, onClose]);
+  }, [shown.length, onClose, full]);
 
   const it = shown[at];
   const text = String(caption || '').trim();
@@ -55,9 +59,9 @@ export default function InstagramPreview({ items, caption, onClose }) {
     <div ref={box} className="fixed inset-0 z-[120] bg-black sm:bg-black/80 flex items-center justify-center sm:p-3" onClick={onClose} role="dialog" aria-modal="true" aria-label="Vista previa como en Instagram">
       <div className="flex flex-col items-center gap-3 w-full h-full sm:w-auto sm:h-auto sm:max-h-full" onClick={e => e.stopPropagation()}>
         <div className="hidden sm:flex items-center gap-2 text-white text-xs">
-          {canFull && (
+          {(
             <button type="button" onClick={toggleFull} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 font-bold">
-              {full ? <><Minimize2 size={14} /> Salir de pantalla completa</> : <><Maximize2 size={14} /> Pantalla completa</>}
+              {full ? <><Minimize2 size={14} /> Achicar</> : <><Maximize2 size={14} /> Pantalla completa</>}
             </button>
           )}
           <button type="button" onClick={onClose} className="ml-2 p-1.5 rounded-full bg-white/15 hover:bg-white/25" aria-label="Cerrar"><X size={16} /></button>
