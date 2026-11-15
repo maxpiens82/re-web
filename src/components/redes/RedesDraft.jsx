@@ -79,8 +79,10 @@ function ArrobaSwitch({ on, handle, disabled, onChange }) {
 // place in the numbering and its own format (Instagram crops it to 4:5 when publishing).
 const packageName = (it, i) => (it.supercut ? `${String(i + 1).padStart(2, '0')}-supercut.${/quicktime/.test(it.mime || '') ? 'mov' : 'mp4'}`
   : it.video ? 'cierre-end-screen.mp4' : it.cierre ? 'cierre-plantilla.jpg' : `${String(i + 1).padStart(2, '0')}.jpg`);
-// Where the supercut goes among the slides before the closing: the saved place, else right after the cover.
-const supercutAt = (d, count) => Math.max(0, Math.min(count, d.supercutPos === null || d.supercutPos === undefined ? 1 : d.supercutPos));
+// Where the supercut goes among the slides before the closing: the saved place, else right after the cover (after the
+// cover's panorama, in a series that has one).
+const supercutAt = (d, body) => Math.max(0, Math.min(body.length, d.supercutPos === null || d.supercutPos === undefined
+  ? (body[1] && body[1].panorama ? 2 : 1) : d.supercutPos));
 // "@agencia" out of a text: the @ and the space before it (the text is edited, then saved with Guardar cambios).
 const withoutHandle = (t, handle) => !handle ? t : t.replace(new RegExp(`\\s?@${handle.replace(/[.]/g, '\\.')}(?!\\w|\\.\\w)`, 'gi'), '')
   .replace(/ {2,}/g, ' ').replace(/ ([.,;:!?])/g, '$1');
@@ -315,7 +317,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
     const body = list.filter(it => !it.cierre && !(it.video && !it.supercut) && !it.supercut);
     const end = list.filter(it => it.cierre || (it.video && !it.supercut));
     if (!item) return body.concat(end);
-    const at = supercutAt(dr, body.length);
+    const at = supercutAt(dr, body);
     return body.slice(0, at).concat([item], body.slice(at), end);
   };
   // What the templates' fields get: the barrio, the booked services and the agency's @ (its name when
