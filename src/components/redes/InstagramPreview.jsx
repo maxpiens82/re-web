@@ -68,7 +68,7 @@ export default function InstagramPreview({ items, caption, onClose }) {
         </div>
 
         {/* the phone: the whole screen on a phone; on a computer, a phone-sized card (screen-high in full screen) */}
-        <div style={{ '--ig-w': full ? 'min(92vw, calc((100dvh - 190px) * 0.8))' : 'min(400px, 92vw)' }}
+        <div style={{ '--ig-w': full ? 'min(92vw, calc((100dvh - 240px) * 0.8))' : 'min(400px, 92vw)' }}
           className="w-full h-full overflow-y-auto bg-white text-[13px] text-gray-900 font-sans pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:pt-0 sm:pb-0 sm:h-auto sm:w-[var(--ig-w)] sm:rounded-[22px] sm:max-h-[calc(100dvh-80px)] sm:shadow-2xl">
           <div className="flex items-center gap-2.5 px-3 py-2.5">
             <span className="w-8 h-8 rounded-full p-[2px] bg-gradient-to-tr from-[#F9CE34] via-[#EE2A7B] to-[#6228D7]">
