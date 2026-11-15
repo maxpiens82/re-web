@@ -15,6 +15,9 @@ const args = process.argv.slice(2);
 const at = args.indexOf('--from');
 const FROM = at >= 0 ? args[at + 1] : 'G:/My Drive/Identidad/Plantillas redes RE!/svg';
 const OUT = new URL('../src/components/redes/plantillas.json', import.meta.url);
+// Designs voted out (serie or serie-noche): their SVGs are left out of the bundle.
+const RETIRADOS = JSON.parse(readFileSync(new URL('./disenos-retirados.json', import.meta.url), 'utf8')).retirados;
+const designOf = name => `${name.split('/')[0]}${/-noche$/.test(name) ? '-noche' : ''}`;
 
 // Same rules as the backend.
 const SLOTS = {
@@ -53,6 +56,7 @@ const bad = [];
 for (const serie of readdirSync(FROM).filter(n => /^[a-z][a-z0-9]*$/.test(n) && statSync(join(FROM, n)).isDirectory())) {
   for (const f of readdirSync(join(FROM, serie)).filter(n => /\.svg$/i.test(n))) {
     const name = `${serie}/${f.replace(/\.svg$/i, '')}`;
+    if (RETIRADOS.includes(designOf(name))) continue;
     const svg = readFileSync(join(FROM, serie, f), 'utf8');
     const problems = problemsOf(name, svg);
     if (problems.length) bad.push(`${name}: ${problems.join('; ')}`);
@@ -68,4 +72,5 @@ templates.sort((a, z) => num(a.name) - num(z.name) || a.name.localeCompare(z.nam
 const version = createHash('sha256').update(JSON.stringify(templates)).digest('hex').slice(0, 12);
 writeFileSync(OUT, JSON.stringify({ version, templates }));
 const series = new Set(templates.map(t => t.name.split('/')[0]));
-console.log(`ok: ${templates.length} plantillas de ${series.size} series (versión ${version}) en src/components/redes/plantillas.json`);
+console.log(`ok: ${templates.length} plantillas de ${series.size} series (versión ${version}) en src/components/redes/plantillas.json` +
+  ` (sin ${RETIRADOS.length} diseños retirados)`);

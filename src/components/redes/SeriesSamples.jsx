@@ -14,10 +14,12 @@ const SUELTA = [['foto-en-marco-1350', 'Vertical'], ['foto-en-marco-1080', 'Cuad
 const pill = on => `px-3 py-1 rounded-full text-xs font-bold border ${on ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200'}`;
 const srcOf = (serie, template, noche) => `/redes-muestras/${serie}/${template}${noche ? '-noche' : ''}.jpg`;
 
-export default function SeriesSamples({ series, tipo, current, canChoose, onChoose, onClose, ocultos = [], onToggleOculto }) {
+export default function SeriesSamples({ series, designs, tipo, current, canChoose, onChoose, onClose, ocultos = [], onToggleOculto }) {
   const [noche, setNoche] = useState(current.noche);
   const [big, setBig] = useState(null);
-  const shown = (series && series.length ? series : SAMPLE_SERIES).filter(s => SAMPLE_SERIES.includes(s));
+  // Only the versions that exist (day or night): a series whose other version was voted out shows in one tab only.
+  const exists = e => !designs || designs.includes(e);
+  const shown = (series && series.length ? series : SAMPLE_SERIES).filter(s => SAMPLE_SERIES.includes(s) && exists(`${s}${noche ? '-noche' : ''}`));
   const templatesOf = serie => (tipo === 'suelta' ? SUELTA
     : PANORAMA.includes(serie) ? [CARRUSEL[0], ['carrusel-panorama', 'Panorámica'], ...CARRUSEL.slice(1)] : CARRUSEL);
 
