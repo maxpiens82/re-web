@@ -51,6 +51,43 @@ const b64ToBlob = (b64, mime) => {
   return new Blob([bytes], { type: mime || 'image/jpeg' });
 };
 
+// Photos Drive never makes a preview of (very big images: a drone photo at full size, 57 MB, 14 Nov 2026). Smaller ones
+// without a preview are just new, and Drive makes it soon. The big ones are fetched whole, in pieces (redes_photo_part),
+// and shrunk here, once for both sizes: 480 px (thumb) and 2048 px (full) on the long side.
+const NO_PREVIEW_BYTES = 40 * 1024 * 1024;
+const PART_BYTES = 6 * 1024 * 1024;
+const bigPhotos = new Map();   // copia -> Promise<{ thumb: Blob, full: Blob }>
+
+const shrink = (bitmap, px) => {
+  const k = Math.min(1, px / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * k); canvas.height = Math.round(bitmap.height * k);
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('No se pudo achicar la foto.'))), 'image/jpeg', 0.9));
+};
+
+function loadBigPhoto(draftId, id, bytes) {
+  if (!bigPhotos.has(id)) {
+    const p = (async () => {
+      const parts = [];
+      for (let got = 0; got < bytes;) {
+        const r = await redesCall('redes_photo_part', { draftId, fileId: id, offset: got, length: PART_BYTES });
+        if (!r.base64) break;
+        const part = b64ToBlob(r.base64, 'application/octet-stream');
+        parts.push(part);
+        got += part.size;
+      }
+      const bitmap = await createImageBitmap(new Blob(parts, { type: 'image/jpeg' }));
+      try { return { thumb: await shrink(bitmap, 480), full: await shrink(bitmap, 2048) }; } finally { bitmap.close(); }
+    })();
+    p.catch(() => bigPhotos.delete(id));
+    bigPhotos.set(id, p);
+  }
+  return bigPhotos.get(id);
+}
+
 // Photo loader for one Redes tab: redes_photo in batches of up to 6 IDs, at most 2 requests in flight
 // (every request is an Apps Script execution, and production shares the 30-at-once limit). Photos are
 // kept as object URLs (and their Blobs) until dispose(). size 'thumb' (480 px) for the grid and the
@@ -67,14 +104,19 @@ export function createPhotoCache(size = 'full') {
       const job = queue.shift();
       running++;
       redesCall('redes_photo', { draftId: job.draftId, fileIds: job.ids, size })
-        .then(res => {
+        .then(async res => {
+          const big = [];
           job.ids.forEach(id => {
             const p = (res.photos || {})[id] || {};
             if (p.base64 && !disposed) {
               const blob = b64ToBlob(p.base64, p.mime);
               urls.set(id, { url: URL.createObjectURL(blob), blob });
-            } else if (!disposed) urls.set(id, { pending: !!p.pending, error: p.error || '' });
+            } else if (p.pending && p.bytes > NO_PREVIEW_BYTES) big.push([id, p.bytes]);
+            else if (!disposed) urls.set(id, { pending: !!p.pending, error: p.error || '' });
           });
+          await Promise.all(big.map(([id, bytes]) => loadBigPhoto(job.draftId, id, bytes)
+            .then(both => { if (!disposed) { const blob = size === 'thumb' ? both.thumb : both.full; urls.set(id, { url: URL.createObjectURL(blob), blob }); } })
+            .catch(e => { if (!disposed) urls.set(id, { error: 'La foto es muy pesada y no se pudo bajar: ' + e.message }); })));
           job.resolve();
         })
         .catch(e => { job.ids.forEach(id => urls.set(id, { error: e.message })); job.resolve(); })
