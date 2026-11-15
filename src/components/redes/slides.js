@@ -309,6 +309,7 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
 // (each design a nested <svg>, its ids prefixed so they don't clash), drawn once and cut into pieces.
 // Resolves to { estilo: Blob | null } (null: that series has no cover for that look).
 export async function renderCovers({ estilos, photo, campos = {}, width = 168 }) {
+  const tStart = performance.now();
   const [templates, fonts] = await Promise.all([loadTemplates(), loadFonts()]);
   const byName = Object.fromEntries(templates.map(t => [t.name, t]));
   const css = fonts.map(f => `@font-face{font-family:'${f.family}';src:url(data:font/otf;base64,${f.base64})}`).join('');
@@ -334,6 +335,7 @@ export async function renderCovers({ estilos, photo, campos = {}, width = 168 })
   } finally {
     box.remove();
   }
+  const tFill = performance.now();
   const out = Object.fromEntries(estilos.map(e => [e, null]));
   if (!cells.length) return out;
   const cols = Math.min(8, cells.length), rows = Math.ceil(cells.length / cols);
@@ -342,6 +344,7 @@ export async function renderCovers({ estilos, photo, campos = {}, width = 168 })
   const inner = cells.map((c, k) => c.text.replace(/^<svg\b/, `<svg x="${(k % cols) * cw}" y="${Math.floor(k / cols) * ch}"`)
     .replace(/(<svg\b[^>]*?)\swidth="[^"]*"/, `$1 width="${cw}"`).replace(/(<svg\b[^>]*?)\sheight="[^"]*"/, `$1 height="${ch}"`)).join('');
   const sheet = `<svg xmlns="${SVG_NS}" xmlns:xlink="${XLINK}" width="${cols * cw}" height="${rows * ch}" viewBox="0 0 ${cols * cw} ${rows * ch}"><style>${css}</style>${inner}</svg>`;
+  console.debug('[covers] fill', Math.round(tFill - tStart), 'ms');
   const url = URL.createObjectURL(new Blob([sheet], { type: 'image/svg+xml' }));
   try {
     const img = new Image();
