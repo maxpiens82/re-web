@@ -60,6 +60,14 @@ export function seriesOf(templates) {
   const num = n => (/^serie(\d+)$/.test(n) ? Number(n.slice(5)) : Infinity);
   return [...set].sort((a, z) => num(a) - num(z) || a.localeCompare(z));
 }
+// The designs (estilos: "serie7", "serie4-noche"…) that have a cover template, in series order: the ones to offer.
+// A design voted out (Nov 2026) has none, even when the other version of its series stays.
+export function designsOf(templates) {
+  const names = new Set((templates || []).filter(t => t.ok).map(t => t.name));
+  return seriesOf(templates).flatMap(s => [s, s + '-noche'])
+    .filter(e => names.has(`${e.replace(/-noche$/, '')}/carrusel-portada${e.endsWith('-noche') ? '-noche' : ''}`) ||
+      (e === 'serie1' && names.has('carrusel-portada')) || (e === 'serie1-noche' && names.has('carrusel-portada-noche')));
+}
 export const serieLabel = serie => (/^serie(\d+)$/.test(serie) ? `Serie ${serie.slice(5)}` : serie.charAt(0).toUpperCase() + serie.slice(1));
 
 let templatesPromise = null;
@@ -170,9 +178,11 @@ function fitText(el, text, W) {
 
 // The template for one layout in this series: its -noche version when asked, else the plain one;
 // for Serie 1 also the loose files of the first upload.
+// The other version of the series too, last: a draft whose design was voted out (only one version stayed) still renders.
 function pickTemplate(byName, plantilla, { serie, noche }) {
   const names = [noche && `${serie}/${plantilla}-noche`, `${serie}/${plantilla}`];
   if (serie === 'serie1') names.push(noche && `${plantilla}-noche`, plantilla);
+  if (!noche) names.push(`${serie}/${plantilla}-noche`);
   for (const n of names) if (n && byName[n] && byName[n].ok) return byName[n];
   return null;
 }

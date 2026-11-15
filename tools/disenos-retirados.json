@@ -1,0 +1,17 @@
+{
+  "nota": "Diseños que salieron en la votación de noviembre de 2026 (docs/plantillas/votacion-2026-11.md). tools/redes-plantillas.mjs no los empaqueta; build.py los sigue generando.",
+  "retirados": [
+    "serie3",
+    "serie3-noche",
+    "serie4",
+    "serie5",
+    "serie8",
+    "serie8-noche",
+    "serie9-noche",
+    "serie11",
+    "serie12",
+    "serie12-noche",
+    "serie13",
+    "serie13-noche"
+  ]
+}

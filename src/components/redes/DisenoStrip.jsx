@@ -7,13 +7,14 @@ import { SERIE_NAMES } from './seriesInfo';
 
 const COVER_W = 168;   // px drawn; shown at half that on screen, sharp on phones and retina
 
-export default function DisenoStrip({ series, ocultos, current, photo, campos, disabled, onPick }) {
+// `designs`: the estilos that exist (slides.js designsOf); the draft's own is shown even if it went out.
+export default function DisenoStrip({ series, designs: available, ocultos, current, photo, campos, disabled, onPick }) {
   const [covers, setCovers] = useState({});      // estilo -> object URL | null (no cover in that series)
   const urls = useRef([]);
   const strip = useRef(null);
 
   const designs = series.flatMap(se => [false, true].map(n => estiloOf(se, n)))
-    .filter(e => e === estiloOf(current.serie, current.noche) || !ocultos.includes(e));
+    .filter(e => e === estiloOf(current.serie, current.noche) || ((!available || available.includes(e)) && !ocultos.includes(e)));
 
   // Covers again whenever the photo or the texts change: first with a grey stand-in while the photo is on its way,
   // so the designs show at once, then with the photo.
