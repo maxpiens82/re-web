@@ -5,8 +5,8 @@ Votó Santiago Regidor (Santi), productor, el 15 de noviembre de 2026, en la pá
 Max decidió que su voto define qué queda. Max no votó. Los datos crudos están en `votacion-2026-11-santi.json`.
 
 **Resultado:** quedan 20 diseños y salen 12. Salen enteras las series 3, 8, 12 y 13; de la 4, 5 y 11
-sale el día (queda la noche); de la 9 sale la noche (queda el día). Las plantillas que salen se guardan aparte en Drive
-(`Redes · sistema/_plantillas retiradas`), no se borran: `build.py` las sigue generando.
+sale el día (queda la noche); de la 9 sale la noche (queda el día). Las que salen no se borraron: los SVG están en Drive
+(`Redes · sistema/_plantillas retiradas`) y sus muestras abajo, en «Las que salieron, con sus imágenes».
 
 | Serie | Nombre | Día | Noche | Comentarios de Santi |
 | --- | --- | --- | --- | --- |
@@ -60,3 +60,103 @@ Sacadas de los comentarios:
 - **Titular:** gustan sobre todo las placas 1, 3 y 4 (portada, simple y cierre).
 - **Usos especiales:** Contactos (Serie 16) "para supercut vertical y horizontal"; Plano (Serie 9) "solo para planos";
   la Ficha de noche no: "no queremos nada técnico, solo los planos".
+
+## Las que salieron, con sus imágenes
+
+Las muestras de cada diseño que salió quedaron acá (`retiradas/`), junto al comentario de Santi, para tenerlas a mano al
+diseñar las próximas. Los SVG están en Drive, en `Redes · sistema/_plantillas retiradas`, y `build.py` las sigue
+generando.
+
+
+### Serie 3 · Diagonal, día
+
+> no me convence la diagonal
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie3/carrusel-portada.jpg" width="150" alt="Portada"> | <img src="retiradas/serie3/carrusel-doble.jpg" width="150" alt="Doble"> | <img src="retiradas/serie3/carrusel-simple.jpg" width="150" alt="Simple"> | <img src="retiradas/serie3/carrusel-cierre.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie3/foto-en-marco-1350.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 3 · Diagonal, noche
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie3/carrusel-portada-noche.jpg" width="150" alt="Portada"> | <img src="retiradas/serie3/carrusel-doble-noche.jpg" width="150" alt="Doble"> | <img src="retiradas/serie3/carrusel-simple-noche.jpg" width="150" alt="Simple"> | <img src="retiradas/serie3/carrusel-cierre-noche.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie3/foto-en-marco-1350-noche.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 4 · Tinte, día
+
+> muy naranja, muy brusco
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie4/carrusel-portada.jpg" width="150" alt="Portada"> | <img src="retiradas/serie4/carrusel-doble.jpg" width="150" alt="Doble"> | <img src="retiradas/serie4/carrusel-simple.jpg" width="150" alt="Simple"> | <img src="retiradas/serie4/carrusel-cierre.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie4/foto-en-marco-1350.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 5 · Editorial, día
+
+> demasiado borde blanco, luce antiguo
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie5/carrusel-portada.jpg" width="150" alt="Portada"> | <img src="retiradas/serie5/carrusel-doble.jpg" width="150" alt="Doble"> | <img src="retiradas/serie5/carrusel-simple.jpg" width="150" alt="Simple"> | <img src="retiradas/serie5/carrusel-cierre.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie5/foto-en-marco-1350.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 8 · Ficha, día
+
+> antiguo
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie8/carrusel-portada.jpg" width="150" alt="Portada"> | <img src="retiradas/serie8/carrusel-doble.jpg" width="150" alt="Doble"> | <img src="retiradas/serie8/carrusel-simple.jpg" width="150" alt="Simple"> | <img src="retiradas/serie8/carrusel-cierre.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie8/foto-en-marco-1350.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 8 · Ficha, noche
+
+> no queremos nada tecnico, solo los planos.
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie8/carrusel-portada-noche.jpg" width="150" alt="Portada"> | <img src="retiradas/serie8/carrusel-doble-noche.jpg" width="150" alt="Doble"> | <img src="retiradas/serie8/carrusel-simple-noche.jpg" width="150" alt="Simple"> | <img src="retiradas/serie8/carrusel-cierre-noche.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie8/foto-en-marco-1350-noche.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 9 · Plano, noche
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie9/carrusel-portada-noche.jpg" width="150" alt="Portada"> | <img src="retiradas/serie9/carrusel-doble-noche.jpg" width="150" alt="Doble"> | <img src="retiradas/serie9/carrusel-simple-noche.jpg" width="150" alt="Simple"> | <img src="retiradas/serie9/carrusel-cierre-noche.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie9/foto-en-marco-1350-noche.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 11 · Póster, día
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie11/carrusel-portada.jpg" width="150" alt="Portada"> | <img src="retiradas/serie11/carrusel-doble.jpg" width="150" alt="Doble"> | <img src="retiradas/serie11/carrusel-simple.jpg" width="150" alt="Simple"> | <img src="retiradas/serie11/carrusel-cierre.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie11/foto-en-marco-1350.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 12 · Galería, día
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie12/carrusel-portada.jpg" width="150" alt="Portada"> | <img src="retiradas/serie12/carrusel-doble.jpg" width="150" alt="Doble"> | <img src="retiradas/serie12/carrusel-simple.jpg" width="150" alt="Simple"> | <img src="retiradas/serie12/carrusel-cierre.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie12/foto-en-marco-1350.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 12 · Galería, noche
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie12/carrusel-portada-noche.jpg" width="150" alt="Portada"> | <img src="retiradas/serie12/carrusel-doble-noche.jpg" width="150" alt="Doble"> | <img src="retiradas/serie12/carrusel-simple-noche.jpg" width="150" alt="Simple"> | <img src="retiradas/serie12/carrusel-cierre-noche.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie12/foto-en-marco-1350-noche.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 13 · Detalle, día
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie13/carrusel-portada.jpg" width="150" alt="Portada"> | <img src="retiradas/serie13/carrusel-doble.jpg" width="150" alt="Doble"> | <img src="retiradas/serie13/carrusel-simple.jpg" width="150" alt="Simple"> | <img src="retiradas/serie13/carrusel-cierre.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie13/foto-en-marco-1350.jpg" width="150" alt="Suelta"> |
+
+
+### Serie 13 · Detalle, noche
+
+| Portada | Doble | Simple | Cierre | Suelta |
+| --- | --- | --- | --- | --- |
+| <img src="retiradas/serie13/carrusel-portada-noche.jpg" width="150" alt="Portada"> | <img src="retiradas/serie13/carrusel-doble-noche.jpg" width="150" alt="Doble"> | <img src="retiradas/serie13/carrusel-simple-noche.jpg" width="150" alt="Simple"> | <img src="retiradas/serie13/carrusel-cierre-noche.jpg" width="150" alt="Cierre"> | <img src="retiradas/serie13/foto-en-marco-1350-noche.jpg" width="150" alt="Suelta"> |
