@@ -133,12 +133,24 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   const [samples, setSamples] = useState(false);     // showing how each series looks
   const [preview, setPreview] = useState(false);     // "Ver como en Instagram"
   const [ocultos, setOcultos] = useState([]);        // designs hidden for everyone ("serie3", "serie5-noche"), redes_config
-  // A design picked in the strip makes the placas again by itself (Max, 15 Nov 2026), once the draft is back.
+  // A design picked in the strip before any placas exist makes them (Max, 15 Nov 2026); once they exist, the effect
+  // below remakes them after any saved change.
   const [autoPlacas, setAutoPlacas] = useState(false);
   const autoPlacasRun = useRef(null);
   useEffect(() => {
     if (autoPlacas && !busy && autoPlacasRun.current) { setAutoPlacas(false); autoPlacasRun.current(); }
   }, [autoPlacas, busy]);
+  // Once the placas exist, any saved change (photos, barrio, agency, design, end screen) makes them again by itself;
+  // "Actualizar placas" is left only for when that failed. Each version of the draft is tried once (no loop).
+  const autoStale = useRef({ stale: false, key: '' });
+  const autoTried = useRef('');
+  useEffect(() => {
+    const a = autoStale.current;
+    if (a.stale && !busy && !autoPlacas && a.key !== autoTried.current && autoPlacasRun.current) {
+      autoTried.current = a.key;
+      autoPlacasRun.current();
+    }
+  });
   useEffect(() => {
     let alive = true;
     redesCall('redes_config').then(r => { if (alive) setOcultos(r.ocultos || []); }).catch(() => {});
@@ -344,6 +356,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
   };
   const slidesFresh = slides.key === slidesKey && slides.items.length > 0;
   autoPlacasRun.current = () => run('placas', () => makeSlides(), '');
+  autoStale.current = { stale: open && slides.items.length > 0 && !slidesFresh && !orderDirty, key: slidesKey };
   const makeSlides = async () => {
     const templates = await loadTemplates();
     setTplProblems(templates.filter(t => !t.ok).map(t => `${t.name}: ${t.problems.join('; ')}`));
@@ -497,14 +510,14 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
             onClick={async () => { if (slidesFresh || await run('placas', makeSlides, '')) setPreview(true); }}>
             <Smartphone size={14} /> Ver como en Instagram
           </button>
-          <button type="button" className={btnGhost} disabled={!!busy || orderDirty || !order.fotos.length}
+          {(!slides.items.length || (!slidesFresh && !orderDirty && busy !== 'placas')) && <button type="button" className={btnGhost} disabled={!!busy || orderDirty || !order.fotos.length}
             title={orderDirty ? 'Guardá los cambios primero' : ''}
             onClick={() => run('placas', makeSlides, items => {
               const w = (items || []).filter(it => it.warning).length;
               return w ? `Placas listas, pero ${w} con texto muy largo.` : 'Placas listas.';
             })}>
-            {busy === 'placas' ? <MiniLogo className="w-4 h-4" /> : <Layers size={14} />} {slides.items.length ? 'Actualizar placas' : 'Generar placas'}
-          </button>
+            {busy === 'placas' ? <MiniLogo className="w-4 h-4" /> : <Layers size={14} />} {slides.items.length ? 'Reintentar placas' : 'Generar placas'}
+          </button>}
         </div>}>
         <div className="mb-1 flex flex-wrap items-center gap-2">
           <span className="text-xs text-gray-500">
@@ -520,7 +533,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           campos={{ barrio: d.barrio || '', servicios: servicesText(b && b.servicios), inmobiliaria: /^particular$/i.test(d.inmobiliaria || '') ? '' : (d.inmobiliaria || '') }}
           disabled={!open || !!busy || orderDirty}
           onPick={estilo => run('estilo', () => redesCall('redes_update', { draftId, cambios: { estilo } }), '')
-            .then(r => { if (r && r.draft && r.draft.fotos.length) setAutoPlacas(true); })} />
+            .then(r => { if (r && r.draft && r.draft.fotos.length && !slides.items.length) setAutoPlacas(true); })} />
         {samples && (
           <SeriesSamples series={series} tipo={d.tipo} current={look} canChoose={open && !busy} onClose={() => setSamples(false)}
             ocultos={ocultos} onToggleOculto={toggleOculto}
@@ -565,7 +578,7 @@ export default function RedesDraft({ draftId, cache, fullCache, onBack }) {
           <p className="text-xs text-gray-400">Las placas se arman con las plantillas ({serieLabel(look.serie)}, {look.noche ? 'noche' : 'día'}), las fotos en este orden, el barrio, los servicios y la inmobiliaria{closing ? '; al final, la placa con el nombre y el teléfono del cliente y el video del end screen' : ''}. También se generan solas al descargar el paquete.</p>
         ) : (
           <>
-            {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">Cambiaste fotos, barrio, diseño, inmobiliaria o end screen: tocá "Actualizar placas".</p>}
+            {!slidesFresh && <p className="mb-2 text-xs font-bold text-amber-700">{orderDirty ? 'Guardá los cambios y las placas se rehacen solas.' : 'Las placas no se pudieron rehacer: tocá "Reintentar placas".'}</p>}
             <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 ${slidesFresh ? '' : 'opacity-50'}`}>
               {slides.items.map((it, i) => (
                 <figure key={it.url} className="m-0">

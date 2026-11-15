@@ -3,7 +3,7 @@
 // (the client's slide, then the end screen video), and the text cut after two lines
 // with "… más", the way Instagram shows it.
 import { useEffect, useRef, useState } from 'react';
-import { Bookmark, ChevronLeft, ChevronRight, Heart, MessageCircle, MoreHorizontal, Send, X } from 'lucide-react';
+import { Bookmark, ChevronLeft, ChevronRight, Heart, Maximize2, MessageCircle, Minimize2, MoreHorizontal, Send, X } from 'lucide-react';
 import MiniLogo from '../MiniLogo';
 
 const HANDLE = 'somos.re.ok';
@@ -16,6 +16,17 @@ export default function InstagramPreview({ items, caption, onClose }) {
   const [i, setI] = useState(0);
   const [more, setMore] = useState(false);
   const touch = useRef(null);
+  // Full screen (Max, 15 Nov 2026): on a phone the post always takes the whole screen; on a computer a button puts the
+  // preview in full screen and the post grows to the screen's height.
+  const box = useRef(null);
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const on = () => setFull(document.fullscreenElement === box.current);
+    document.addEventListener('fullscreenchange', on);
+    return () => { document.removeEventListener('fullscreenchange', on); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); };
+  }, []);
+  const canFull = typeof document !== 'undefined' && !!document.fullscreenEnabled;
+  const toggleFull = () => (document.fullscreenElement ? document.exitFullscreen() : box.current.requestFullscreen()).catch(() => {});
   // "… más" only when two lines don't hold the whole text, as on Instagram.
   const cap = useRef(null);
   const [clipped, setClipped] = useState(false);
@@ -28,7 +39,7 @@ export default function InstagramPreview({ items, caption, onClose }) {
 
   useEffect(() => {
     const key = e => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') { if (!document.fullscreenElement) onClose(); }
       else if (e.key === 'ArrowRight') setI(n => Math.min(shown.length - 1, n + 1));
       else if (e.key === 'ArrowLeft') setI(n => Math.max(0, n - 1));
     };
@@ -41,20 +52,27 @@ export default function InstagramPreview({ items, caption, onClose }) {
   const arrow = 'absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/85 hover:bg-white text-gray-800 shadow flex items-center justify-center';
 
   return (
-    <div className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-3" onClick={onClose} role="dialog" aria-modal="true" aria-label="Vista previa como en Instagram">
-      <div className="flex flex-col items-center gap-3 max-h-full" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-2 text-white text-xs">
+    <div ref={box} className="fixed inset-0 z-[120] bg-black sm:bg-black/80 flex items-center justify-center sm:p-3" onClick={onClose} role="dialog" aria-modal="true" aria-label="Vista previa como en Instagram">
+      <div className="flex flex-col items-center gap-3 w-full h-full sm:w-auto sm:h-auto sm:max-h-full" onClick={e => e.stopPropagation()}>
+        <div className="hidden sm:flex items-center gap-2 text-white text-xs">
+          {canFull && (
+            <button type="button" onClick={toggleFull} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 font-bold">
+              {full ? <><Minimize2 size={14} /> Salir de pantalla completa</> : <><Maximize2 size={14} /> Pantalla completa</>}
+            </button>
+          )}
           <button type="button" onClick={onClose} className="ml-2 p-1.5 rounded-full bg-white/15 hover:bg-white/25" aria-label="Cerrar"><X size={16} /></button>
         </div>
 
-        {/* the phone */}
-        <div className="w-[min(400px,92vw)] bg-white rounded-[22px] overflow-y-auto max-h-[calc(100vh-80px)] shadow-2xl text-[13px] text-gray-900 font-sans">
+        {/* the phone: the whole screen on a phone; on a computer, a phone-sized card (screen-high in full screen) */}
+        <div style={{ '--ig-w': full ? 'min(92vw, calc((100dvh - 190px) * 0.8))' : 'min(400px, 92vw)' }}
+          className="w-full h-full overflow-y-auto bg-white text-[13px] text-gray-900 font-sans pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:pt-0 sm:pb-0 sm:h-auto sm:w-[var(--ig-w)] sm:rounded-[22px] sm:max-h-[calc(100dvh-80px)] sm:shadow-2xl">
           <div className="flex items-center gap-2.5 px-3 py-2.5">
             <span className="w-8 h-8 rounded-full p-[2px] bg-gradient-to-tr from-[#F9CE34] via-[#EE2A7B] to-[#6228D7]">
               <span className="w-full h-full rounded-full bg-white flex items-center justify-center"><MiniLogo className="w-5 h-5 text-[#E53B12]" /></span>
             </span>
             <span className="font-semibold">{HANDLE}</span>
-            <MoreHorizontal size={18} className="ml-auto" />
+            <MoreHorizontal size={18} className="ml-auto hidden sm:block" />
+            <button type="button" onClick={onClose} className="ml-auto sm:hidden p-1.5 -mr-1.5" aria-label="Cerrar"><X size={22} /></button>
           </div>
 
           <div className="relative w-full aspect-[4/5] bg-black select-none"
@@ -96,7 +114,7 @@ export default function InstagramPreview({ items, caption, onClose }) {
             ) : <p className="text-gray-400">Sin texto todavía.</p>}
           </div>
         </div>
-        <p className="text-[11px] text-white/70">← → para pasar las placas · Esc para cerrar</p>
+        <p className="hidden sm:block text-[11px] text-white/70">← → para pasar las placas · Esc para cerrar</p>
       </div>
     </div>
   );
