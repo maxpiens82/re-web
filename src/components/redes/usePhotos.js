@@ -9,7 +9,8 @@ export default function usePhotos(cache, draftId, ids) {
     if (!draftId || !key) return undefined;
     let alive = true;
     cache.load(draftId, key.split(',')).then(() => { if (alive) setVersion(v => v + 1); });
-    return () => { alive = false; };
+    const off = cache.subscribe(() => { if (alive) setVersion(v => v + 1); });
+    return () => { alive = false; off(); };
   }, [cache, draftId, key]);
   return cache.get;
 }
