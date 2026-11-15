@@ -65,9 +65,15 @@ export const serieLabel = serie => (/^serie(\d+)$/.test(serie) ? `Serie ${serie.
 let templatesPromise = null;
 let fontsPromise = null;
 
+// The templates travel with the portal (plantillas.json, made by tools/redes-plantillas.mjs from build.py's SVGs, Max
+// 15 Nov 2026): a cached file of about 25 KB compressed, instead of 2.5 to 15 s through the backend. If that file can't
+// load, the backend's copy in Drive.
 export function loadTemplates(force) {
   if (!templatesPromise || force) {
-    templatesPromise = redesCall('redes_templates').then(r => r.templates || []).catch(e => { templatesPromise = null; throw e; });
+    templatesPromise = import('./plantillas.json')
+      .then(m => (m.default || m).templates.map(t => ({ ...t, ok: true, problems: [] })))
+      .catch(() => redesCall('redes_templates').then(r => r.templates || []))
+      .catch(e => { templatesPromise = null; throw e; });
   }
   return templatesPromise;
 }
@@ -226,16 +232,17 @@ function fill(svg, { photos, campos, W, filled = FILLED }) {
   return warnings;
 }
 
-async function rasterize(svgText, W, H) {
+// outW: a smaller picture (the design strip's covers); the SVG is drawn straight at that size.
+async function rasterize(svgText, W, H, outW = W) {
   const url = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
   try {
     const img = new Image();
     img.src = url;
     await img.decode();
     const canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    canvas.getContext('2d').drawImage(img, 0, 0, W, H);
-    return await new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('No se pudo generar la placa.'))), 'image/jpeg', 0.92));
+    canvas.width = outW; canvas.height = Math.round(H * outW / W);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('No se pudo generar la placa.'))), 'image/jpeg', outW < W ? 0.85 : 0.92));
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -296,5 +303,75 @@ export async function renderSlides({ tipo, fotos, estilo, cierre, campos = {}, p
     box.remove();
   }
 }
+
+// Every design's cover with this draft's first photo and texts, small (the design strip, Max 15 Nov 2026). The
+// browser takes about a second to draw any SVG that carries fonts, however small, so all the covers go into ONE sheet
+// (each design a nested <svg>, its ids prefixed so they don't clash), drawn once and cut into pieces.
+// Resolves to { estilo: Blob | null } (null: that series has no cover for that look).
+export async function renderCovers({ estilos, photo, campos = {}, width = 168 }) {
+  const [templates, fonts] = await Promise.all([loadTemplates(), loadFonts()]);
+  const byName = Object.fromEntries(templates.map(t => [t.name, t]));
+  const css = fonts.map(f => `@font-face{font-family:'${f.family}';src:url(data:font/otf;base64,${f.base64})}`).join('');
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;left:-20000px;top:0;opacity:0;pointer-events:none';
+  document.body.appendChild(box);
+  const cells = [];
+  try {
+    for (const estilo of estilos) {
+      const tpl = pickTemplate(byName, 'carrusel-portada', parseEstilo(estilo));
+      if (!tpl) continue;
+      const svg = document.importNode(new DOMParser().parseFromString(tpl.svg, 'image/svg+xml').documentElement, true);
+      box.replaceChildren(svg);
+      const W = Number(svg.getAttribute('width')) || 1080, H = Number(svg.getAttribute('height')) || 1350;
+      fill(svg, { photos: Array.from(svg.querySelectorAll('image[id^="foto-"]'), () => photo), campos, W });
+      const p = `d${cells.length}-`;
+      const text = new XMLSerializer().serializeToString(svg)
+        .replace(/\sid="([^"]+)"/g, ` id="${p}$1"`)
+        .replace(/url\(#([^)]+)\)/g, `url(#${p}$1)`)
+        .replace(/(\s(?:xlink:)?href)="#([^"]+)"/g, `$1="#${p}$2"`);
+      cells.push({ estilo, W, H, text });
+    }
+  } finally {
+    box.remove();
+  }
+  const out = Object.fromEntries(estilos.map(e => [e, null]));
+  if (!cells.length) return out;
+  const cols = Math.min(8, cells.length), rows = Math.ceil(cells.length / cols);
+  const cw = width, ch = Math.round(width * cells[0].H / cells[0].W);
+  // Each cover in its cell: the nested <svg>'s own width/height/viewBox scale it down.
+  const inner = cells.map((c, k) => c.text.replace(/^<svg\b/, `<svg x="${(k % cols) * cw}" y="${Math.floor(k / cols) * ch}"`)
+    .replace(/(<svg\b[^>]*?)\swidth="[^"]*"/, `$1 width="${cw}"`).replace(/(<svg\b[^>]*?)\sheight="[^"]*"/, `$1 height="${ch}"`)).join('');
+  const sheet = `<svg xmlns="${SVG_NS}" xmlns:xlink="${XLINK}" width="${cols * cw}" height="${rows * ch}" viewBox="0 0 ${cols * cw} ${rows * ch}"><style>${css}</style>${inner}</svg>`;
+  const url = URL.createObjectURL(new Blob([sheet], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const piece = document.createElement('canvas');
+    piece.width = cw; piece.height = ch;
+    const ctx = piece.getContext('2d');
+    for (let k = 0; k < cells.length; k++) {
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, (k % cols) * cw, Math.floor(k / cols) * ch, cw, ch, 0, 0, cw, ch);
+      out[cells[k].estilo] = await new Promise(resolve => piece.toBlob(resolve, 'image/jpeg', 0.85));
+    }
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  return out;
+}
+// A photo made small for the covers (a smaller picture to decode, 32 times over), as a data: URL.
+export async function smallPhotoUrl(blob, px = 360) {
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const k = Math.min(1, px / Math.min(bitmap.width, bitmap.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bitmap.width * k); c.height = Math.round(bitmap.height * k);
+    c.getContext('2d').drawImage(bitmap, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.85);
+  } finally { bitmap.close(); }
+}
+// While the photo is on its way: a plain grey square, so the covers show the design at once.
+export const PLACEHOLDER_PHOTO = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="5"><rect width="4" height="5" fill="#B9B6B0"/></svg>');
 
 export const blobToBase64 = blob => blobToDataUrl(blob).then(u => u.slice(u.indexOf(',') + 1));
