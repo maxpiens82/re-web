@@ -19,17 +19,20 @@ export default function InstagramPreview({ items, caption, onClose }) {
   // Instagram, so a panorama reads as one wide picture while it moves (Max, 15 Nov 2026).
   const track = useRef(null);
   const drag = useRef(null);
+  const atRef = useRef(0);
+  const keepSlide = () => { const el = track.current; if (el && el.clientWidth) atRef.current = Math.round(el.scrollLeft / el.clientWidth); };
   // Full screen (Max, 15 Nov 2026): on a phone the post always takes the whole screen; on a computer a button puts the
   // preview in full screen and the post grows to the screen's height.
   const box = useRef(null);
   // The post grows to the screen's height either way; the browser's own full screen is tried on top, when allowed.
   const [full, setFull] = useState(false);
   useEffect(() => {
-    const on = () => { if (!document.fullscreenElement) setFull(false); };
+    const on = () => { if (!document.fullscreenElement) { keepSlide(); setFull(false); } };
     document.addEventListener('fullscreenchange', on);
     return () => { document.removeEventListener('fullscreenchange', on); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); };
   }, []);
   const toggleFull = () => {
+    keepSlide();
     if (full) { setFull(false); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); return; }
     setFull(true);
     if (document.fullscreenEnabled && box.current.requestFullscreen) box.current.requestFullscreen().catch(() => {});
@@ -55,8 +58,8 @@ export default function InstagramPreview({ items, caption, onClose }) {
   // The strip changes width with Pantalla completa: stay on the same slide.
   useEffect(() => {
     const el = track.current;
-    if (el) el.scrollLeft = Math.round(el.scrollLeft / (el.scrollWidth / shown.length || 1)) * el.clientWidth;
-  }, [full, shown.length]);
+    if (el) el.scrollLeft = atRef.current * el.clientWidth;
+  }, [full]);
   // Mouse: drag the strip by hand (touch and trackpads scroll it natively).
   const onPointerDown = e => {
     if (e.pointerType !== 'mouse' || e.button !== 0) return;
@@ -82,7 +85,7 @@ export default function InstagramPreview({ items, caption, onClose }) {
 
   useEffect(() => {
     const key = e => {
-      if (e.key === 'Escape') { if (document.fullscreenElement) return; if (full) setFull(false); else onClose(); }
+      if (e.key === 'Escape') { if (document.fullscreenElement) return; if (full) { keepSlide(); setFull(false); } else onClose(); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
         const el = track.current;
         if (!el) return;
