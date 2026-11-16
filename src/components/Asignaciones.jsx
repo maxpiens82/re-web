@@ -107,14 +107,19 @@ export default function Asignaciones() {
       };
     });
 
+    // requestId: the same request arriving twice (a browser retrying after a dropped connection) does nothing the second
+    // time. sentAt: a request that reaches the server long after the button was pressed (a device that slept with it
+    // pending) is refused instead of emailing editors days late (16 Nov 2026). The backend logs both in Asignaciones_Log.
+    const requestId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
     try {
-      const response = await gasPost({ action: 'process_assignments', payload: assignmentPayload });
+      const response = await gasPost({ action: 'process_assignments', payload: { items: assignmentPayload, requestId, sentAt: Date.now() } });
       const res = await response.json();
       if (res.success) {
         alert(`¡Éxito! Se asignaron ${res.count} trabajos.`);
         fetchAssignments();
       } else {
-        alert("Error: " + res.error);
+        alert((res.stale ? '' : 'Error: ') + res.error);
+        if (res.stale) fetchAssignments();
       }
     } catch (e) {
       alert("Error de red.");
