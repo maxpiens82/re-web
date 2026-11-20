@@ -10,6 +10,7 @@ import Asignaciones from '../components/Asignaciones';
 import Cobranzas from '../components/Cobranzas';
 import LeadMailer from '../components/LeadMailer';
 import { gasPost } from '../lib/gasApi';
+import { IGOR_ON } from '../lib/igor';
 
 // Redes (solo admins): se carga al abrir la pestaña.
 const RedesTab = lazy(() => import('../components/redes/RedesTab'));
@@ -495,7 +496,7 @@ export default function Portal() {
             </>
           )}
 
-          {userRole === 'admin' && (
+          {userRole === 'admin' && IGOR_ON && (
             <button 
               onClick={() => handleJobClick('AI')} 
               className={`w-full py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition-colors shadow-sm flex items-center justify-center gap-2
@@ -551,6 +552,7 @@ export default function Portal() {
               >
                 <Megaphone size={20} />
               </button>
+              {IGOR_ON && (
               <button 
                 onClick={() => handleJobClick('AI')} 
                 className={`p-3 rounded-xl transition-colors flex items-center justify-center shrink-0
@@ -559,6 +561,7 @@ export default function Portal() {
               >
                 <Bot size={20} />
               </button>
+              )}
             </>
           )}
 
@@ -592,8 +595,8 @@ export default function Portal() {
              <Asignaciones />
            ) : selectedJobId === 'COBRANZAS' && userRole === 'admin' ? (
              <Cobranzas />
-           ) : selectedJobId === 'AI' && userRole === 'admin' ? (
-             <AiAssistant />
+           ) : selectedJobId === 'AI' ? (
+             userRole === 'admin' && IGOR_ON ? <AiAssistant /> : <div className="text-sm text-gray-500">Igor no está disponible.</div>
            ) : selectedJobId?.startsWith('REDES') ? (
              userRole === 'admin' ? (
                <Suspense fallback={<div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 size={16} className="animate-spin" /> Cargando…</div>}>
